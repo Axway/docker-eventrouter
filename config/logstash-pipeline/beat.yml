@@ -1,0 +1,26 @@
+input {
+  beats {
+    port => 5044
+  }
+}
+
+output {
+  if [@metadata][pipeline] {
+    elasticsearch {
+      hosts => "http://elasticsearch:9200"
+      manage_template => false
+      index => "%{[@metadata][beat]}-%{[@metadata][version]}-%{+YYYY.MM.dd}"
+      pipeline => "%{[@metadata][pipeline]}" 
+      user => "elastic"
+      password => "secret"
+    }
+  } else {
+    elasticsearch {
+      hosts => "http://elasticsearch:9200"
+      manage_template => false
+      index => "qlt-%{+YYYY.MM.dd}"
+      user => "elastic"
+      password => "secret"
+    }
+  }
+}

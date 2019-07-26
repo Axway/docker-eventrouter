@@ -1,10 +1,10 @@
-VERSION := 0.0.1
-NAME := qlt-dump
+VERSION := 0.0.1-dev
+NAME := qlt-router
 DATE := $(shell date +'%Y-%M-%d_%H:%M:%S')
 BUILD := $(shell git rev-parse HEAD | cut -c1-8)
 LDFLAGS :=-ldflags "-s -w -X=main.Version=$(VERSION) -X=main.Build=$(BUILD) -X=main.Date=$(DATE)"
 IMAGE := $(NAME)
-REGISTRY := davinci1976
+REGISTRY := registry.dctest.docker-cluster.axwaytest.net/internal
 PUBLISH := $(REGISTRY)/$(IMAGE)
 
 .PHONY: docker all certs deps
@@ -70,12 +70,7 @@ certs: certs-proxy certs-policy
 
 certs-proxy:
 	openssl genrsa -out certs/server.key 2048
-	openssl req -new -x509 -sha256 -key certs/server.key -out certs/server.pem -days 3650 -subj "/C=FR/ST=Paris/L=La Defense/O=Axway/CN=mqtt-proxy"
+	openssl req -new -x509 -sha256 -key certs/server.key -out certs/server.pem -days 3650 -subj "/C=FR/ST=Paris/L=La Defense/O=Axway/CN=qlt-router"
 	openssl x509 -text -noout -in certs/server.pem
-	cp certs/server.pem tests/test/certs/mqtt-proxy.pem
+	cp certs/server.pem tests/test/certs/qlt-router.pem
 
-certs-policy:
-	openssl genrsa -out tests/policy/certs/server.key 2048
-	openssl req -new -x509 -sha256 -key tests/policy/certs/server.key -out tests/policy/certs/server.pem -days 3650 -subj "/C=FR/ST=Paris/L=La Defense/O=Axway/CN=policy"
-	openssl x509 -text -noout -in tests/policy/certs/server.pem
-	cp tests/policy/certs/server.pem certs/policy.pem

@@ -2,49 +2,115 @@ package main
 
 import (
 	"fmt"
-	"net"
-	"os"
+	"net/http"
+
+	log "github.com/sirupsen/logrus"
+
+	"github.com/namsral/flag"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-const (
-	CONN_HOST = "localhost"
-	CONN_PORT = "3333"
-	CONN_TYPE = "tcp"
+var (
+	qltConnectionIn = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "qlt_cnx",
+		Help: "The number of connections",
+	})
+
+	qltMessageIn = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "qlt_in_message_total",
+		Help: "The total number of qlt messages",
+	})
+
+	qltMessageInSize = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name:    "qlt_in_size_message",
+		Help:    "Size of qlt in messages",
+		Buckets: prometheus.LinearBuckets(0, 1000, 32),
+	})
+
+	qltMessageOut = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "qlt_out_message_total",
+		Help: "The total number of out qlt messages",
+	})
+
+	qltMessageOutSize = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name:    "qlt_out_size_message",
+		Help:    "Sizes of qlt out messages",
+		Buckets: prometheus.LinearBuckets(0, 1000, 32),
+	})
 )
 
-func main() {
-	// Listen for incoming connections.
-	l, err := net.Listen(CONN_TYPE, CONN_HOST+":"+CONN_PORT)
-	if err != nil {
-		fmt.Println("Error listening:", err.Error())
-		os.Exit(1)
-	}
-	// Close the listener when the application closes.
-	defer l.Close()
-	fmt.Println("Listening on " + CONN_HOST + ":" + CONN_PORT)
-	for {
-		// Listen for an incoming connection.
-		conn, err := l.Accept()
-		if err != nil {
-			fmt.Println("Error accepting: ", err.Error())
-			os.Exit(1)
-		}
-		// Handle connections in a new goroutine.
-		go handleRequest(conn)
-	}
+func httpInit() {
+	log.Println("[HTTP] Setting up / welcome...")
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Welcome to qlt-router!")
+	})
+	log.Println("[HTTP] Setting up /metrics (prometheus)...")
+	http.Handle("/metrics", promhttp.Handler())
+
+	log.Println("[HTTP] Listening on 0.0.0.0:80")
+	http.ListenAndServe(":80", nil)
 }
 
-// Handles incoming requests.
-func handleRequest(conn net.Conn) {
-	// Make a buffer to hold incoming data.
-	buf := make([]byte, 1024)
-	// Read the incoming connection into the buffer.
-	_, err := conn.Read(buf)
-	if err != nil {
-		fmt.Println("Error reading:", err.Error())
+func main() {
+	log.SetFormatter(&log.TextFormatter{
+		//		DisableColors: true,
+		FullTimestamp: true,
+	})
+
+	var QLT_HOST = "0.0.0.0"
+	var QLT_PORT = "3333"
+
+	var ELASTICSEARCH = ""
+	var SENTINEL = ""
+	var FILENAME = ""
+	var LUMBERJACK = ""
+
+	//var SENTINEL = "qlt:3333"
+
+	flag.String(flag.DefaultConfigFlagname, "", "path to config file")
+
+	flag.StringVar(&SENTINEL, "sentinel_addr", "", "target sentinel")
+	flag.StringVar(&ELASTICSEARCH, "es_url", "", "target elasticsearch")
+	flag.StringVar(&FILENAME, "filename", "", "target file")
+	flag.StringVar(&LUMBERJACK, "lumberjack_addr", "", "target lumberjack")
+
+	flag.StringVar(&QLT_PORT, "qlt_port", "3333", "QLT listening port")
+	flag.StringVar(&QLT_HOST, "qlt_host", "0.0.0.0", "QLT listening host")
+
+	flag.Parse()
+
+	ConvertInit()
+
+	go httpInit()
+
+	queues := []chan map[string]string{}
+
+	if SENTINEL != "" {
+		QLTCQueue := make(chan map[string]string)
+		queues = append(queues, QLTCQueue)
+		go qltClientInit(SENTINEL, QLTCQueue)
 	}
-	// Send a response back to person contacting us.
-	conn.Write([]byte("Message received."))
-	// Close the connection when you're done with it.
-	conn.Close()
+
+	if ELASTICSEARCH != "" {
+		ESQueue := make(chan map[string]string)
+		queues = append(queues, ESQueue)
+		go esInit(ELASTICSEARCH, ESQueue)
+	}
+
+	if FILENAME != "" {
+		FSQueue := make(chan map[string]string)
+		queues = append(queues, FSQueue)
+		go fileStoreInit(FILENAME, FSQueue)
+	}
+
+	if LUMBERJACK != "" {
+		LBQueue := make(chan map[string]string)
+		queues = append(queues, LBQueue)
+		go lumberJackInit(LUMBERJACK, LBQueue)
+	}
+
+	//queues := []chan map[string]string{ /*ESQueue, FSQueue,*/ QLTCQueue}
+	QLTListen(QLT_HOST+":"+QLT_PORT, queues)
 }
