@@ -1,0 +1,84 @@
+# Default values for qlt-router.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: registry.dctest.docker-cluster.axwaytest.net/internal/qlt-router
+  tag: latest
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP #LoadBalancer
+  port: 80
+  qltport: 3333
+
+env:
+  sentinel_addr: "ingestion-lumberjack.branch2.trcblt.com:80"
+  es_url: ""
+  filename: ""
+
+ingress:
+  enabled: true
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  paths: [ "/" ]
+  hosts:
+    - qlt-router.eks.mft.apirs.net
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #  cpu: 100m
+  #  memory: 128Mi
+  # requests:
+  #  cpu: 100m
+  #  memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+prometheus:
+  ## Prometheus is using Operator.  Setting to true will create Operator specific resources like ServiceMonitors and Alerts
+  operator:
+    ## Are you using Prometheus Operator? [Blog Post](https://coreos.com/blog/the-prometheus-operator.html)
+    enabled: true
+
+    ## Configures Alerts, which will be setup via Prometheus Operator / ConfigMaps.
+    alerts:
+      ## Prometheus exporter must be enabled as well
+      enabled: true
+
+      ## Selector must be configured to match Prometheus Install, defaulting to whats done by Prometheus Operator
+      ## See [CoreOS Prometheus Chart](https://github.com/coreos/prometheus-operator/tree/master/helm)
+      selector:
+        role: alert-rules
+      labels: {}
+
+    serviceMonitor:
+      ## Interval at which Prometheus scrapes RabbitMQ Exporter
+      interval: 12s
+
+      # Namespace Prometheus is installed in
+      namespace: monitoring
+
+      ## Defaults to whats used if you follow CoreOS [Prometheus Install Instructions](https://github.com/coreos/prometheus-operator/tree/master/helm#tldr)
+      ## [Prometheus Selector Label](https://github.com/coreos/prometheus-operator/blob/master/helm/prometheus/templates/prometheus.yaml#L65)
+      ## [Kube Prometheus Selector Label](https://github.com/coreos/prometheus-operator/blob/master/helm/kube-prometheus/values.yaml#L298)
+      selector:
+        prometheus: kube-prometheus
