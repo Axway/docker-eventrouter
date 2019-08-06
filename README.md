@@ -6,7 +6,7 @@
 - route QLT messages to
     - Elasticsearch 7 (API) : ELASTISEARCH_URL
     - Logstash (Lumberjack): LUMBERJACK_ADDR
-    - Sentinel (QLT) : SENTINEL_ADDR
+    - Sentinel (QLT) : SENTINEL_ADDR / transformed !!!
     - Localfile : FILENAME
 - observability through prometheus
 
@@ -14,16 +14,18 @@
 - 0.0.2
     - add TLS support for QLT server
     - add TLS support for lumberjack
+    - add initial k8s/helm support
 
 # Limitations
-- No TLS support
 - Unreliable message routing (message can be lost...)
 - No support for external QLT port in helm
 
 # Todo
-- TLS Support
-- Mutual TLS Support
+- Refactor TLS
+- Add Non transforming QLT relay
+- Add cusotmization for tenant (QLT/LumberJack)
 - Message transformation : Configurable QLT message transformation
+    (numeric, date, uppercase)
 - Message Filtering
 - Reliability
     - End-to-End Ack support

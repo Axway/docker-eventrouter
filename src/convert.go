@@ -138,7 +138,7 @@ func convertToQLTXML(msg map[string]string) string {
 // date : + gmtdiff
 //
 // certificate - tenant
-// SSO / logout : OUM
+// SSO / logout : OUM / AxwayID
 const xfbtransfer = `
 {
 	"blocksize" : "i",
