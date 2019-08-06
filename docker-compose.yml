@@ -7,13 +7,32 @@ services:
       #SENTINEL_ADDR: "ingestion-lumberjack.branch2.trcblt.com:80"
       #ES_URL: "http://elasticsearch:9200"
       #FILENAME: "/data/sss.json"
-      LUMBERJACK_ADDR: logstash:5044
+      
+      #LUMBERJACK_ADDR: logstash:5044
+      
+      LUMBERJACK_ADDR: ingestion-lumberjack.branch2.trcblt.com:443
+      LUMBERJACK_CERT: ./config/qlt-router/lb-cert.pem
+      LUMBERJACK_KEY: ./config/qlt-router/lb-cert.key
+
+      #LUMBERJACK_CA: ./config/qlt-router/lb-ca.pem
+      
       QLT_PORT: "3333"
       QLT_HOST: "0.0.0.0"
+
+      QLTS_PORT: "3334"
+      QLTS_HOST: "0.0.0.0"
+      QLTS_CERT: "./certs/server.pem"
+      QLTS_KEY: "./certs/server.key"
+
+
     volumes:
     - "./data:/data"
+    - "./config:/config"
+    - "./certs:/certs"
     ports:
     - 8090:80
+    - 3333:3333
+    - 3334:3334
 
   cft1:
     image: registry.dctest.docker-cluster.axwaytest.net/mft/docker-cft:3.3.2

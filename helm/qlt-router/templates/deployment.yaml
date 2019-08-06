@@ -25,7 +25,26 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - name: SENTINEL_ADDR
-              value: "{{ .Values.env.sentinel_addr }}"
+              value: "{{ .Values.service.sentinel.addr }}"
+
+            - name: QLTS_PORT
+              value: "{{ .Values.service.lumberjack.port }}"
+            - name: QLTS_CERT
+              value: "/var/run/certs/cert.pem"
+            - name: QLTS_KEY
+              value: "/var/run/certs/cert.key"
+            #- name: QLTS_CA
+            #  value: "/var/run/certs/ca.pem"
+
+            - name: LUMBERJACK_ADDR
+              value: "{{ .Values.service.lumberjack.addr }}"
+            - name: LUMBERJACK_CERT
+              value: "/var/run/lumberjack/cert.pem"
+            - name: LUMBERJACK_KEY
+              value: "/var/run/lumberjack/cert.key"
+            - name: LUMBERJACK_CA
+              value: "/var/run/lumberjack/ca.pem"
+
           ports:
             - name: http
               containerPort: 80
@@ -33,6 +52,13 @@ spec:
             - name: qlt
               containerPort: 3333
               protocol: TCP
+            - name: qlts
+              containerPort: 3334
+              protocol: TCP
+          volumeMounts:
+            - name: certs
+              mountPath: /var/run/certs
+              readOnly: true
           livenessProbe:
             httpGet:
               path: /
@@ -43,6 +69,13 @@ spec:
               port: http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+      - name: certs
+        secret:
+          secretName: {{ template "qlt-router.name" . }}-certs
+      - name: lumberjack
+        secret:
+          secretName: {{ template "qlt-router.name" . }}-lumberjack
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

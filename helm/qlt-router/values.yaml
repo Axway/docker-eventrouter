@@ -6,21 +6,32 @@ replicaCount: 1
 
 image:
   repository: registry.dctest.docker-cluster.axwaytest.net/internal/qlt-router
-  tag: latest
+  tag: 0.0.2-dev
   pullPolicy: IfNotPresent
 
 nameOverride: ""
 fullnameOverride: ""
 
 service:
-  type: ClusterIP #LoadBalancer
+  type: LoadBalancer #ClusterIP #LoadBalancer
   port: 80
   qltport: 3333
+  qlts:
+    port: 3334
+    cert: xxxxxx
+    key:  xxxxxx
 
-env:
-  sentinel_addr: "ingestion-lumberjack.branch2.trcblt.com:80"
-  es_url: ""
-  filename: ""
+  sentinel:
+    addr:
+
+  es:
+    url:
+
+  lumberjack:
+    addr: ingestion-lumberjack.branch2.trcblt.com:443
+    cert: xxxxxx
+    key:  xxxxxx
+    ca:   xxxxxx
 
 ingress:
   enabled: true

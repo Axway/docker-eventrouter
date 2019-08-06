@@ -9,13 +9,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type QLTClient struct {
+type qltClient struct {
 	conn net.Conn
 	addr string
 }
 
-func QLTClientCreate(addr string) (*QLTClient, error) {
-	var c QLTClient
+func qltClientCreate(addr string) (*qltClient, error) {
+	var c qltClient
 	c.addr = addr
 
 	if err := c.Connect(); err != nil {
@@ -25,22 +25,23 @@ func QLTClientCreate(addr string) (*QLTClient, error) {
 	return &c, nil
 }
 
-func (c *QLTClient) Connect() error {
+func (c *qltClient) Connect() error {
 	log.Println("QLTClient connecting to ", c.addr, "...")
-	if conn, err := net.Dial("tcp", c.addr); err != nil {
+	conn, err := net.Dial("tcp", c.addr)
+	if err != nil {
+
 		log.Println("ERROR: QLTClient Dial failed :", c.addr, err)
 		return err
-	} else {
-		c.conn = conn
 	}
+	c.conn = conn
 	return nil
 }
 
-func (c *QLTClient) Close() error {
+func (c *qltClient) Close() error {
 	return c.conn.Close()
 }
 
-func (c *QLTClient) Send(_msg string) error {
+func (c *qltClient) Send(_msg string) error {
 	retry := 0
 	delay := 100
 	timemax := 30000
@@ -63,7 +64,7 @@ func (c *QLTClient) Send(_msg string) error {
 	return nil
 }
 
-func (c *QLTClient) _Send(_msg string) error {
+func (c *qltClient) _Send(_msg string) error {
 	m := []byte(_msg)
 	l := len(m)
 	wbuf := make([]byte, l+3)
@@ -88,17 +89,17 @@ func (c *QLTClient) _Send(_msg string) error {
 	return nil
 }
 
-func qltClientInit(addr string, QLTCQueue chan map[string]string) {
-	if c, err := QLTClientCreate(addr); err != nil {
+func qltClientInit(addr string, qltcQueue chan map[string]string) {
+	if c, err := qltClientCreate(addr); err != nil {
 		panic(err)
 	} else {
 		defer c.Close()
 		count := 1
 		for {
 			log.Println("[QLTC] Waiting Message on QLTCQueue...", count)
-			event := <-QLTCQueue
+			event := <-qltcQueue
 			log.Println("[QLTC] Converting Message to xml...", count)
-			msg := ConvertToQLTXML(event)
+			msg := convertToQLTXML(event)
 			log.Println("[QLTC] Sending Message to remote...", count, msg)
 			if err := c.Send(msg); err != nil {
 				panic(err)

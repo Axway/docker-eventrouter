@@ -18,6 +18,10 @@ spec:
       targetPort: qlt
       protocol: TCP
       name: qlt
+    - port: {{ .Values.service.qltports }}
+      targetPort: qlts
+      protocol: TCP
+      name: qlts
   selector:
     app.kubernetes.io/name: {{ include "qlt-router.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}

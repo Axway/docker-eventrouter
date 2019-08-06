@@ -1,4 +1,4 @@
-VERSION := 0.0.1-dev
+VERSION := 0.0.2-dev
 NAME := qlt-router
 DATE := $(shell date +'%Y-%M-%d_%H:%M:%S')
 BUILD := $(shell git rev-parse HEAD | cut -c1-8)
@@ -66,11 +66,9 @@ docker-publish: docker
 	docker tag $(IMAGE) $(PUBLISH):latest
 	docker push $(PUBLISH):latest
 
-certs: certs-proxy certs-policy
-
-certs-proxy:
+certs:
 	openssl genrsa -out certs/server.key 2048
 	openssl req -new -x509 -sha256 -key certs/server.key -out certs/server.pem -days 3650 -subj "/C=FR/ST=Paris/L=La Defense/O=Axway/CN=qlt-router"
 	openssl x509 -text -noout -in certs/server.pem
-	cp certs/server.pem tests/test/certs/qlt-router.pem
+	#cp certs/server.pem tests/test/certs/qlt-router.pem
 

@@ -10,6 +10,11 @@
     - Localfile : FILENAME
 - observability through prometheus
 
+# Changelog
+- 0.0.2
+    - add TLS support for QLT server
+    - add TLS support for lumberjack
+
 # Limitations
 - No TLS support
 - Unreliable message routing (message can be lost...)

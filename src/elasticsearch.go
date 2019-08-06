@@ -139,7 +139,7 @@ func esInit(url string, ESQueue chan map[string]string) {
 
 		//t := time.Now().Format(time.RFC3339Nano)
 		//event["created"] = t
-		msg := ConcertToJSON(event)
+		msg := convertToJSON(event)
 
 		count++
 		log.Println("[ES] msg", string(msg))

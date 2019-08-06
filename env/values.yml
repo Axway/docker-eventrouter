@@ -1,0 +1,14 @@
+
+
+service:
+  lumberjack:
+    addr: ingestion-lumberjack.branch2.trcblt.com:443
+    cert: ./config/qlt-router/lb-cert.pem
+    key: ./config/qlt-router/lb-cert.key
+    ca: ./config/qlt-router/lb-ca.pem
+  sentinel:
+    addr: "ingestion-lumberjack.branch2.trcblt.com:80"
+  
+ingress:
+  hosts:
+    - qlt-router.eks.mft.apirs.net

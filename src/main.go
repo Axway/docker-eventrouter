@@ -3,6 +3,9 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	log "github.com/sirupsen/logrus"
 
@@ -59,13 +62,22 @@ func main() {
 		FullTimestamp: true,
 	})
 
-	var QLT_HOST = "0.0.0.0"
-	var QLT_PORT = "3333"
+	var qltHost = ""
+	var qltPort = ""
+
+	var qltsHost = ""
+	var qltsPort = ""
+	var qltsCert = ""
+	var qltsKey = ""
+	var qltsCa = ""
 
 	var ELASTICSEARCH = ""
 	var SENTINEL = ""
 	var FILENAME = ""
 	var LUMBERJACK = ""
+	var LUMBERJACKCA = ""
+	var LUMBERJACKCERT = ""
+	var LUMBERJACKKEY = ""
 
 	//var SENTINEL = "qlt:3333"
 
@@ -75,13 +87,22 @@ func main() {
 	flag.StringVar(&ELASTICSEARCH, "es_url", "", "target elasticsearch")
 	flag.StringVar(&FILENAME, "filename", "", "target file")
 	flag.StringVar(&LUMBERJACK, "lumberjack_addr", "", "target lumberjack")
+	flag.StringVar(&LUMBERJACKCA, "lumberjack_ca", "", "target lumberjack CA")
+	flag.StringVar(&LUMBERJACKCERT, "lumberjack_cert", "", "target lumberjack CERT")
+	flag.StringVar(&LUMBERJACKKEY, "lumberjack_key", "", "target lumberjack CERT KEY")
 
-	flag.StringVar(&QLT_PORT, "qlt_port", "3333", "QLT listening port")
-	flag.StringVar(&QLT_HOST, "qlt_host", "0.0.0.0", "QLT listening host")
+	flag.StringVar(&qltPort, "qlt_port", "3333", "QLT listening port")
+	flag.StringVar(&qltHost, "qlt_host", "0.0.0.0", "QLT listening host")
+
+	flag.StringVar(&qltsPort, "qlts_port", "3334", "QLT listening port")
+	flag.StringVar(&qltsHost, "qlts_host", "0.0.0.0", "QLT listening host")
+	flag.StringVar(&qltsCert, "qlts_cert", "./certs/server.pem", "QLT listening host")
+	flag.StringVar(&qltsKey, "qlts_key", "./certs/server.key", "QLT listening host")
+	flag.StringVar(&qltsCa, "qlts_ca", "", "QLT listening host")
 
 	flag.Parse()
 
-	ConvertInit()
+	convertInit()
 
 	go httpInit()
 
@@ -108,9 +129,16 @@ func main() {
 	if LUMBERJACK != "" {
 		LBQueue := make(chan map[string]string)
 		queues = append(queues, LBQueue)
-		go lumberJackInit(LUMBERJACK, LBQueue)
+		go lumberJackInit(LUMBERJACK, LUMBERJACKCA, LUMBERJACKCERT, LUMBERJACKKEY, LBQueue)
 	}
 
-	//queues := []chan map[string]string{ /*ESQueue, FSQueue,*/ QLTCQueue}
-	QLTListen(QLT_HOST+":"+QLT_PORT, queues)
+	go qltListen(qltHost+":"+qltPort, queues)
+
+	if qltsCert != "" && qltsKey != "" {
+		go qltListenTLS(qltsHost+":"+qltsPort, queues, qltsCert, qltsKey, qltsCa)
+	}
+
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	<-c
 }

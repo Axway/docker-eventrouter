@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -15,32 +16,32 @@ import (
 // 		</TrkObject>
 // </TrkDescriptor>
 
-type TrkDescriptor struct {
+type trkDescriptor struct {
 	XMLName   xml.Name `xml:"TrkDescriptor"`
-	TrkObject TrkObject
+	TrkObject trkObject
 }
 
-type TrkObject struct {
+type trkObject struct {
 	XMLName       xml.Name      `xml:"TrkObject"`
-	TrkIdentifier TrkIdentifier `xml:"TrkIdentifier"`
-	TrkAttr       []TrkAttr     `xml:"TrkAttr"`
+	TrkIdentifier trkIdentifier `xml:"TrkIdentifier"`
+	TrkAttr       []trkAttr     `xml:"TrkAttr"`
 }
 
-type TrkIdentifier struct {
+type trkIdentifier struct {
 	XMLName xml.Name `xml:"TrkIdentifier"`
 	Type    string   `xml:"TYPE,attr"`
 	Name    string   `xml:"NAME,attr"`
 	Version string   `xml:"VERSION,attr"`
 }
 
-type TrkAttr struct {
+type trkAttr struct {
 	XMLName xml.Name `xml:"TrkAttr"`
 	Name    string   `xml:"name,attr"`
 	Val     string   `xml:"val,attr"`
 }
 
-func Convert1(data string) (string, error) {
-	var c TrkDescriptor
+func convert1(data string) (string, error) {
+	var c trkDescriptor
 	err := xml.Unmarshal([]byte(data), &c)
 	if err != nil {
 		return "", err
@@ -59,8 +60,8 @@ func Convert1(data string) (string, error) {
 	return "{" + strings.Join(a, ", ") + "}", nil
 }
 
-func ConvertToMap(data string) (map[string]string, error) {
-	var c TrkDescriptor
+func convertToMap(data string) (map[string]string, error) {
+	var c trkDescriptor
 	err := xml.Unmarshal([]byte(data), &c)
 	if err != nil {
 		return nil, err
@@ -81,7 +82,7 @@ func ConvertToMap(data string) (map[string]string, error) {
 	return a, err
 }
 
-func ConcertToJSON(msg map[string]string) string {
+func convertToJSON(msg map[string]string) string {
 	a := make([]string, 0)
 	for k, v := range msg {
 		t := fields[k]
@@ -94,7 +95,25 @@ func ConcertToJSON(msg map[string]string) string {
 	return "{" + strings.Join(a, ", ") + "}"
 }
 
-func ConvertToQLTXML(msg map[string]string) string {
+func convertToMapInterface(msg map[string]string) map[string]interface{} {
+	m := make(map[string]interface{})
+	for k, v := range msg {
+		t := fields[k]
+		if t == "i" {
+			i, err := strconv.Atoi(v)
+			if err != nil {
+				m[k] = v
+			} else {
+				m[k] = i
+			}
+		} else {
+			m[k] = v
+		}
+	}
+	return m
+}
+
+func convertToQLTXML(msg map[string]string) string {
 	var header = `<?xml version="1.0" encoding="UTF-8"?>
 	<TrkDescriptor> 
 		<TrkXML VERSION="1.0"/> 
@@ -113,6 +132,13 @@ func ConvertToQLTXML(msg map[string]string) string {
 	return strings.Join(a, "\n")
 }
 
+// numerical value
+// key : lowcase  -
+// values : lower
+// date : + gmtdiff
+//
+// certificate - tenant
+// SSO / logout : OUM
 const xfbtransfer = `
 {
 	"blocksize" : "i",
@@ -142,7 +168,7 @@ const xfbtransfer = `
 var indexName = "xfbtransfer"
 var fields map[string]string
 
-func ProcessEvent(values map[string]string) map[string]string {
+func processEvent(values map[string]string) map[string]string {
 	n := make(map[string]string)
 
 	for k, v := range values {
@@ -165,7 +191,7 @@ func ProcessEvent(values map[string]string) map[string]string {
 	return n
 }
 
-func ConvertInit() {
+func convertInit() {
 
 	fields = make(map[string]string)
 	if err := json.Unmarshal([]byte(xfbtransfer), &fields); err != nil {

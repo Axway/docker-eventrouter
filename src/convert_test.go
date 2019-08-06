@@ -15,22 +15,22 @@ var data = `<?xml version="1.0" encoding="UTF-8"?>
 		</TrkObject> 
 	</TrkDescriptor>`
 
-func ExampleConvert1() {
-	json, _ := Convert1(data)
+func Exampleconvert1() {
+	json, _ := convert1(data)
 	fmt.Println(json)
 	// Output:
 	// {"_type" : "Event","_name" : "XFBTransfer","PRODUCTNAME" : "CFT","PRODUCTIPADDR" : "cft"}
 }
 
 func TestXmlFailure(t *testing.T) {
-	_, err := Convert1("data")
+	_, err := convert1("data")
 	if err == nil {
 		t.Fail()
 	}
 }
 
 func TestUnexpectedContent(t *testing.T) {
-	_, err := Convert1("<data/>")
+	_, err := convert1("<data/>")
 	if err == nil {
 		//fmt.Println("error", err)
 		t.Fail()

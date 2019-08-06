@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-func ExampleConvert2() {
-	json, _ := Convert1(data)
+func Exampleconvert1_bis() {
+	json, _ := convert1(data)
 	fmt.Println(json)
 	// Output:
 	// {"_type" : "Event","_name" : "XFBTransfer","PRODUCTNAME" : "CFT","PRODUCTIPADDR" : "cft"}
