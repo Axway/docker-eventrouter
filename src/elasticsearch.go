@@ -74,7 +74,7 @@ const mapping7 = `
 	},
 }`
 
-func esInit(url string, ESQueue chan map[string]string) {
+func esInit(url string, ESQueue chan QLTMessage) {
 	log.Println("[ES] Initializing Elasticsearch", url)
 	// Starting with elastic.v5, you must pass a context to execute each service
 	ctx := context.Background()
@@ -139,7 +139,7 @@ func esInit(url string, ESQueue chan map[string]string) {
 
 		//t := time.Now().Format(time.RFC3339Nano)
 		//event["created"] = t
-		msg := convertToJSON(event)
+		msg := convertToJSON(event.Fields)
 
 		count++
 		log.Println("[ES] msg", string(msg))

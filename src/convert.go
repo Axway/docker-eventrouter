@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
+
+	"golang.org/x/net/html/charset"
 )
 
 // <TrkDescriptor>
@@ -62,7 +65,26 @@ func convert1(data string) (string, error) {
 
 func convertToMap(data string) (map[string]string, error) {
 	var c trkDescriptor
-	err := xml.Unmarshal([]byte(data), &c)
+
+	//err := xml.Unmarshal([]byte(data), &c)
+
+	// Escape invalid '<' in attribute value
+	r := regexp.MustCompile("=[ ]*\"([^\"]*)<([^\"]*)\"")
+	din := data
+
+	for {
+		dout := r.ReplaceAllString(din, "=\"$1&lt;$2\"")
+		if len(dout) == len(din) {
+			break
+		}
+		din = dout
+	}
+
+	reader := strings.NewReader(din)
+	decoder := xml.NewDecoder(reader)
+	decoder.CharsetReader = charset.NewReaderLabel
+	err := decoder.Decode(&c)
+
 	if err != nil {
 		return nil, err
 	}

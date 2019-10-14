@@ -2,8 +2,10 @@ package main
 
 import (
 	"errors"
+	"hash/fnv"
 	"io"
 	"net"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -89,25 +91,42 @@ func (c *qltClient) _Send(_msg string) error {
 	return nil
 }
 
-func qltClientInit(addr string, qltcQueue chan map[string]string) {
-	if c, err := qltClientCreate(addr); err != nil {
-		panic(err)
-	} else {
-		defer c.Close()
-		count := 1
-		for {
-			log.Println("[QLTC] Waiting Message on QLTCQueue...", count)
-			event := <-qltcQueue
-			log.Println("[QLTC] Converting Message to xml...", count)
-			msg := convertToQLTXML(event)
-			log.Println("[QLTC] Sending Message to remote...", count, msg)
-			if err := c.Send(msg); err != nil {
+func hash(s string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return h.Sum32()
+}
+
+func qltClientInit(addresses string, cnx int, qltcQueue chan QLTMessage) {
+	addrs := strings.Split(addresses, ",")
+	clients := make([]*qltClient, 0)
+	for i := 0; i < cnx; i++ {
+		for _, addr := range addrs {
+			log.Println("[QLTC] Connecting to ", addr, "...")
+			client, err := qltClientCreate(addr)
+			if err != nil {
+				log.Errorln("[QLTC] failed to connect", addr, "...")
 				panic(err)
 			}
-			qltMessageOut.Inc()
-			qltMessageOutSize.Observe(float64(len(msg)))
-			log.Println("[QLTC] Sent", count, msg)
-			count++
+			defer client.Close()
+			clients = append(clients, client)
 		}
+	}
+	l := uint32(len(clients))
+	count := 1
+	for {
+		log.Println("[QLTC] Waiting Message on QLTCQueue...", count)
+		event := <-qltcQueue
+		log.Println("[QLTC] Converting Message to xml...", count)
+		msg := event.XMLOriginal
+		n := hash(event.Fields["cycleid"]) % l
+		log.Println("[QLTC] Sending Message to remote...", count, addrs[n], msg)
+		if err := clients[n].Send(msg); err != nil {
+			panic(err)
+		}
+		qltMessageOut.Inc()
+		qltMessageOutSize.Observe(float64(len(msg)))
+		log.Println("[QLTC] Sent", count, msg)
+		count++
 	}
 }

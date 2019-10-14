@@ -72,7 +72,7 @@ func tlsDial(addr string, caFilename string, certFilename string, keyFilename st
 	return conn, nil
 }
 
-func lumberJackInit(addr, caFilename, certFilename, keyFilename string, Queue chan map[string]string) {
+func lumberJackInit(addr, caFilename, certFilename, keyFilename string, Queue chan QLTMessage) {
 	log.Println("[LJ] Initializing to ", addr, caFilename, certFilename, keyFilename)
 	for {
 		client, err := lumberJackConnect(addr, caFilename, certFilename, keyFilename)
@@ -101,7 +101,7 @@ func lumberJackConnect(addr, caFilename, certFilename, keyFilename string) (net.
 	return conn, nil
 }
 
-func lumberJackSend(conn net.Conn, Queue chan map[string]string) error {
+func lumberJackSend(conn net.Conn, Queue chan QLTMessage) error {
 	client, err := v2.NewWithConn(conn)
 	if err != nil {
 		log.Errorln("[LJ] Error opening lumberjack connection to", err)
@@ -122,7 +122,7 @@ func lumberJackSend(conn net.Conn, Queue chan map[string]string) error {
 		fields["captureOrgID"] = "jda"                 // tenant
 
 		m["fields"] = fields
-		m["message"] = convertToJSON(event)
+		m["message"] = convertToJSON(event.Fields)
 
 		messages := []interface{}{m}
 

@@ -1,4 +1,4 @@
-VERSION := 0.0.2-dev
+VERSION := 0.0.3-dev
 NAME := qlt-router
 DATE := $(shell date +'%Y-%M-%d_%H:%M:%S')
 BUILD := $(shell git rev-parse HEAD | cut -c1-8)
@@ -30,7 +30,7 @@ clean:
 	rm -f $(NAME) $(NAME).tar.gz
 
 test:
-	for dir in $$(find . -name "*_test.go" | grep -v ./vendor | xargs dirname | sort -u -r); do echo "$$dir..."; go test -v $$dir || exit 1 ; done | tee output.txt
+	for dir in $$(find . -name "*_test.go" | grep -v ./vendor | xargs -n 1 dirname | sort -u -r); do echo "$$dir..."; go test -v $$dir || exit 1 ; done | tee output.txt
 	cat output.txt | egrep -- "--- FAIL:|--- SKIP:" || true
 
 test-specific:

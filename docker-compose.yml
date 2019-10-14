@@ -4,7 +4,7 @@ services:
     build: .
     tty: true
     environment:
-      #SENTINEL_ADDR: "ingestion-lumberjack.branch2.trcblt.com:80"
+      #SENTINEL_ADDRS: "ingestion-lumberjack.branch2.trcblt.com:80"
       #ES_URL: "http://elasticsearch:9200"
       #FILENAME: "/data/sss.json"
       

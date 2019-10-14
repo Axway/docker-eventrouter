@@ -6,11 +6,15 @@
 - route QLT messages to
     - Elasticsearch 7 (API) : ELASTISEARCH_URL
     - Logstash (Lumberjack): LUMBERJACK_ADDR
-    - Sentinel (QLT) : SENTINEL_ADDR / transformed !!!
+    - Sentinel (QLT) : SENTINEL_ADDR untransformed
     - Localfile : FILENAME
 - observability through prometheus
 
 # Changelog
+- 0.0.3
+    - support XML encosding (8859-1 for example)
+    - fix "<" in XML attributes instead of &lt;
+    - support multiple targets for sentinel_addrs and count
 - 0.0.2
     - add TLS support for QLT server
     - add TLS support for lumberjack

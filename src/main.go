@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	log "github.com/sirupsen/logrus"
+	prefixed "github.com/x-cray/logrus-prefixed-formatter"
 
 	"github.com/namsral/flag"
 	"github.com/prometheus/client_golang/prometheus"
@@ -57,10 +58,17 @@ func httpInit() {
 }
 
 func main() {
-	log.SetFormatter(&log.TextFormatter{
+	formatter := new(prefixed.TextFormatter)
+	formatter.DisableTimestamp = false
+	formatter.FullTimestamp = true
+	formatter.TimestampFormat = "2006-01-02 15:04:05.000000000"
+	log.SetFormatter(formatter)
+	log.SetLevel(log.DebugLevel)
+
+	/*log.SetFormatter(&log.TextFormatter{
 		//		DisableColors: true,
 		FullTimestamp: true,
-	})
+	})*/
 
 	var qltHost = ""
 	var qltPort = ""
@@ -73,6 +81,7 @@ func main() {
 
 	var ELASTICSEARCH = ""
 	var SENTINEL = ""
+	var SENTINEL_CONNECTIONS = 1
 	var FILENAME = ""
 	var LUMBERJACK = ""
 	var LUMBERJACKCA = ""
@@ -83,7 +92,8 @@ func main() {
 
 	flag.String(flag.DefaultConfigFlagname, "", "path to config file")
 
-	flag.StringVar(&SENTINEL, "sentinel_addr", "", "target sentinel")
+	flag.StringVar(&SENTINEL, "sentinel_addrs", "", "target sentinels (comma separated")
+	flag.IntVar(&SENTINEL_CONNECTIONS, "sentinel_connections", 1, "number of connections per sentinel server")
 	flag.StringVar(&ELASTICSEARCH, "es_url", "", "target elasticsearch")
 	flag.StringVar(&FILENAME, "filename", "", "target file")
 	flag.StringVar(&LUMBERJACK, "lumberjack_addr", "", "target lumberjack")
@@ -106,36 +116,36 @@ func main() {
 
 	go httpInit()
 
-	queues := []chan map[string]string{}
+	queues := []chan QLTMessage{}
 
 	if SENTINEL != "" {
-		QLTCQueue := make(chan map[string]string)
+		QLTCQueue := make(chan QLTMessage)
 		queues = append(queues, QLTCQueue)
-		go qltClientInit(SENTINEL, QLTCQueue)
+		go qltClientInit(SENTINEL, SENTINEL_CONNECTIONS, QLTCQueue)
 	}
 
 	if ELASTICSEARCH != "" {
-		ESQueue := make(chan map[string]string)
+		ESQueue := make(chan QLTMessage)
 		queues = append(queues, ESQueue)
 		go esInit(ELASTICSEARCH, ESQueue)
 	}
 
 	if FILENAME != "" {
-		FSQueue := make(chan map[string]string)
+		FSQueue := make(chan QLTMessage)
 		queues = append(queues, FSQueue)
 		go fileStoreInit(FILENAME, FSQueue)
 	}
 
 	if LUMBERJACK != "" {
-		LBQueue := make(chan map[string]string)
+		LBQueue := make(chan QLTMessage)
 		queues = append(queues, LBQueue)
 		go lumberJackInit(LUMBERJACK, LUMBERJACKCA, LUMBERJACKCERT, LUMBERJACKKEY, LBQueue)
 	}
 
-	go qltListen(qltHost+":"+qltPort, queues)
+	tcpServe(qltHost+":"+qltPort, qltHandleRequest, "QLT-TCP", queues)
 
 	if qltsCert != "" && qltsKey != "" {
-		go qltListenTLS(qltsHost+":"+qltsPort, queues, qltsCert, qltsKey, qltsCa)
+		tlsServe(qltsHost+":"+qltsPort, qltsCert, qltsKey, qltsCa, qltHandleRequest, "QLT-TLS", queues)
 	}
 
 	c := make(chan os.Signal, 2)

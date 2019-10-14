@@ -1,19 +1,19 @@
 package main
 
 import (
-	"crypto/tls"
-	"crypto/x509"
-	"encoding/pem"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
-	"os"
-	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 )
+
+// QLTMessage to be passed to protocol
+type QLTMessage struct {
+	XMLOriginal string
+	Fields      map[string]string
+}
 
 // QLT Handles incoming requests.
 // QLT protocol
@@ -55,7 +55,7 @@ type QLT struct {
 	buf  []byte
 	idx  int
 	ctx  string
-	ch   []chan map[string]string
+	ch   []chan QLTMessage
 }
 
 func (q *QLT) readData() error {
@@ -110,135 +110,16 @@ func (q *QLT) readQLTPacket() (int, error) {
 	}
 }
 
-var qltID = 0
-
-func qltListen(addr string, q []chan map[string]string) {
-	// Listen for incoming connections.
-	l, err := net.Listen("tcp", addr)
-	if err != nil {
-		log.Println("[QLT] Error listening:", err.Error())
-		os.Exit(1)
-	}
-	// Close the listener when the application closes.
-	defer l.Close()
-
-	log.Println("[QLT]+ Listening on " + addr)
-	for {
-		// Listen for an incoming connection.
-		conn, err := l.Accept()
-		if err != nil {
-			log.Println("[QLT] Error accepting: ", err.Error())
-			os.Exit(1)
-		}
-		// Handle connections in a new goroutine.
-		go handleRequest(conn, q)
-	}
-}
-func qltListenTLS(addr string, q []chan map[string]string, certFilename string, keyFilename string, caFilename string) {
-	// Listen for incoming connections.
-	cert, err := tls.LoadX509KeyPair(certFilename, keyFilename)
-	if err != nil {
-		log.Fatalf("[QLT] TLS - loadkeys: %s", err)
-		os.Exit(1)
-	}
-
-	var certpool *x509.CertPool
-	clientAuth := tls.RequireAnyClientCert
-	if caFilename != "" {
-		clientAuth = tls.RequireAndVerifyClientCert
-		certpool = x509.NewCertPool()
-		pem, err := ioutil.ReadFile(caFilename)
-		if err != nil {
-			log.Fatalf("[QLT] TLS - Error - Failed to read client certificate authority: %v", err)
-		}
-		if !certpool.AppendCertsFromPEM(pem) {
-			log.Fatalf("[QLT] TLS - Error - Can't parse client certificate authority")
-		}
-	}
-
-	config := tls.Config{
-		Certificates: []tls.Certificate{cert},
-		//ClientAuth:   tls.RequireAndVerifyClientCert,
-		ClientAuth: clientAuth,
-		ClientCAs:  certpool,
-	}
-
-	l, err := tls.Listen("tcp", addr, &config)
-	if err != nil {
-		log.Println("[QLT] TLS - Error listening qlts://"+addr, err.Error())
-		os.Exit(1)
-	}
-	// Close the listener when the application closes.
-	defer l.Close()
-	log.Println("[QLT] TLS - listening on qlts://" + addr)
-
-	for {
-		// Listen for an incoming connection.
-		conn, err := l.Accept()
-		if err != nil {
-			log.Println("[QLT] TLS - Server: Error accepting: ", err.Error())
-			continue
-		}
-		// Handle connections in a new goroutine.
-		go func() {
-			ctx := fmt.Sprint("[QLT-", qltID+1, "]")
-			tlscon, ok := conn.(*tls.Conn)
-			if ok {
-				//log.Print(ctx + " TLS - Server: conn: type assert to TLS succeedded")
-				err = tlscon.Handshake()
-				if err != nil {
-					log.Errorf(ctx+" TLS - Server: handshake failed: %s", err)
-					return
-				}
-
-				log.Print(ctx + " TLS - Server: conn: Handshake completed")
-				state := tlscon.ConnectionState()
-
-				log.Printf(ctx+" TLS - Server: Version %x", state.Version)
-				log.Printf(ctx+" TLS - Server: HandshakeComplete: %t", state.HandshakeComplete)
-				log.Printf(ctx+" TLS - Server: NegotiatedProtocol: %s", state.NegotiatedProtocol)
-				log.Printf(ctx+" TLS - Server: NegotiatedProtocolIsMutual %t ", state.NegotiatedProtocolIsMutual)
-				log.Printf(ctx+" TLS - Server: ServerName: %s", state.ServerName)
-				log.Printf(ctx+" TLS - Server: CipherSuite %x", state.CipherSuite)
-				log.Println(ctx+" TLS - Server: OCSPResponse", state.OCSPResponse)
-				log.Println(ctx + " TLS - Server: client public key is:")
-				for i, cert := range state.PeerCertificates {
-					subject := cert.Subject
-					issuer := cert.Issuer
-
-					log.Printf(ctx+" TLS - Server: %d s:/C=%s/ST=%v/L=%v/O=%v/OU=%v/CN=%s", i, strings.Join(subject.Country, ","), strings.Join(subject.Province, ","), strings.Join(subject.Locality, ","), strings.Join(subject.Organization, ","), strings.Join(subject.OrganizationalUnit, ","), subject.CommonName)
-					log.Printf(ctx+" TLS - Server:   i:/C=%s/ST=%v/L=%v/O=%v/OU=%v/CN=%s", strings.Join(issuer.Country, ","), strings.Join(issuer.Province, ","), strings.Join(issuer.Locality, ","), strings.Join(issuer.Organization, ","), strings.Join(issuer.OrganizationalUnit, ","), issuer.CommonName)
-
-					der, err := x509.MarshalPKIXPublicKey(cert.PublicKey)
-					if err != nil {
-						continue
-					}
-					block := pem.Block{
-						Type:  "PUBLIC KEY",
-						Bytes: der,
-					}
-					p := pem.EncodeToMemory(&block)
-					log.Println("\n" + string(p))
-				}
-
-				handleRequest(conn, q)
-			} else {
-				log.Println(ctx + " TLS - server: conn: closed")
-			}
-		}()
-	}
-}
-
-func handleRequest(conn net.Conn, ESQueue []chan map[string]string) QLT {
+func qltHandleRequest(conn net.Conn, ctx string, data interface{}) {
+	//var ESQueue []chan map[string]string
+	ESQueue := data.([]chan QLTMessage)
 	var qlt QLT
-	qltID++
 	qlt.conn = conn
 	qlt.buf = make([]byte, 65000)
 	qlt.idx = 0
-	qlt.ctx = fmt.Sprint("[QLT-", qltID, "]")
+	qlt.ctx = ctx
 	qlt.ch = ESQueue
 	qlt.handle()
-	return qlt
 }
 
 func (q *QLT) handle() {
@@ -273,9 +154,10 @@ func (q *QLT) handle() {
 		qltMessageIn.Inc()
 		qltMessageInSize.Observe(float64(length))
 		log.Println(q.ctx, "[", count, "] Converting to Map... ")
-		event, err := convertToMap(string(q.buf[3 : 3+length-1]))
+		orig := string(q.buf[3 : 3+length-1])
+		event, err := convertToMap(orig)
 		if err != nil {
-			log.Println(q.ctx, "[", count, "] XML Parsing failed", err, "Closing...")
+			log.Println(q.ctx, "[", count, "] XML Parsing failed '", err, "' Closing...")
 			break
 		}
 
@@ -291,7 +173,7 @@ func (q *QLT) handle() {
 			//msg["captureOrgID"] = "trcblt-test"         // tenant
 			for idx, ch := range q.ch {
 				log.Println(q.ctx, "[", count, "] Pushing to Queue... ", idx)
-				ch <- msg
+				ch <- QLTMessage{orig, msg}
 			}
 		} else {
 			log.Println(q.ctx, "[", count, "] Skip Message...", msg["broker"])

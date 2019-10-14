@@ -7,7 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func fileStoreInit(filename string, FileStoreQueue chan map[string]string) {
+func fileStoreInit(filename string, FileStoreQueue chan QLTMessage) {
 	log.Println("[FS] Opening file", filename, "...")
 	f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
