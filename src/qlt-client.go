@@ -98,6 +98,7 @@ func hash(s string) uint32 {
 }
 
 func qltClientInit(addresses string, cnx int, qltcQueue chan QLTMessage) {
+	time.Sleep(10 * time.Millisecond)
 	addrs := strings.Split(addresses, ",")
 	clients := make([]*qltClient, 0)
 	for i := 0; i < cnx; i++ {

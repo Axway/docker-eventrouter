@@ -1,8 +1,9 @@
-VERSION := 0.0.3-dev
+VERSION := 0.0.4-dev
 NAME := qlt-router
 DATE := $(shell date +'%Y-%M-%d_%H:%M:%S')
 BUILD := $(shell git rev-parse HEAD | cut -c1-8)
-LDFLAGS :=-ldflags "-s -w -X=main.Version=$(VERSION) -X=main.Build=$(BUILD) -X=main.Date=$(DATE)"
+LDFLAGS :=-ldflags '-s -w -X=main.Version=$(VERSION) -X=main.Build=$(BUILD) -X=main.Date=$(DATE)'
+#LDFLAGS :=-ldflags '-s -w -extldflags "-static" -X=main.Version=$(VERSION) -X=main.Build=$(BUILD) -X=main.Date=$(DATE)'
 IMAGE := $(NAME)
 REGISTRY := registry.dctest.docker-cluster.axwaytest.net/internal
 PUBLISH := $(REGISTRY)/$(IMAGE)
@@ -11,11 +12,17 @@ PUBLISH := $(REGISTRY)/$(IMAGE)
 
 all: build
 
+pack:
+	tar cvfJ $(NAME)-$(VERSION).tar.xz ./qlt-router ./README.*.md
+
 build:
 	(cd src ; go build -o ../$(NAME) $(LDFLAGS))
 
+build-x86:
+	(cd src ; CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ../$(NAME) $(LDFLAGS))
+
 dev:
-	ls -d src/* | entr -r sh -c "make && ./mqtt-proxy --mqtt-broker-host localhost --mqtt-broker-port 9883"
+	ls -d src/* | entr -r sh -c "make && ./$(NAME)"
 
 docker-test:
 	docker-compose -f docker-compose.test.yml down

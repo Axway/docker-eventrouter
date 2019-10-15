@@ -11,8 +11,12 @@
 - observability through prometheus
 
 # Changelog
+- 0.0.4
+    - fix attribute name case for TrkIdentifier
+    - add version,build information when starting
+    - do not start all services (qlt, qlts) by default
 - 0.0.3
-    - support XML encosding (8859-1 for example)
+    - support XML encoding (8859-1 for example)
     - fix "<" in XML attributes instead of &lt;
     - support multiple targets for sentinel_addrs and count
 - 0.0.2

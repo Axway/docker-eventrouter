@@ -1,5 +1,7 @@
 output.txt
-/qlt-router
+qlt-router
+*.tar.*
 licenses
 .vscode
 data
+.DS_Store

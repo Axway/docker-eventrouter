@@ -57,6 +57,10 @@ func httpInit() {
 	http.ListenAndServe(":80", nil)
 }
 
+var Version = ""
+var Build = ""
+var Date = ""
+
 func main() {
 	formatter := new(prefixed.TextFormatter)
 	formatter.DisableTimestamp = false
@@ -101,16 +105,18 @@ func main() {
 	flag.StringVar(&LUMBERJACKCERT, "lumberjack_cert", "", "target lumberjack CERT")
 	flag.StringVar(&LUMBERJACKKEY, "lumberjack_key", "", "target lumberjack CERT KEY")
 
-	flag.StringVar(&qltPort, "qlt_port", "3333", "QLT listening port")
+	flag.StringVar(&qltPort, "qlt_port", "", "QLT listening port (example: 3333")
 	flag.StringVar(&qltHost, "qlt_host", "0.0.0.0", "QLT listening host")
 
-	flag.StringVar(&qltsPort, "qlts_port", "3334", "QLT listening port")
+	flag.StringVar(&qltsPort, "qlts_port", "", "QLT listening port (examplte: 3334")
 	flag.StringVar(&qltsHost, "qlts_host", "0.0.0.0", "QLT listening host")
 	flag.StringVar(&qltsCert, "qlts_cert", "./certs/server.pem", "QLT listening host")
 	flag.StringVar(&qltsKey, "qlts_key", "./certs/server.key", "QLT listening host")
 	flag.StringVar(&qltsCa, "qlts_ca", "", "QLT listening host")
 
 	flag.Parse()
+
+	log.Println("[MAIN] Version:", Version, " Build:", Build, " Date:", Date)
 
 	convertInit()
 
@@ -142,9 +148,11 @@ func main() {
 		go lumberJackInit(LUMBERJACK, LUMBERJACKCA, LUMBERJACKCERT, LUMBERJACKKEY, LBQueue)
 	}
 
-	tcpServe(qltHost+":"+qltPort, qltHandleRequest, "QLT-TCP", queues)
+	if qltPort != "" {
+		tcpServe(qltHost+":"+qltPort, qltHandleRequest, "QLT-TCP", queues)
+	}
 
-	if qltsCert != "" && qltsKey != "" {
+	if qltsPort != "" {
 		tlsServe(qltsHost+":"+qltsPort, qltsCert, qltsKey, qltsCa, qltHandleRequest, "QLT-TLS", queues)
 	}
 

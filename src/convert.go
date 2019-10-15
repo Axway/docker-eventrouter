@@ -35,6 +35,23 @@ type trkIdentifier struct {
 	Type    string   `xml:"TYPE,attr"`
 	Name    string   `xml:"NAME,attr"`
 	Version string   `xml:"VERSION,attr"`
+	//Attributes []xml.Attr `xml:",any,attr"`
+}
+
+func (mf *trkIdentifier) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	// Attributes
+	for _, attr := range start.Attr {
+		name := strings.ToLower(attr.Name.Local)
+		switch name {
+		case "type":
+			mf.Type = attr.Value
+		case "name":
+			mf.Name = attr.Value
+		case "version":
+			mf.Version = attr.Value
+		}
+	}
+	return d.Skip()
 }
 
 type trkAttr struct {
