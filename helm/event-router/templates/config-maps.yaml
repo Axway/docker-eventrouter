@@ -1,0 +1,16 @@
+{{ if .Values.eventrouter.userTargetXML.createConfigMap }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "event-router.fullname" . }}-{{ .Values.eventrouter.userTargetXML.fileName }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "event-router.labels" . | nindent 4 }}
+    {{- if .Values.podLabels }}
+    {{ toYaml .Values.podLabels }}
+    {{- end }}
+data:
+  {{ .Values.eventrouter.userTargetXML.fileName | quote }} : |-
+{{ .Files.Get .Values.eventrouter.userTargetXML.localFile | indent 4}}
+{{ end -}}

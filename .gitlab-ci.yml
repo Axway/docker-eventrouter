@@ -1,0 +1,72 @@
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
+#
+# Copyright (c) 2019 Axway Software SA and its affiliates. All rights reserved.
+#
+before_script:
+- eval export DOCKER_TAG=$CI_COMMIT_REF_NAME
+- echo Using DOCKER_TAG=$DOCKER_TAG
+
+stages:
+- build
+- test
+- security
+- push
+
+build:
+  stage: build
+  script:
+  - docker build -t $IMAGE_ER:$DOCKER_TAG --build-arg URL_BASE=https://delivery.axway.int/download_true_name.php?static= docker
+
+test:
+  stage: test
+  script:
+  - cd compose
+  - docker-compose -f docker-compose.test.yml down -v
+  - docker-compose -f docker-compose.test.yml build --build-arg URL_BASE=https://delivery.axway.int/download_true_name.php?static=
+  - docker-compose -f docker-compose.test.yml up --abort-on-container-exit --remove-orphans
+  - cd ..
+  after_script:
+  - export DOCKER_TAG=$CI_COMMIT_REF_NAME
+  - cd compose
+  - docker-compose -f docker-compose.test.yml logs
+  - docker-compose -f docker-compose.test.yml down -v
+  - cd ..
+
+
+security:
+  stage: security
+  script:
+  # Scan the image and store the URL of the scan results
+  # Prepare Twistlock credentials
+  - CREDENTIALS=$(echo -n "$TWISTLOCK_USER:$TWISTLOCK_PASSWORD" | openssl base64)
+  # Scan the image. The image name scanned is not deterministic; retrieve it from the output...
+  - out=`twistcli images scan -u $TWISTLOCK_USER -p "$TWISTLOCK_PASSWORD" --address $TWISTLOCK_URL $IMAGE_ER:$DOCKER_TAG`
+  - echo $out
+  - eval export SEARCHING=`echo $out | cut -d ' ' -f 25`
+  - echo get scan result for image=$SEARCHING
+  # Retrieve the scan result
+  - "curl --insecure -H \"Authorization: Basic $CREDENTIALS\" -H \"Content-Type: application/json\" -X GET \"$TWISTLOCK_URL/api/v1/scans?search=$SEARCHING&sort=time&reverse=true&limit=1&type=twistcli\" > analysis.json"
+  - echo ">>>> analysis.json"
+  - cat analysis.json | jq .
+  - echo "<<<< analysis.json"
+  # Upload the scan result to ThreadFix
+  - "curl --insecure -H \"Authorization: APIKEY $THREADFIX_APIKEY\" -H \"Accept: application/json\" -X POST --form \"file=@analysis.json\" https://vulnmgt.psg.axway.int/threadfix/rest/v2.5/applications/$THREADFIX_APPID/upload"
+  # Remove scan results.
+  - rm -f analysis.json
+
+push:
+  stage: push
+  script:
+  - docker tag $IMAGE_ER:$DOCKER_TAG $REGISTRY_URL/$IMAGE_ER:$DOCKER_TAG
+  - docker push $REGISTRY_URL/$IMAGE_ER:$DOCKER_TAG
+
+
+push-latest:
+  stage: push
+  only:
+    refs:
+    # Push the "latest" mutable Docker version only when tagging
+    - /^\d+.\d+.\d+\-?/
+  script:
+  - docker tag $IMAGE_ER:$DOCKER_TAG $REGISTRY_URL/$IMAGE_ER:latest
+  - docker push $REGISTRY_URL/$IMAGE_ER:latest
