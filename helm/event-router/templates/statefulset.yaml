@@ -1,0 +1,290 @@
+{{- $fullName := include "event-router.fullname" . -}}
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "event-router.fullname" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "event-router.labels" . | nindent 4 }}
+    {{- if .Values.podLabels }}
+    {{ toYaml .Values.podLabels }}
+    {{- end }}
+spec:
+  serviceName: {{ include "event-router.fullname" . }}
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "event-router.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "event-router.selectorLabels" . | nindent 8 }}
+      {{- if .Values.podAnnotations }}
+      annotations:
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+      {{- end }}
+    spec:
+    {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      serviceAccountName: {{ include "event-router.serviceAccountName" . }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName | quote }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: {{ .Chart.Name }}
+        securityContext:
+          {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+          - name: general
+            containerPort: {{ int .Values.service.port }}
+            protocol: TCP
+        env:
+          - name: "ER_NAME"
+            value: {{ include "event-router.fullname" . | quote }}
+      {{- with .Values.eventrouter }}
+          {{- if .logLevel }}
+          - name: "ER_LOG_LEVEL"
+            value: {{ .logLevel | quote }}
+          {{- end }}
+          {{- if .messageSize }}
+          - name: "ER_MESSAGE_SIZE"
+            value: {{ .messageSize | quote }}
+          {{- end }}
+          {{- if .maxNumberMessages }}
+          - name: "ER_MAX_MESSAGES"
+            value: {{ .maxNumberMessages | quote }}
+          {{- end }}
+          {{- if .relay }}
+          - name: "ER_RELAY"
+            value: "YES"
+          {{- else }}
+          - name: "ER_RELAY"
+            value: "NO"
+          {{- end }}
+          {{- if .maxIncomingConenctions }}
+          - name: "ER_INCOMING_MAX"
+            value: {{ .maxIncomingConenctions | quote }}
+          {{- end }}
+        {{- if .ssl.enabled }}
+          - name: "ER_USE_SSL"
+            value: "YES"
+          {{- if .ssl.cert.secretName }}
+          - name: "ER_CERTIFICATE_FILE"
+            value: /run/secrets/{{ .ssl.cert.secretName }}/{{ .ssl.cert.secretName }}
+          {{- end }}
+          {{- if .ssl.certPassword.secretName }}
+          - name: "ER_CERT_PASSWORD_FILE"
+            value: /run/secrets/{{ .ssl.certPassword.secretName }}/{{ .ssl.certPassword.secretName }}
+          {{- end }}
+          {{- if .ssl.cipherSuite }}
+          - name: "ER_SSL_CIPHER_SUITE"
+            value: {{ .ssl.cipherSuite | quote }}
+          {{- end }}
+          {{- if .ssl.minVersion }}
+          - name: "ER_SSL_VERSION_MIN"
+            value: {{ .ssl.minVersion | quote }}
+          {{- end }}
+        {{- else }}
+          - name: "ER_USE_SSL"
+            value: "NO"
+        {{- end }}
+          {{- if and (.userTargetXML.fileName) (or .userTargetXML.createConfigMap .userTargetXML.existingConfigMap) }}
+          - name: "USER_TARGET_XML"
+            value: "/mnt/custom/.userTargetXML.fileName/.userTargetXML.fileName"
+          {{- end }}
+      {{- end }}
+          - name: "ER_PORT" 
+            value: {{ .Values.service.port | quote }}
+        {{- range $index, $target := .Values.eventrouter.targets -}}
+          {{ $c := add $index 1 }}
+          - name: "TARGET{{ $c }}_NAME"
+            value: {{ $target.name | upper | quote }}
+          {{- if $target.logLevel }}
+          - name: "TARGET{{ $c }}_LOG_LEVEL"
+            value: {{ $target.logLevel | quote }}
+          {{- end }}
+          {{- if $target.port }}
+          - name: "TARGET{{ $c }}_PORT"
+            value: {{ $target.port | quote }}
+          {{- end }}
+          {{- if $target.address }}
+          - name: "TARGET{{ $c }}_ADDRESS"
+            value: {{ $target.address | quote }}
+          {{- end }}
+          {{- if $target.timetout }}
+          - name: "TARGET{{ $c }}_TIMEOUT"
+            value: {{ $target.timetout | quote }}
+          {{- end }}
+          {{- if $target.shortWait }}
+          - name: "TARGET{{ $c }}_SHORT_WAIT"
+            value: {{ $target.shortWait | quote }}
+          {{- end }}
+          {{- if $target.longWait }}
+          - name: "TARGET{{ $c }}_LONG_WAIT"
+            value: {{ $target.longWait | quote }}
+          {{- end }}
+          {{- if $target.jumpWait }}
+          - name: "TARGET{{ $c }}_JUMP_WAIT"
+            value: {{ $target.jumpWait | quote }}
+          {{- end }}
+          {{- if $target.keepConnection }}
+          - name: "TARGET{{ $c }}_KEEP_CONNECTION"
+            value: {{ $target.keepConnection | quote }}
+          {{- end }}
+          {{- if $target.heartbeat }}
+          - name: "TARGET{{ $c }}_HEARTBEAT"
+            value: {{ $target.heartbeat | quote }}
+          {{- end }}
+        {{- if $target.ssl.enabled  }}
+          - name: "TARGET{{ $c }}_USE_SSL_OUT"
+            value: "YES"
+          {{- if $target.ssl.cipherSuite}}
+          - name: "TARGET{{ $c }}_SSL_CIPHER_SUITE"
+            value: {{ $target.ssl.cipherSuite | quote }}
+          {{- end }}
+          {{- if $target.ssl.minVersion }}
+          - name: "TARGET{{ $c }}_SSL_VERSION_MIN"
+            value: {{ $target.ssl.minVersion | quote }}
+          {{- end }}
+          {{- if $target.ssl.cert.secretName }}
+          - name: "TARGET{{ $c }}_CA_CERT"
+            value: "/run/secrets/{{ $target.ssl.cert.secretName }}/{{ $target.ssl.cert.secretName }}"
+          {{- end }}
+        {{- else }}
+          - name: "TARGET{{ $c }}_USE_SSL_OUT"
+            value: "NO"
+        {{- end }}
+        {{- end}}
+        {{- if .Values.extraEnv }}
+          {{- range $key, $value := .Values.extraEnv }}
+          - name: {{ $key }}
+            value: {{ $value | quote }}
+          {{- end }}
+        {{- end }}
+        livenessProbe:
+          exec:
+            command:
+            - bash
+            - -c
+            - /opt/axway/status.sh
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          successThreshold: {{ .Values.livenessProbe.successThreshold }}
+          failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+        {{- if .Values.livenessProbe.timeoutSeconds }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+        {{- end }}
+        readinessProbe:
+          exec:
+            command:
+            - bash
+            - -c
+            - /opt/axway/status.sh
+          periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          successThreshold: {{ .Values.readinessProbe.successThreshold }}
+          failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+        {{- if .Values.readinessProbe.timeoutSeconds }}
+          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+        {{- end }}
+        
+        resources:
+          {{- toYaml .Values.resources | nindent 12 }}
+        volumeMounts:
+        - name: {{ include "event-router.fullname" . }}-volume
+          mountPath: /opt/axway/data
+        ## ConfigMaps
+        {{- if and (.Values.eventrouter.userTargetXML.fileName) (or .Values.eventrouter.userTargetXML.createConfigMap .Values.eventrouter.userTargetXML.existingConfigMap) }}
+        - name: {{ .Values.eventrouter.userTargetXML.fileName }}
+          mountPath: "/mnt/custom/{{ .Values.eventrouter.userTargetXML.fileName }}"
+        {{- end }}
+        ## Secrets
+        {{- if and (.Values.eventrouter.ssl.cert.secretName) (or .Values.eventrouter.ssl.cert.createSecretFile .Values.eventrouter.ssl.cert.existingSecretFile) }}
+        - name: {{ .Values.eventrouter.ssl.cert.secretName }}
+          readOnly: true
+          mountPath: /run/secrets/{{ .Values.eventrouter.ssl.cert.secretName }}
+        {{- end }}
+        {{- if and (.Values.eventrouter.ssl.certPassword.secretName) (or .Values.eventrouter.ssl.certPassword.createSecretFile .Values.eventrouter.ssl.certPassword.existingSecretFile) }}
+        - name: {{ .Values.eventrouter.ssl.certPassword.secretName }}
+          readOnly: true
+          mountPath: /run/secrets/{{ .Values.eventrouter.ssl.certPassword.secretName }}
+        {{- end }}
+        {{- range .Values.eventrouter.targets }}
+        {{- if and .ssl.enabled }}
+        {{- if and (.ssl.cert.secretName) (or .ssl.cert.createSecretFile .ssl.cert.existingSecretFile) }}
+        - name: {{ .ssl.cert.secretName }}
+          readOnly: true
+          mountPath: /run/secrets/{{ .ssl.cert.secretName }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+      volumes:
+      {{- if and .Values.persistence.enabled }}
+      - name: {{ include "event-router.fullname" . }}-volume
+        persistentVolumeClaim:
+          claimName: {{ .Values.persistence.eventrouterData.existingClaim | default (printf "%s-claim" (include "event-router.fullname" .))}}
+      {{- else }}
+      - name: {{ include "event-router.fullname" . }}-volume
+        emptyDir: {}
+      {{- end }}
+      ## ConfigMaps
+      {{- if and (.Values.eventrouter.userTargetXML.fileName) (or .Values.eventrouter.userTargetXML.createConfigMap .Values.eventrouter.userTargetXML.existingConfigMap) }}
+      - name: {{ .Values.eventrouter.userTargetXML.fileName }}
+        configMap:
+          {{ if .Values.eventrouter.userTargetXML.createConfigMap }}
+          name: {{ include "event-router.fullname" . }}-{{ .Values.eventrouter.userTargetXML.fileName }}
+          {{ else }}
+          name: {{ .Values.eventrouter.userTargetXML.existingConfigMap }}
+          {{ end }}
+          defaultMode: 0777
+      {{- end }}
+      ## Secrets
+      {{- if and (.Values.eventrouter.ssl.cert.secretName) (or .Values.eventrouter.ssl.cert.createSecretFile .Values.eventrouter.ssl.cert.existingSecretFile) }}
+      - name: {{ .Values.eventrouter.ssl.cert.secretName }}
+        secret:
+          {{- if .Values.eventrouter.ssl.cert.createSecretFile }}
+          secretName: {{ include "event-router.fullname" . }}-{{ .Values.eventrouter.ssl.cert.secretName }}
+          {{- else }}
+          secretName: {{ .Values.eventrouter.ssl.cert.existingSecretFile }}
+          {{- end }}
+          defaultMode: 0777 
+      {{- end }}
+      {{- if and (.Values.eventrouter.ssl.certPassword.secretName) (or .Values.eventrouter.ssl.certPassword.createSecretFile .Values.eventrouter.ssl.certPassword.existingSecretFile) }}
+      - name: {{ .Values.eventrouter.ssl.certPassword.secretName }}
+        secret:
+          {{- if .Values.eventrouter.ssl.certPassword.createSecretFile }}
+          secretName: {{ include "event-router.fullname" . }}-{{ .Values.eventrouter.ssl.certPassword.secretName }}
+          {{- else }}
+          secretName: {{ .Values.eventrouter.ssl.certPassword.existingSecretFile }}
+          {{- end }}
+          defaultMode: 0777 
+      {{- end }}
+      {{- range .Values.eventrouter.targets }}
+      {{- if and (.ssl.cert.secretName) (or .ssl.cert.createSecretFile .ssl.cert.existingSecretFile) }}
+      - name: {{ .ssl.cert.secretName }}
+        secret:
+          {{- if .ssl.cert.createSecretFile }}
+          secretName: {{ $fullName }}-{{ .ssl.cert.secretName }}
+          {{- else }}
+          secretName: {{ .ssl.cert.existingSecretFile }}
+          {{- end }}
+          defaultMode: 0777 
+      {{- end }}
+      {{- end }}
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

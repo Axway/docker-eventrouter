@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!-- ****************************************************** -->
+<!-- *** target.xml                                     *** -->
+<!-- ***    XFBTransfer and CycleLink are sent to       *** -->
+<!-- ***    both the Edge Agent and Sentinel.           *** -->
+<!-- ***    XFBCFTInfo and STXFBINFO are only sent to   *** -->
+<!-- ***    the Edge Agent.                             *** -->
+<!-- ****************************************************** -->
+
+<TrkEventRouterCfg>
+   <TrkXml version="1.0" />
+   <EventRouter name="DEFAULT">
+   </EventRouter>
+   <Target name="SENTINEL" defaultXntf="yes" defaultXml="yes">
+   </Target>
+   <Target name="EDGEAGENT"  defaultXntf="no"  defaultXml="no">
+      <Access mode="QLT"  addr="<Edge_Agent_IP_address>"  port="8002" />
+   </Target>
+   <Route object="XFBTransfer" default_Notify="NotifyIf">   
+      <Condition notify="NotifyIf"    target="EDGEAGENT"  if="[PRODUCTIPADDR] NOT _"/>
+   </Route>
+   <Route object="CYCLELINK" default_Notify="NotifyIf">
+      <Condition notify="NotifyIf" target="EDGEAGENT" if="[PRODUCTIPADDR] NOT _"/>
+   </Route>
+   <Route object="XFBCFTInfo" default_Notify="NotifyIf"> 
+      <Condition notify="NotNotifyIf" target="SENTINEL" if="[PRODUCTIPADDR] NOT _"/>
+      <Condition notify="NotifyIf"    target="EDGEAGENT"  if="[PRODUCTIPADDR] NOT _"/> 
+   </Route>
+   <Route object="STXFBINFO" default_Notify="NotifyIf"> 
+      <Condition notify="NotNotifyIf" target="SENTINEL" if="[PRODUCTIPADDR] NOT _"/>
+      <Condition notify="NotifyIf"    target="EDGEAGENT"  if="[PRODUCTIPADDR] NOT _"/> 
+   </Route>
+</TrkEventRouterCfg>

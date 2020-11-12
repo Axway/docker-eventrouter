@@ -1,0 +1,265 @@
+# Default values for event-router.
+
+replicaCount: 1
+
+image:
+  repository: eventrouter/eventrouter
+  tag: 2.4.0-SP3
+
+  ## Specify a imagePullPolicy
+  ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
+  ## ref: http://kubernetes.io/docs/user-guide/images/#pre-pulling-images
+  ##
+  pullPolicy: IfNotPresent
+  ## Optionally specify an array of imagePullSecrets.
+  ## Secrets must be manually created in the namespace.
+  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+  ##
+  # pullSecrets:
+  #   - name: regcred
+
+## String to partially override eventrouter.fullname template (will maintain the release name)
+nameOverride: ""
+
+## String to fully override eventrouter.fullname template
+fullnameOverride: ""
+
+## Additional Labels
+## Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+podLabels: {}
+
+## Configure resource requests and limits
+## ref: http://kubernetes.io/docs/user-guide/compute-resources/
+##
+resources:
+  ## If you do want to specify resources, uncomment the following
+  ## lines, adjust them as necessary.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  ## Please refer to the README.md for different usages' values.
+  requests:
+    cpu: 100m
+    memory: 280Mi
+
+livenessProbe:
+  periodSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
+readinessProbe:
+  periodSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
+
+####################################
+# Security Parameters - replace false per true to restrict deployment
+# Remove {} and uncomment the values
+####################################
+serviceAccount:
+  create: false
+  # name: ~
+
+rbac:
+  create: false
+
+pspEnable: false
+
+## Annotations
+## Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+podAnnotations: {}
+
+# Security Context for all containers in the pod.
+# https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  # supplementalGroups: []
+
+# Security Context for the Sentinel Event Router container specifically
+# https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#securitycontext-v1-core
+containerSecurityContext:
+  # privileged: false
+  # allowPrivilegeEscalation: false
+  # readOnlyRootFilesystem: false
+  # capabilities:
+  #   drop:
+  #     - ALL
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+
+## Name of the priority class to be used, priority class needs to be created beforehand
+## Ref: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+priorityClassName: ""
+
+####################################
+# Pod location inside the cluster
+####################################
+
+## Node labels for pod assignment
+## Ref: https://kubernetes.io/docs/user-guide/node-selection/
+##
+nodeSelector: {}
+
+## Tolerations for pod assignment
+## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+##
+tolerations: []
+
+## Affinity for pod assignment
+## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+##
+affinity: {}
+
+####################################
+# MAIN EVENT ROUTER CONFIGURATION
+####################################
+
+eventrouter:
+  maxIncomingConenctions: 1000
+  messageSize: 10000
+  maxNumberMessages: 10000
+  relay: 0
+  logLevel: 0 # 0 -> 4
+
+  ssl:
+    enabled: false
+    cipherSuite: "156,60,47"
+    minVersion: "tls_1.2"
+    ## The next two groups of parameters are used to customize the Event Router certificate
+    ## The certificate must refer to a PKCS12 certificate.
+    # - createSecretFile ==>> create secret file or not
+    # - secretName ==>> name of the file inside the secret
+    # - localFile ==>> where is located the local file - use relative path
+    # - existingSecretFile ==>> used only if the secret already exist
+    cert:
+      secretName: eventrouter-cert
+      createSecretFile: false
+      # localFile: {} # conf/eventrouter.p12
+      # existingSecretFile: {} # secret name
+    certPassword:
+      secretName: eventrouter-cert-password
+      createSecretFile: false
+      # localFile: {} # conf/eventrouter_p12.pwd
+      # existingSecretFile: {} # secret name
+
+  ## The Target Parameters File is an XML file used to set the target parameters, such as routing rules,
+  ## for specific Event Router targets.
+  userTargetXML:
+      fileName: targets-xml
+      createConfigMap: false
+      # localFile: {} # conf/target.xml
+      # existingSecretFile: {} # secret name
+
+  targets:
+  ## This block can be repeted as many time as there are targets.
+   - name: sentinel
+     logLevel: 0
+     port: 1305
+     address: sentinel
+     timetout: 5
+     shortWait: 10
+     longWait: 300
+     jumpWait: 20
+     keepConnection: 30
+     heartbeat: 0
+     ssl:
+       enabled: false
+       cipherSuite: "156,60,47"
+       minVersion: "tls_1.2"
+       ## The next group of values are used to customize the target's certificate
+       ## The certificate must refer to a PEM certificate.
+       # - createSecretFile ==>> create secret file or not
+       # - secretName ==>> name of the file inside the secret
+       # - localFile ==>> where is located the local file - use relative path
+       # - existingSecretFile ==>> used only if the secret already exist
+       cert:
+         secretName: target1-ca-cert
+         createSecretFile: false
+         # localFile: {} # conf/target1_ca_cert.pem
+         # existingSecretFile: {} # secret name
+
+####################################
+# STORAGE
+####################################
+
+## Enable persistence using Persistent Volume Claims
+## ref: http://kubernetes.io/docs/user-guide/persistent-volumes/
+##
+persistence:
+  enabled: false
+
+  ## persistence.keep Keep persistent volume after helm delete
+  keep: false
+
+  eventrouterData:
+    ## Sentinel Event Router Persistent Volume Storage Class
+    ## If defined, storageClassName: <storageClass>
+    ## If set to "-", storageClassName: "", which disables dynamic provisioning
+    ## If undefined (the default) or set to null, no storageClassName spec is
+    ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+    ##   GKE, AWS & OpenStack)
+    ##
+    # storageClass:
+
+    ## Sentinel Event Router Persistent Volume AccessMode
+    ## When replicaCount > 1, this should be ReadWriteMany (the volume can be mounted
+    ## as read-write by many nodes). This mode is not supported by some of the
+    ## default provisioners.
+    ## ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes
+    accessMode: ReadWriteOnce
+    size: 4Gi
+
+    ## A manually managed Persistent Volume Claim
+    ## Requires persistence.enabled: true
+    ## If defined, PVC must be created manually before volume will be bound
+    ##
+    # existingClaim:
+
+    ## NFS-specific information if NFS is to be used
+    # nfsPath:
+    # nfsServer:
+
+    ## Retain, Recycle or Delete.
+    ## Only NFS support recycling
+    ## https://kubernetes.io/docs/concepts/storage/persistent-volumes/#reclaim-policy
+    # reclaimPolicy:
+
+    ## When using NFS, additional mount options can be set.
+    ## https://kubernetes.io/docs/concepts/storage/persistent-volumes/#mount-options
+    # mountOptions: []
+    ## If using NFS the recommended options are:
+    # mountOptions:
+    #   - vers=4
+    #   - hard
+    #   - nointr
+    #   - lock
+    #   - local_lock=none
+    #   - cto
+    #   - async
+
+### ENVIRONMENT VARIABLES ###
+
+## Additional environment variables
+# Defines additional environment variables.
+extraEnv: []
+  # ER_HEALTHCHECK_INTERVAL: "60"
+  # ER_RECONFIG: "YES"
+
+####################################
+# NETWORK
+####################################
+
+## Kubernetes configuration
+## For minikube, set this to NodePort, elsewhere use LoadBalancer
+##
+service:
+  type: LoadBalancer
+
+  port: 1325
+  # targetPort: 1325
+  # nodePort: 31325
+  # hostPort: 1325
+
+  annotations: {}
