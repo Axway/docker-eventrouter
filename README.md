@@ -10,7 +10,7 @@ Please refer to the README present inside each of the directories to find more i
 
 ## Copyright
 
-Copyright (c) 2020 Axway Software SA and its affiliates. All rights reserved.
+Copyright (c) 2021 Axway Software SA and its affiliates. All rights reserved.
 
 ## License
 
