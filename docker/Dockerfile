@@ -54,7 +54,8 @@ FROM ubuntu:latest
 COPY --from=builder /opt/axway /opt/axway
 
 RUN apt-get -y update && apt-get upgrade -y && apt-get install -y \
-        vim && \
+        vim \
+        tzdata && \
         rm -rf /var/lib/apt/lists && \
         addgroup axway && \
         adduser --disabled-password --gecos '' --home /opt/axway --no-create-home --ingroup axway axway && \
