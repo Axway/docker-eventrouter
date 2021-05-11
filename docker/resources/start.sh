@@ -253,11 +253,11 @@ while [ $? -eq 0 ]; do
 
     # Truncate files when size >= 10M
     actualsize=$(wc -c <"$ER_LOGDIR/AGENT.out")
-    if [ $actualsize -ge $minimumsize ]; then
+    if [ $actualsize -ge $maxmumsize ]; then
         truncate -s 0 $ER_LOGDIR/AGENT.out
     fi
     actualsize=$(wc -c <"$ER_LOGDIR/AGSNTL.out")
-    if [ $actualsize -ge $minimumsize ]; then
+    if [ $actualsize -ge $maxmumsize ]; then
         truncate -s 0 $ER_LOGDIR/AGSNTL.out
     fi
     
