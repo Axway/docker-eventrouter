@@ -75,8 +75,8 @@ Parameter | Description | Default
 `eventrouter.ssl.cipherSuite` | List of algorithms supported (Up to eight cipher suites, separated by comma.). The list must be in decreasing order of preference. | `156,60,47`
 `eventrouter.ssl.minVersion` | List of accepted protocol versions. Values: ssl_3.0, tls_1.0, tls_1.1 or tls_1.2. | `tls_1.2`
 `eventrouter.ssl.cert.secretName` | Name of the secret used to store the Event Router Server certificate (secretname is mandatory) | `eventrouter-cert`
-`eventrouter.ssl.cert.createSecretFile` |  Create the Event Router Server certificate secret at installation using a local file | `false`
-`eventrouter.ssl.cert.localFile` | Relative path to the Event Router Server  certificate (you can use conf directory in the helm chart) | `{} (eg. conf/eventrouter.p12)`
+`eventrouter.ssl.cert.createSecretFile` | Create the Event Router Server certificate secret at installation using a local file | `false`
+`eventrouter.ssl.cert.localFile` | Relative path to the Event Router Server certificate (you can use conf directory in the helm chart) | `{} (eg. conf/eventrouter.p12)`
 `eventrouter.ssl.cert.existingSecretFile` | Name of an existing secret to use | `{}`
 `eventrouter.ssl.certPassword.secretName` | Name of the secret used to store the Event Router Server certificate password (secretname is mandatory) | `eventrouter-cert-password`
 `eventrouter.ssl.certPassword.createSecretFile` | Create the Event Router Server certificate password at installation using a local file | `false`
@@ -86,7 +86,24 @@ Parameter | Description | Default
 `eventrouter.userTargetXML.createConfigMap` | Create a configmap for the user defined target.xml file. | `false`
 `eventrouter.userTargetXML.localFile` | Relative path to the user defined target.xml file (you can use conf directory in the helm chart) | `{} (eg. conf/target.xml)`
 `eventrouter.userTargetXML.existingSecretFile` | Name of an existing configmap to use | `{}`
-`eventrouter.targets` | List of Event router's targets with their parameters. Note that the first target of the list will be used as the default target.| `[{"name": "sentinel","logLevel": 1,"port": 1305,"address": "sentinel","timetout": 5,"shortWait": 10,"longWait": 300,"jumpWait": 20,"keepConnection": 30,"heartbeat": 0,"ssl.enabled": false}]`
+`eventrouter.defaultTarget.logLevel` | The Logging Level. From 0 to 4. | `0`
+`eventrouter.defaultTarget.maxMessages` | The maximum number of messages that the overflow and batch files can store. | `10000`
+`eventrouter.defaultTarget.port` | TCP/IP port of the default target | `1305`
+`eventrouter.defaultTarget.address` | The TCP/IP address of the default target | `sentinel`
+`eventrouter.defaultTarget.timeout` | The number of seconds that the Event Router waits for targets to acknowledge receipt of a message that the Event Router sends. | `5`
+`eventrouter.defaultTarget.shortWait` | The number of seconds in the short wait. | `10`
+`eventrouter.defaultTarget.longWait` | The number of seconds in the long wait. | `300`
+`eventrouter.defaultTarget.jumpWait` | The number of seconds in the jump wait. | `20`
+`eventrouter.defaultTarget.keepConnection` | The number of seconds that the Event Router maintains the connections to targets after successfully sending messages to the targets. | `30`
+`eventrouter.defaultTarget.heartbeat` | The number of minutes between successive emissions of HeartBeat Event messages from the Event Router to the default target. | `0`
+`eventrouter.defaultTarget.ssl.enabled` | Enable security profile between the Event Router and the default target. | `false`
+`eventrouter.defaultTarget.ssl.cipherSuite` | List of algorithms supported (Up to eight cipher suites, separated by comma.). The list must be in decreasing order of preference. | `156,60,47`
+`eventrouter.defaultTarget.ssl.minVersion` | List of accepted protocol versions. Values: ssl_3.0, tls_1.0, tls_1.1 or tls_1.2. | `tls_1.2`
+`eventrouter.defaultTarget.ssl.cert.secretName` | Name of the secret used to store the CA certificate of the default target (secretname is mandatory). | `default-ca-cert`
+`eventrouter.defaultTarget.ssl.cert.createSecretFile` | Create the CA certificate of the default target secret at installation using a local file | `false`
+`eventrouter.defaultTarget.ssl.cert.localFile` | Relative path to the CA certificate of the default target (you can use conf directory in the helm chart) | `{} (eg. conf/default_target_ca_cert.p12)`
+`eventrouter.defaultTarget.ssl.cert.existingSecretFile` | Name of an existing secret to use | `{}`
+`eventrouter.targets` | List of Event router's targets with their parameters. Note that the first target of the list will be used as the default target.| `[{"name": "sentinel","maxMessages": 10000,"port": 1305,"address": "sentinel","timetout": 5,"shortWait": 10,"longWait": 300,"jumpWait": 20,"keepConnection": 30,"heartbeat": 0,"ssl.enabled": false}]`
 `persistence.enabled` | Enable config persistence using PVC | `true`
 `persistence.keep` | Keep persistent volume after helm delete | `false`
 `persistence.eventrouterData.storageClass` | Persistent Volume Claim Storage Class | `nil`

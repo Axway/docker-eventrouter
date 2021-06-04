@@ -57,10 +57,6 @@ spec:
           - name: "ER_MESSAGE_SIZE"
             value: {{ .messageSize | quote }}
           {{- end }}
-          {{- if .maxNumberMessages }}
-          - name: "ER_MAX_MESSAGES"
-            value: {{ .maxNumberMessages | quote }}
-          {{- end }}
           {{- if .relay }}
           - name: "ER_RELAY"
             value: "YES"
@@ -99,6 +95,67 @@ spec:
           - name: "USER_TARGET_XML"
             value: "/mnt/custom/.userTargetXML.fileName/.userTargetXML.fileName"
           {{- end }}
+
+          {{- if .defaultTarget.logLevel }}
+          - name: "DEFAULT_LOG_LEVEL"
+            value: {{ .defaultTarget.logLevel | quote }}
+          {{- end }}
+          {{- if .defaultTarget.maxMessages }}
+          - name: "DEFAULT_MAX_MESSAGES"
+            value: {{ .defaultTarget.maxMessages | quote }}
+          {{- end }}
+          {{- if .defaultTarget.port }}
+          - name: "DEFAULT_PORT"
+            value: {{ .defaultTarget.port | quote }}
+          {{- end }}
+          {{- if .defaultTarget.address }}
+          - name: "DEFAULT_ADDRESS"
+            value: {{ .defaultTarget.address | quote }}
+          {{- end }}
+          {{- if .defaultTarget.timeout }}
+          - name: "DEFAULT_TIMEOUT"
+            value: {{ .defaultTarget.timeout | quote }}
+          {{- end }}
+          {{- if .defaultTarget.shortWait }}
+          - name: "DEFAULT_SHORT_WAIT"
+            value: {{ .defaultTarget.shortWait | quote }}
+          {{- end }}
+          {{- if .defaultTarget.longWait }}
+          - name: "DEFAULT_LONG_WAIT"
+            value: {{ .defaultTarget.longWait | quote }}
+          {{- end }}
+          {{- if .defaultTarget.jumpWait }}
+          - name: "DEFAULT_JUMP_WAIT"
+            value: {{ .defaultTarget.jumpWait | quote }}
+          {{- end }}
+          {{- if .defaultTarget.keepConnection }}
+          - name: "DEFAULT_KEEP_CONNECTION"
+            value: {{ .defaultTarget.keepConnection | quote }}
+          {{- end }}
+          {{- if .defaultTarget.heartbeat }}
+          - name: "DEFAULT_HEARTBEAT"
+            value: {{ .defaultTarget.heartbeat | quote }}
+          {{- end }}
+
+        {{- if .defaultTarget.ssl.enabled }}
+          - name: "DEFAULT_USE_SSL_OUT"
+            value: "YES"
+          {{- if .defaultTarget.ssl.cert.secretName }}
+          - name: "DEFAULT_CA_CERT"
+            value: /run/secrets/{{ .defaultTarget.ssl.cert.secretName }}/{{ .defaultTarget.ssl.cert.secretName }}
+          {{- end }}
+          {{- if .defaultTarget.ssl.cipherSuite }}
+          - name: "DEFAULT_SSL_CIPHER_SUITE"
+            value: {{ .defaultTarget.ssl.cipherSuite | quote }}
+          {{- end }}
+          {{- if .defaultTarget.ssl.minVersion }}
+          - name: "DEFAULT_SSL_VERSION_MIN"
+            value: {{ .defaultTarget.ssl.minVersion | quote }}
+          {{- end }}
+        {{- else }}
+          - name: "DEFAULT_USE_SSL_OUT"
+            value: "NO"
+        {{- end }}
       {{- end }}
           - name: "ER_PORT" 
             value: {{ .Values.service.port | quote }}
@@ -106,9 +163,9 @@ spec:
           {{ $c := add $index 1 }}
           - name: "TARGET{{ $c }}_NAME"
             value: {{ $target.name | upper | quote }}
-          {{- if $target.logLevel }}
-          - name: "TARGET{{ $c }}_LOG_LEVEL"
-            value: {{ $target.logLevel | quote }}
+          {{- if $target.maxMessages }}
+          - name: "TARGET{{ $c }}_MAX_MESSAGES"
+            value: {{ $target.maxMessages | quote }}
           {{- end }}
           {{- if $target.port }}
           - name: "TARGET{{ $c }}_PORT"
@@ -214,6 +271,13 @@ spec:
           readOnly: true
           mountPath: /run/secrets/{{ .Values.eventrouter.ssl.certPassword.secretName }}
         {{- end }}
+        {{- if and .Values.eventrouter.defaultTarget.ssl.enabled }}
+        {{- if and (.Values.eventrouter.defaultTarget.ssl.cert.secretName) (or .Values.eventrouter.defaultTarget.ssl.cert.createSecretFile .Values.eventrouter.defaultTarget.ssl.cert.existingSecretFile) }}
+        - name: {{ .Values.eventrouter.defaultTarget.ssl.cert.secretName }}
+          readOnly: true
+          mountPath: /run/secrets/{{ .Values.eventrouter.defaultTarget.ssl.cert.secretName }}
+        {{- end }}
+        {{- end }}
         {{- range .Values.eventrouter.targets }}
         {{- if and .ssl.enabled }}
         {{- if and (.ssl.cert.secretName) (or .ssl.cert.createSecretFile .ssl.cert.existingSecretFile) }}
@@ -261,6 +325,16 @@ spec:
           secretName: {{ include "event-router.fullname" . }}-{{ .Values.eventrouter.ssl.certPassword.secretName }}
           {{- else }}
           secretName: {{ .Values.eventrouter.ssl.certPassword.existingSecretFile }}
+          {{- end }}
+          defaultMode: 0777 
+      {{- end }}
+      {{- if and (.Values.eventrouter.defaultTarget.ssl.cert.secretName) (or .Values.eventrouter.defaultTarget.ssl.cert.createSecretFile .Values.eventrouter.defaultTarget.ssl.cert.existingSecretFile) }}
+      - name: {{ .Values.eventrouter.defaultTarget.ssl.cert.secretName }}
+        secret:
+          {{- if .Values.eventrouter.defaultTarget.ssl.cert.createSecretFile }}
+          secretName: {{ $fullName }}-{{ .Values.eventrouter.defaultTarget.ssl.cert.secretName }}
+          {{- else }}
+          secretName: {{ .Values.eventrouter.defaultTarget.ssl.cert.existingSecretFile }}
           {{- end }}
           defaultMode: 0777 
       {{- end }}

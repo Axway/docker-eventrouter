@@ -27,9 +27,17 @@ healthz()
 # $4 -> filename to write on
 write_line_in_file()
 {
-    declare -n env_name="TARGET${1}_${2}"
+    if [[ "${1}" -eq "0" ]] ; then
+        declare -n env_name="DEFAULT_${2}"
+        if [[ -z "${env_name}" ]]; then
+            declare -n env_name="TARGET1_${2}"
+        fi
+    else
+        declare -n env_name="TARGET${1}_${2}"
+    fi
+
     if [[ -n "${env_name}" ]]; then
-        echo "$3=${env_name}" >> $4
+        echo "$5" "$3=$6${env_name}$6" >> "$4"
     fi
 }
 
@@ -47,7 +55,6 @@ customize_runtime()
     ## General information
     # >> trkagent.def (general)
     echo "[LOG]" >> conf/trkagent.def
-    echo "trace=0" >> conf/trkagent.def >> conf/trkagent.def
     echo "log_file=\"$HOME/data/log/log.dat\"" >> conf/trkagent.def
     echo "arc_context_file=\"$HOME/data/log/context_file.txt\"" >> conf/trkagent.def
     echo "nb_arc_file=1" >> conf/trkagent.def
@@ -66,6 +73,7 @@ customize_runtime()
         echo "message_size=$ER_MESSAGE_SIZE" >> conf/trkagent.ini
     fi
     if [[ -n "$ER_RELAY" ]]; then
+        ER_RELAY=`echo $ER_RELAY | tr '[a-z]' '[A-Z]'`
         if [[ "$ER_RELAY" = "YES" ]]; then
             echo "relay=1" >> conf/trkagent.ini
         else
@@ -74,14 +82,16 @@ customize_runtime()
     fi
     echo "" >> conf/trkagent.ini
     echo "[TCPSOURCE]" >> conf/trkagent.ini
-    echo "profile=ERSERVER" >> conf/trkagent.ini
     echo "local_address=0.0.0.0" >> conf/trkagent.ini
     if [[ -n "$ER_INCOMING_MAX" ]]; then
         echo "incoming_max=$ER_INCOMING_MAX" >> conf/trkagent.ini
     fi
-    if [[ "$ER_USE_SSL" = "NO" ]]; then
-        echo "sap=$ER_PORT" >> conf/trkagent.ini
-    else
+
+    if [[ -n "$ER_USE_SSL" ]]; then
+        ER_USE_SSL=`echo $ER_USE_SSL | tr '[a-z]' '[A-Z]'`
+    fi
+    if [[ "$ER_USE_SSL" = "YES" ]]; then
+        echo "profile=ERSERVER" >> conf/trkagent.ini
         echo "sapssl=$ER_PORT" >> conf/trkagent.ini
 
         # >> sslconf.ini (general)
@@ -105,71 +115,129 @@ customize_runtime()
             echo "SSL_VERSION_MIN = $ER_SSL_VERSION_MIN" >> conf/sslconf.ini
         else
             echo "SSL_VERSION_MIN = ssl_3.0" >> conf/sslconf.ini
-        fi
+        fi        
+    else
+        echo "sap=$ER_PORT" >> conf/trkagent.ini
     fi
     echo "" >> conf/trkagent.ini
     echo "" >> conf/sslconf.ini
 
-    ## Targets' information
-    i=1
-    declare -n name="TARGET${i}_NAME"
-    while [[ -n "${name}" ]]; do
-        # >> trkagent.ini (for target)
-        echo "[${name}]" >> conf/trkagent.ini
-        echo "active=1" >> conf/trkagent.ini
-        write_line_in_file "${i}" "LOG_LEVEL" "log" "conf/trkagent.ini"
-        write_line_in_file "${i}" "MAX_MESSAGES" "max_messages" "conf/trkagent.ini"
-        write_line_in_file "${i}" "TIMEOUT" "timeout" "conf/trkagent.ini"
-        write_line_in_file "${i}" "SHORT_WAIT" "short_wait" "conf/trkagent.ini"
-        write_line_in_file "${i}" "LONG_WAIT" "long_wait" "conf/trkagent.ini"
-        write_line_in_file "${i}" "JUMP_WAIT" "jump_wait" "conf/trkagent.ini"
-        write_line_in_file "${i}" "KEEP_CONNECTION" "keep_connection" "conf/trkagent.ini"
-        write_line_in_file "${i}" "HEARTBEAT" "heartbeat" "conf/trkagent.ini"
-        write_line_in_file "${i}" "PORT" "port" "conf/trkagent.ini"
-        write_line_in_file "${i}" "ADDRESS" "address" "conf/trkagent.ini"
-        write_line_in_file "${i}" "USE_SSL_OUT" "ssl" "conf/trkagent.ini"
-        echo "profile=${name}" >> conf/trkagent.ini
-        echo "" >> conf/trkagent.ini
-        # >> sslconf.ini (for target)
-        declare -n using_ssl="TARGET${i}_USE_SSL_OUT"
-        if [[ "${using_ssl}" = "YES" ]]; then
-            echo "[${name}]" >> conf/sslconf.ini
-            write_line_in_file "${i}" "CA_CERT" "SSL_CA_CERTIFICATE_FILE" "conf/sslconf.ini"
-            echo "SSL_CA_CERTIFICATE_FORMAT = PEM" >> conf/sslconf.ini
-            write_line_in_file "${i}" "SSL_CIPHER_SUITE" "SSL_CIPHER_SUITE" "conf/sslconf.ini"
-            write_line_in_file "${i}" "SSL_VERSION_MIN" "SSL_VERSION_MIN" "conf/sslconf.ini"
-            echo "" >> conf/sslconf.ini
-        fi
-
-        let i=i+1
-        declare -n name="TARGET${i}_NAME"
-    done
+    ## target section
+    echo "[sentinel]" >> conf/trkagent.ini
+    echo "active=1" >> conf/trkagent.ini
+    write_line_in_file "0" "LOG_LEVEL" "log" "conf/trkagent.ini" "" ""
+    echo "" >> conf/trkagent.ini
 
     ## Default information
     echo "[defaulttarget]" >> conf/trkagent.ini
     echo "directory=\"$HOME/data\"" >> conf/trkagent.ini
-    echo "max_messages=$ER_MAX_MESSAGES" >> conf/trkagent.ini
+    write_line_in_file "0" "LOG_LEVEL" "log" "conf/trkagent.ini" "" ""
+    write_line_in_file "0" "MAX_MESSAGES" "max_messages" "conf/trkagent.ini" "" ""
+    write_line_in_file "0" "TIMEOUT" "timeout" "conf/trkagent.ini" "" ""
+    write_line_in_file "0" "SHORT_WAIT" "short_wait" "conf/trkagent.ini" "" ""
+    write_line_in_file "0" "LONG_WAIT" "long_wait" "conf/trkagent.ini" "" ""
+    write_line_in_file "0" "JUMP_WAIT" "jump_wait" "conf/trkagent.ini" "" ""
+    write_line_in_file "0" "KEEP_CONNECTION" "keep_connection" "conf/trkagent.ini" "" ""
+    write_line_in_file "0" "HEARTBEAT" "heartbeat" "conf/trkagent.ini" "" ""
+    write_line_in_file "0" "PORT" "port" "conf/trkagent.ini" "" ""
+    write_line_in_file "0" "ADDRESS" "address" "conf/trkagent.ini" "" ""
+    write_line_in_file "0" "USE_SSL_OUT" "ssl" "conf/trkagent.ini" "" ""
 
-    write_line_in_file "1" "LOG_LEVEL" "log" "conf/trkagent.ini"
-    write_line_in_file "1" "MAX_MESSAGES" "max_messages" "conf/trkagent.ini"
-    write_line_in_file "1" "TIMEOUT" "timeout" "conf/trkagent.ini"
-    write_line_in_file "1" "SHORT_WAIT" "short_wait" "conf/trkagent.ini"
-    write_line_in_file "1" "LONG_WAIT" "long_wait" "conf/trkagent.ini"
-    write_line_in_file "1" "JUMP_WAIT" "jump_wait" "conf/trkagent.ini"
-    write_line_in_file "1" "KEEP_CONNECTION" "keep_connection" "conf/trkagent.ini"
-    write_line_in_file "1" "HEARTBEAT" "heartbeat" "conf/trkagent.ini"
-    write_line_in_file "1" "PORT" "port" "conf/trkagent.ini"
-    write_line_in_file "1" "ADDRESS" "address" "conf/trkagent.ini"
-    write_line_in_file "1" "USE_SSL_OUT" "ssl" "conf/trkagent.ini"
-    echo "profile=$TARGET1_NAME" >> conf/trkagent.ini
+    DEFAULT_USE_SSL_OUT=$(echo $DEFAULT_USE_SSL_OUT | tr '[a-z]' '[A-Z]')
+    if [[ "$DEFAULT_USE_SSL_OUT" = "YES" ]]; then
+        echo "profile=DEFAULT" >> conf/trkagent.ini
 
-    if [[ -n "$USER_TARGET_XML" ]]; then
-        cp $USER_TARGET_XML conf/target.xml
-    else
-        cp install/target.xml conf/target.xml
+        # >> sslconf.ini (general)
+        echo "[DEFAULT]" >> conf/sslconf.ini
+        if [[ -n "$DEFAULT_CA_CERT" ]]; then
+            echo "SSL_CA_CERTIFICATE_FILE = $DEFAULT_CA_CERT" >> conf/sslconf.ini
+            echo "SSL_CA_CERTIFICATE_FORMAT = PEM" >> conf/sslconf.ini
+        fi
+        if [[ -n "$DEFAULT_SSL_CIPHER_SUITE" ]]; then
+            echo "SSL_CIPHER_SUITE = $DEFAULT_SSL_CIPHER_SUITE" >> conf/sslconf.ini
+        fi
+        if [[ -n "$DEFAULT_SSL_VERSION_MIN" ]]; then
+            echo "SSL_VERSION_MIN = $DEFAULT_SSL_VERSION_MIN" >> conf/sslconf.ini
+        fi
+        echo "" >> conf/sslconf.ini
     fi
 
+    if [[ -z "$USER_TARGET_XML" ]]; then
+        # Create our target.xml
+        echo "" > conf/target.xml
+        echo "<TrkEventRouterCfg>" >> conf/target.xml
+        echo "   <TrkXml version=\"1.0\" />" >> conf/target.xml
+        echo "   <EventRouter name=\"DEFAULT\">" >> conf/target.xml
+        echo "   </EventRouter>" >> conf/target.xml
+
+
+        ## Targets' information
+        i=1
+        declare -n name="TARGET${i}_NAME"
+        while [[ -n "${name}" ]]; do
+            declare -n using_ssl="TARGET${i}_USE_SSL_OUT"
+            if [[ -n "${using_ssl}" ]]; then
+                using_ssl=$(echo "${using_ssl}" | tr '[a-z]' '[A-Z]')
+            fi
+
+            # >> target entry in target.xml
+            echo -n "   <Target name=\"${name}\"" >> conf/target.xml
+            write_line_in_file "${i}" "HEARTBEAT" " heartbeat" "conf/target.xml" "-n" "\""
+            echo -n " defaultXntf=\"yes\"" >> conf/target.xml
+            echo " defaultXml=\"yes\">" >> conf/target.xml
+
+            echo -n "     <Access" >> conf/target.xml
+            write_line_in_file "${i}" "PORT" " port" "conf/target.xml" "-n" "\""
+            write_line_in_file "${i}" "ADDRESS" " addr" "conf/target.xml" "-n" "\""
+            if [[ "${using_ssl}" = "YES" ]]; then
+                echo -n " ssl=\"yes\"" >> conf/target.xml
+                echo -n " profile=\"${name}\"" >> conf/target.xml
+            fi
+            echo " />" >> conf/target.xml
+
+            echo -n "     <Connection" >> conf/target.xml
+            write_line_in_file "${i}" "SHORT_WAIT" " short_wait" "conf/target.xml" "-n" "\""
+            write_line_in_file "${i}" "JUMP_WAIT" " jump_wait" "conf/target.xml" "-n" "\""
+            write_line_in_file "${i}" "LONG_WAIT" " long_wait" "conf/target.xml" "-n" "\""
+            write_line_in_file "${i}" "KEEP_CONNECTION" " keep_connection" "conf/target.xml" "-n" "\""
+            write_line_in_file "${i}" "TIMEOUT" " timeout" "conf/target.xml" "-n" "\""
+            echo " />" >> conf/target.xml
+
+            echo -n "     <File" >> conf/target.xml
+            write_line_in_file "${i}" "MAX_MESSAGES" " max_messages" "conf/target.xml" "-n" "\""
+            echo " />" >> conf/target.xml
+
+            echo "   </Target>" >> conf/target.xml
+
+            # >> sslconf.ini (for target)
+            if [[ "${using_ssl}" = "YES" ]]; then
+                echo "[${name}]" >> conf/sslconf.ini
+                write_line_in_file "${i}" "CA_CERT" "SSL_CA_CERTIFICATE_FILE" "conf/sslconf.ini" "" ""
+                echo "SSL_CA_CERTIFICATE_FORMAT = PEM" >> conf/sslconf.ini
+                write_line_in_file "${i}" "SSL_CIPHER_SUITE" "SSL_CIPHER_SUITE" "conf/sslconf.ini" "" ""
+                write_line_in_file "${i}" "SSL_VERSION_MIN" "SSL_VERSION_MIN" "conf/sslconf.ini" "" ""
+                echo "" >> conf/sslconf.ini
+            fi
+
+            let i=i+1
+            declare -n name="TARGET${i}_NAME"
+        done
+
+        echo "</TrkEventRouterCfg>" >> conf/target.xml
+    else
+        # Use target.xml given by client
+        cp $USER_TARGET_XML conf/target.xml
+    fi
+
+    echo "=============== conf/trkagent.ini"
+    cat conf/trkagent.ini
+    echo "=============== conf/sslconf.ini"
+    cat conf/sslconf.ini
+    echo "=============== conf/target.xml"
+    cat conf/target.xml
+
     bin/agtinst -setup -dir $ER_INSTALLDIR -conf $ER_INSTALLDIR/conf/conffile
+    echo "=============== conf/setup.log"
     cat conf/setup.log
 
     rm conf/trkagent.ini.template
@@ -195,8 +263,9 @@ finish()
     kill
 }
 
-cd $ER_INSTALLDIR
+cd "$ER_INSTALLDIR"
 
+ER_RECONFIG=$(echo $ER_RECONFIG | tr '[a-z]' '[A-Z]')
 if [[ "$ER_RECONFIG" = "YES" ]]; then
     if [ -f conf/trkagent.ini.template.bck ]; then
         cp conf/trkagent.ini.template.bck conf/trkagent.ini.template

@@ -4,7 +4,7 @@ replicaCount: 1
 
 image:
   repository: eventrouter/eventrouter
-  tag: 2.4.0-SP3
+  tag: 2.4.0-SP4
 
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
@@ -119,7 +119,6 @@ affinity: {}
 eventrouter:
   maxIncomingConenctions: 1000
   messageSize: 10000
-  maxNumberMessages: 10000
   relay: 0
   logLevel: 0 # 0 -> 4
 
@@ -152,13 +151,40 @@ eventrouter:
       # localFile: {} # conf/target.xml
       # existingSecretFile: {} # secret name
 
-  targets:
-  ## This block can be repeted as many time as there are targets.
-   - name: sentinel
+  defaultTarget:
      logLevel: 0
+     maxMessages: 10000
      port: 1305
      address: sentinel
-     timetout: 5
+     timeout: 5
+     shortWait: 10
+     longWait: 300
+     jumpWait: 20
+     keepConnection: 30
+     heartbeat: 0
+     ssl:
+       enabled: false
+       cipherSuite: "156,60,47"
+       minVersion: "tls_1.2"
+       ## The next group of values are used to customize the target's certificate
+       ## The certificate must refer to a PEM certificate.
+       # - createSecretFile ==>> create secret file or not
+       # - secretName ==>> name of the file inside the secret
+       # - localFile ==>> where is located the local file - use relative path
+       # - existingSecretFile ==>> used only if the secret already exist
+       cert:
+         secretName: default-ca-cert
+         createSecretFile: false
+         # localFile: {} # conf/default_target_ca_cert.pem
+         # existingSecretFile: {} # secret name
+
+  targets:
+  ## This block can be repeted as many time as there are targets.
+   - name: target1
+     maxMessages: 10000
+     port: 1305
+     address: sentinel
+     timeout: 5
      shortWait: 10
      longWait: 300
      jumpWait: 20

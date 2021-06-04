@@ -11,7 +11,7 @@ version: "3.5"
 
 services:
   eventrouter:
-    image: eventrouter/eventrouter:2.4.0-SP3
+    image: eventrouter/eventrouter:2.4.0-SP4
 
     environment:
       # Change RECONFIG value to force the reinitialization of configuration
@@ -22,7 +22,6 @@ services:
       ER_NAME:                  SentinelEventRouter
       ER_LOG_LEVEL:             0 # 0 -> 4
       ER_MESSAGE_SIZE:          10000
-      ER_MAX_MESSAGES:          10000
       ER_RELAY:                 0
       ### TCP SOURCE
       ER_INCOMING_MAX:          1000
@@ -37,10 +36,28 @@ services:
       ER_SSL_VERSION_MIN:       "tls_1.2"
 
       ### TARGETS
+      DEFAULT_LOG_LEVEL:        0 # 0 -> 4
+      DEFAULT_MAX_MESSAGES:     10000
+      DEFAULT_PORT:             1305
+      DEFAULT_ADDRESS:          sentinel
+      DEFAULT_TIMEOUT:          5
+      DEFAULT_SHORT_WAIT:       10
+      DEFAULT_LONG_WAIT:        300
+      DEFAULT_JUMP_WAIT:        20
+      DEFAULT_KEEP_CONNECTION:  30
+      DEFAULT_HEARTBEAT:        0
+      DEFAULT_USE_SSL_OUT:      "NO"
+      DEFAULT_SSL_CIPHER_SUITE: "156,60,47"
+      DEFAULT_SSL_VERSION_MIN:  "tls_1.2"
+      # Uncomment the next line to customize the Default CA certificate.
+      # Needed if DEFAULT_USE_SSL_OUT is YES.
+      # See also secrets sections.
+      #DEFAULT_CA_CERT:          "/run/secrets/default_ca_cert.pem"
+
       # This block can be repeted as many time as there are targets.
       # Just increment the number in the variables' names (TARGET1 -> TARGET2, TARGET3, ...)
       TARGET1_NAME:             SENTINEL
-      TARGET1_LOG_LEVEL:        0 # 0 -> 4
+      TARGET1_MAX_MESSAGES:     10000
       TARGET1_PORT:             1305
       TARGET1_ADDRESS:          sentinel
       TARGET1_TIMEOUT:          5
@@ -76,6 +93,8 @@ services:
     # Uncomment these 2 lines for configuring the Event Router certificate.
     #- eventrouter.p12
     #- eventrouter_p12.pwd
+    # Uncomment this for customizing the Default CA certificate.
+    #- default_ca_cert.pem
     # Uncomment this for customizing the Target1 CA certificate.
     #- target1_ca_cert.pem
 
@@ -86,6 +105,10 @@ services:
   #    file: ./conf/eventrouter.p12
   #eventrouter_p12.pwd:
   #    file: ./conf/eventrouter_p12.pwd
+  # File containig the CA certificate of Default target.
+  # Uncomment the next two lines to specify the CA certificate.
+  #default_ca_cert.pem:
+  #    file: ./conf/default_ca_cert.pem
   # File containig the CA certificate of Target1.
   # Uncomment the next two lines to specify the CA certificate.
   #target1_ca_cert.pem:

@@ -28,7 +28,6 @@ ER_HEALTHCHECK_INTERVAL    |  \<number>   |  Time between healthchecks. In secon
 ER_NAME                    |  \<string>   |  Name of the Event Router instance. (The maximum length of this name is 50 characters.)
 ER_LOG_LEVEL               |  \<number>   |  The Logging Level of the DISP entity. By default, the value of this parameter is 1. From 0 to 4.
 ER_MESSAGE_SIZE            |  \<number>   |  The maximum length of a message.
-ER_MAX_MESSAGES            |  \<number>   |  The maximum number of messages that the overflow and batch files can store.
 ER_RELAY                   |  "YES"/"NO"  |  Whether or not the Sentinel Event Router is a relay between another Sentinel Event Router and the final destination.
 ER_INCOMING_MAX            |  \<number>   |  The maximum number of source applications that can simultaneously connect to the Event Router.
 ER_PORT                    |  \<number>   |  The TCP/IP port that the Sentinel Event Router will use to receive messages.
@@ -37,8 +36,22 @@ ER_CERTIFICATE_FILE        |  \<string>   |  Event Router server certificate. It
 ER_CERT_PASSWORD_FILE      |  \<string>   |  Event Router server certificate password.
 ER_SSL_CIPHER_SUITE        |  \<string>   |  List of algorithms supported (Up to eight cipher suites, separated by comma.). The list must be in decreasing order of preference.
 ER_SSL_VERSION_MIN         |  \<string>   |  List of accepted protocol versions. Values: ssl_3.0, tls_1.0, tls_1.1 or tls_1.2.
+DEFAULT_LOG_LEVEL          |  \<number>   |  The Logging Level of the DISP entity. By default, the value of this parameter is 1. From 0 to 4.
+DEFAULT_MAX_MESSAGES       |  \<number>   |  The maximum number of messages that the overflow and batch files can store.
+DEFAULT_PORT               |  \<number>   |  TCP/IP port of the default target
+DEFAULT_ADDRESS            |  \<string>   |  The TCP/IP address of the default target
+DEFAULT_TIMEOUT            |  \<number>   |  The number of seconds that the Event Router waits for targets to acknowledge receipt of a message that the Event Router sends.
+DEFAULT_SHORT_WAIT         |  \<number>   |  The number of seconds in the short wait.
+DEFAULT_LONG_WAIT          |  \<number>   |  The number of seconds in the long wait.
+DEFAULT_JUMP_WAIT          |  \<number>   |  The number of seconds in the jump wait.
+DEFAULT_KEEP_CONNECTION    |  \<number>   |  The number of seconds that the Event Router maintains the connections to targets after successfully sending messages to the targets.
+DEFAULT_HEARTBEAT          |  \<number>   |  The number of minutes between successive emissions of HeartBeat Event messages from the Event Router to the default target.
+DEFAULT_USE_SSL_OUT        |  "YES"/"NO"  |  Enable security profile between the Event Router and the default target.
+DEFAULT_SSL_CIPHER_SUITE   |  \<string>   |  List of algorithms supported (Up to eight cipher suites, separated by comma.). The list must be in decreasing order of preference.
+DEFAULT_SSL_VERSION_MIN    |  \<string>   |  List of accepted protocol versions. Values: ssl_3.0, tls_1.0, tls_1.1 or tls_1.2.
+DEFAULT_CA_CERT            |  \<string>   |  CA certificate of the default target.
 TARGET1_NAME               |  \<string>   |  This will be used to create the section in the configuration file. Use capital letters. Note that the target1 will be used as the default target.
-TARGET1_LOG_LEVEL          |  \<number>   |  The Logging Level of the DISP entity. By default, the value of this parameter is 1. From 0 to 4.
+TARGET1_MAX_MESSAGES       |  \<number>   |  The maximum number of messages that the overflow and batch files can store.
 TARGET1_PORT               |  \<number>   |  TCP/IP port of the Target 1.
 TARGET1_ADDRESS            |  \<string>   |  The TCP/IP address of the Target 1.
 TARGET1_TIMEOUT            |  \<number>   |  The number of seconds that the Event Router waits for targets to acknowledge receipt of a message that the Event Router sends.
@@ -48,13 +61,13 @@ TARGET1_JUMP_WAIT          |  \<number>   |  The number of seconds in the jump w
 TARGET1_KEEP_CONNECTION    |  \<number>   |  The number of seconds that the Event Router maintains the connections to targets after successfully sending messages to the targets.
 TARGET1_HEARTBEAT          |  \<number>   |  The number of minutes between successive emissions of HeartBeat Event messages from the Event Router to the target.
 TARGET1_USE_SSL_OUT        |  "YES"/"NO"  |  Enable security profile between the Event Router and the Target 1.
-TARGET1_CA_CERT            |  \<string>   |  CA certificate of Target 1.
+TARGET1_CA_CERT            |  \<string>   |  CA certificate of the Target 1.
 TARGET1_SSL_CIPHER_SUITE   |  \<string>   |  List of algorithms supported (Up to eight cipher suites, separated by comma.). The list must be in decreasing order of preference.
 TARGET1_SSL_VERSION_MIN    |  \<string>   |  List of accepted protocol versions. Values: ssl_3.0, tls_1.0, tls_1.1 or tls_1.2.
 USER_TARGET_XML            |  \<string>   |  Path within the container pointing to a user defined target.xml file. The Target Parameters File is an XML file used to set the target parameters, such as routing rules, for specific Event Router targets.
 
 **Note** The block starting by TARGET1, can be repeated for as many targets as needed, just increment the number in the parameter name. (TARGET1_NAME -> TARGET2_NAME, ...)
-**Note** When using multiple targets, the parameter USER_TARGET_XML must be specified.
+**Note** When using multiple targets, the target.xml generated will be for a broadcast use case, for a different use case configuration, the parameter USER_TARGET_XML must be specified.
 
 ### How to use the official Sentinel Event Router image
 
