@@ -9,7 +9,7 @@
 started=0
 timeout=40
 i=0
-echo "Waiting for cft startup $i/$timeout..."
+echo "Waiting for event router startup $i/$timeout..."
 while [ $i -lt $timeout ] && [ $started = 0 ]; do
   nc -z $TARGET_NAME $TARGET_PORT
   target1_rc=$?
@@ -19,7 +19,7 @@ while [ $i -lt $timeout ] && [ $started = 0 ]; do
     started=1
   else
     i=$(($i+5))
-    echo "Waiting for cft startup $i/$timeout..."
+    echo "Waiting for event router startup $i/$timeout..."
     sleep 5
   fi
 done
