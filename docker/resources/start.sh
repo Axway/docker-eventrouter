@@ -54,11 +54,8 @@ customize_runtime()
 
     ## General information
     # >> trkagent.def (general)
-    echo "[LOG]" >> conf/trkagent.def
-    echo "log_file=\"$HOME/data/log/log.dat\"" >> conf/trkagent.def
-    echo "arc_context_file=\"$HOME/data/log/context_file.txt\"" >> conf/trkagent.def
-    echo "nb_arc_file=1" >> conf/trkagent.def
-    echo "auto_arc_bytes=10240" >> conf/trkagent.def
+    echo "[INFO]" >> conf/trkagent.def
+    echo "docker=1" >> conf/trkagent.def
     echo "" >> conf/trkagent.def
 
     # >> trkagent.ini (general)
@@ -280,34 +277,19 @@ fi
 
 . conf/profile
 
-# Manage log and output files
-ER_LOGDIR=$HOME/data/log
-if [ -d $ER_LOGDIR ]; then
-    rm -rf $ER_LOGDIR
-fi
-mkdir $ER_LOGDIR
-
-touch $ER_LOGDIR/AGENT.out
-touch $ER_LOGDIR/AGSNTL.out
-ln -sf $ER_LOGDIR/AGENT.out tmp/AGENT.out
-ln -sf $ER_LOGDIR/AGSNTL.out tmp/AGSNTL.out
-
 if agtcmd start ; then
     echo "INF: start success"
 else
     echo "ERR: start returns:"$?
-    cat $ER_LOGDIR/log.dat $ER_LOGDIR/AGENT.out $ER_LOGDIR/AGSNTL.out
     exit 1
 fi
 
 agtcmd display
 
 # Wait for Event Router to start (and create files)
-sleep 10
-tail -v $ER_LOGDIR/log.dat -F $ER_LOGDIR/AGENT.out -F $ER_LOGDIR/AGSNTL.out
+sleep 15
 
 #### Test that ER is running
-maxmumsize=10000
 counter=0
 
 healthz
@@ -316,19 +298,9 @@ while [ $? -eq 0 ]; do
     healthz
 
     # Do count every 10 interactions
-    if [ $counter %10 ]; then
+    if ! (( $counter%10 )) ; then
         agtcmd count
     fi
 
-    # Truncate files when size >= 10M
-    actualsize=$(wc -c <"$ER_LOGDIR/AGENT.out")
-    if [ $actualsize -ge $maxmumsize ]; then
-        truncate -s 0 $ER_LOGDIR/AGENT.out
-    fi
-    actualsize=$(wc -c <"$ER_LOGDIR/AGSNTL.out")
-    if [ $actualsize -ge $maxmumsize ]; then
-        truncate -s 0 $ER_LOGDIR/AGSNTL.out
-    fi
-    
     ((counter++))
 done

@@ -16,7 +16,7 @@ stages:
 build:
   stage: build
   script:
-  - docker build -t $IMAGE_ER:$DOCKER_TAG --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') --build-arg URL_BASE=https://delivery.axway.int/download_true_name.php?static= docker
+  - docker build -t $IMAGE_ER:$DOCKER_TAG --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') --build-arg INSTALL_KIT=http://slnxcftmaster.lab1.lab.ptx.axway.int/storage/SentinelEventRouter_2.4.0/SentinelEventRouter_2.4.0_SP4_linux-x86-64_BN13464158.jar docker
 
 test:
   stage: test
