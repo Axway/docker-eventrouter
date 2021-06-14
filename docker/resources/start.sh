@@ -4,7 +4,6 @@
 #
 # Copyright (c) 2021 Axway Software SA and its affiliates. All rights reserved.
 #
-set -Eeo pipefail
 trap 'finish' SIGTERM SIGHUP SIGINT EXIT
 
 # Check if server is up
@@ -138,6 +137,8 @@ customize_runtime()
     write_line_in_file "0" "HEARTBEAT" "heartbeat" "conf/trkagent.ini" "" ""
     write_line_in_file "0" "PORT" "port" "conf/trkagent.ini" "" ""
     write_line_in_file "0" "ADDRESS" "address" "conf/trkagent.ini" "" ""
+    write_line_in_file "0" "BACKUP_PORT" "backup_port" "conf/trkagent.ini" "" ""
+    write_line_in_file "0" "BACKUP_ADDRESS" "backup_address" "conf/trkagent.ini" "" ""
     write_line_in_file "0" "USE_SSL_OUT" "ssl" "conf/trkagent.ini" "" ""
 
     DEFAULT_USE_SSL_OUT=$(echo $DEFAULT_USE_SSL_OUT | tr '[a-z]' '[A-Z]')
@@ -186,6 +187,8 @@ customize_runtime()
             echo -n "     <Access" >> conf/target.xml
             write_line_in_file "${i}" "PORT" " port" "conf/target.xml" "-n" "\""
             write_line_in_file "${i}" "ADDRESS" " addr" "conf/target.xml" "-n" "\""
+            write_line_in_file "${i}" "BACKUP_PORT" " backup_port" "conf/target.xml" "-n" "\""
+            write_line_in_file "${i}" "BACKUP_ADDRESS" " backup_address" "conf/target.xml" "-n" "\""
             if [[ "${using_ssl}" = "YES" ]]; then
                 echo -n " ssl=\"yes\"" >> conf/target.xml
                 echo -n " profile=\"${name}\"" >> conf/target.xml
@@ -232,8 +235,15 @@ customize_runtime()
     cat conf/sslconf.ini
     echo "=============== conf/target.xml"
     cat conf/target.xml
+    echo "=============== conf/trkagent.def"
+    cat conf/trkagent.def
 
     bin/agtinst -setup -dir $ER_INSTALLDIR -conf $ER_INSTALLDIR/conf/conffile
+    if [ $? -ne 0 ]; then
+        cat conf/setup.log
+        echo "ERR: Failed to configure Event Router"
+        return -1
+    fi
     echo "=============== conf/setup.log"
     cat conf/setup.log
 
@@ -271,6 +281,10 @@ fi
 
 if [ -f conf/trkagent.ini.template ]; then
     customize_runtime
+    if [ $? -ne 0 ]; then
+        echo "ERR: Failed to customize the runtime"
+        exit 1
+    fi
 else
     echo "INF: installation previously customized."
 fi
@@ -284,10 +298,25 @@ else
     exit 1
 fi
 
-agtcmd display
-
 # Wait for Event Router to start (and create files)
-sleep 15
+# wait startup
+timeout=30
+i=0
+echo "Waiting for event router startup $i/$timeout..."
+while [ $i -lt $timeout ]; do
+  healthz
+  status_rc=$?
+  if [ "$status_rc" = "0" ]; then
+    i=timeout
+  else
+    i=$(($i+5))
+    sleep 5
+    echo "Waiting for event router startup $i/$timeout..."
+  fi
+done
+
+
+agtcmd display
 
 #### Test that ER is running
 counter=0
@@ -295,12 +324,16 @@ counter=0
 healthz
 while [ $? -eq 0 ]; do
     sleep ${ER_HEALTHCHECK_INTERVAL:-10}
-    healthz
 
     # Do count every 10 interactions
     if ! (( $counter%10 )) ; then
         agtcmd count
+        if [ $? -ne 0 ]; then
+            echo "ERR: Failed to execute agtcmd count"
+            exit 1
+        fi
     fi
 
     ((counter++))
+    healthz
 done

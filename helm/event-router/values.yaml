@@ -156,6 +156,8 @@ eventrouter:
      maxMessages: 10000
      port: 1305
      address: sentinel
+     backupPort: 1305
+     backupAddress: sentinel_backup
      timeout: 5
      shortWait: 10
      longWait: 300
@@ -184,6 +186,8 @@ eventrouter:
      maxMessages: 10000
      port: 1305
      address: sentinel
+     backupPort: 1305
+     backupAddress: sentinel_backup
      timeout: 5
      shortWait: 10
      longWait: 300

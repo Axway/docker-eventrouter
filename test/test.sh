@@ -5,6 +5,8 @@
 # Copyright (c) 2021 Axway Software SA and its affiliates. All rights reserved.
 #
 
+sleep 20
+
 # wait startup
 started=0
 timeout=40

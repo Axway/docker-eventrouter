@@ -38,8 +38,10 @@ ER_SSL_CIPHER_SUITE        |  \<string>   |  List of algorithms supported (Up to
 ER_SSL_VERSION_MIN         |  \<string>   |  List of accepted protocol versions. Values: ssl_3.0, tls_1.0, tls_1.1 or tls_1.2.
 DEFAULT_LOG_LEVEL          |  \<number>   |  The Logging Level of the DISP entity. By default, the value of this parameter is 1. From 0 to 4.
 DEFAULT_MAX_MESSAGES       |  \<number>   |  The maximum number of messages that the overflow and batch files can store.
-DEFAULT_PORT               |  \<number>   |  TCP/IP port of the default target
 DEFAULT_ADDRESS            |  \<string>   |  The TCP/IP address of the default target
+DEFAULT_PORT               |  \<number>   |  TCP/IP port of the default target
+DEFAULT_BACKUP_ADDRESS     |  \<string>   |  The TCP/IP address of the default backup target
+DEFAULT_BACKUP_PORT        |  \<number>   |  TCP/IP port of the default backup target
 DEFAULT_TIMEOUT            |  \<number>   |  The number of seconds that the Event Router waits for targets to acknowledge receipt of a message that the Event Router sends.
 DEFAULT_SHORT_WAIT         |  \<number>   |  The number of seconds in the short wait.
 DEFAULT_LONG_WAIT          |  \<number>   |  The number of seconds in the long wait.
@@ -52,8 +54,10 @@ DEFAULT_SSL_VERSION_MIN    |  \<string>   |  List of accepted protocol versions.
 DEFAULT_CA_CERT            |  \<string>   |  CA certificate of the default target.
 TARGET1_NAME               |  \<string>   |  This will be used to create the section in the configuration file. Use capital letters. Note that the target1 will be used as the default target.
 TARGET1_MAX_MESSAGES       |  \<number>   |  The maximum number of messages that the overflow and batch files can store.
-TARGET1_PORT               |  \<number>   |  TCP/IP port of the Target 1.
 TARGET1_ADDRESS            |  \<string>   |  The TCP/IP address of the Target 1.
+TARGET1_PORT               |  \<number>   |  TCP/IP port of the Target 1.
+TARGET1_BACKUP_ADDRESS     |  \<string>   |  The TCP/IP address of the backup for Target 1.
+TARGET1_BACKUP_PORT        |  \<number>   |  TCP/IP port of the backup for Target 1.
 TARGET1_TIMEOUT            |  \<number>   |  The number of seconds that the Event Router waits for targets to acknowledge receipt of a message that the Event Router sends.
 TARGET1_SHORT_WAIT         |  \<number>   |  The number of seconds in the short wait.
 TARGET1_LONG_WAIT          |  \<number>   |  The number of seconds in the long wait.

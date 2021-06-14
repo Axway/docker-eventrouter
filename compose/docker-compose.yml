@@ -40,6 +40,8 @@ services:
       DEFAULT_MAX_MESSAGES:     10000
       DEFAULT_PORT:             1305
       DEFAULT_ADDRESS:          sentinel
+      DEFAULT_BACKUP_PORT:      1305
+      DEFAULT_BACKUP_ADDRESS:   sentinel_backup
       DEFAULT_TIMEOUT:          5
       DEFAULT_SHORT_WAIT:       10
       DEFAULT_LONG_WAIT:        300
@@ -60,6 +62,8 @@ services:
       TARGET1_MAX_MESSAGES:     10000
       TARGET1_PORT:             1305
       TARGET1_ADDRESS:          sentinel
+      TARGET1_BACKUP_PORT:      1305
+      TARGET1_BACKUP_ADDRESS:   sentinel_backup      
       TARGET1_TIMEOUT:          5
       TARGET1_SHORT_WAIT:       10
       TARGET1_LONG_WAIT:        300

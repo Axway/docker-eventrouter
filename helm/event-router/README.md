@@ -90,6 +90,8 @@ Parameter | Description | Default
 `eventrouter.defaultTarget.maxMessages` | The maximum number of messages that the overflow and batch files can store. | `10000`
 `eventrouter.defaultTarget.port` | TCP/IP port of the default target | `1305`
 `eventrouter.defaultTarget.address` | The TCP/IP address of the default target | `sentinel`
+`eventrouter.defaultTarget.backupPort` | TCP/IP port of the default backup target | `1305`
+`eventrouter.defaultTarget.backupAddress` | The TCP/IP address of the default backup target | `sentinel`
 `eventrouter.defaultTarget.timeout` | The number of seconds that the Event Router waits for targets to acknowledge receipt of a message that the Event Router sends. | `5`
 `eventrouter.defaultTarget.shortWait` | The number of seconds in the short wait. | `10`
 `eventrouter.defaultTarget.longWait` | The number of seconds in the long wait. | `300`
@@ -103,7 +105,7 @@ Parameter | Description | Default
 `eventrouter.defaultTarget.ssl.cert.createSecretFile` | Create the CA certificate of the default target secret at installation using a local file | `false`
 `eventrouter.defaultTarget.ssl.cert.localFile` | Relative path to the CA certificate of the default target (you can use conf directory in the helm chart) | `{} (eg. conf/default_target_ca_cert.p12)`
 `eventrouter.defaultTarget.ssl.cert.existingSecretFile` | Name of an existing secret to use | `{}`
-`eventrouter.targets` | List of Event router's targets with their parameters. Note that the first target of the list will be used as the default target.| `[{"name": "sentinel","maxMessages": 10000,"port": 1305,"address": "sentinel","timetout": 5,"shortWait": 10,"longWait": 300,"jumpWait": 20,"keepConnection": 30,"heartbeat": 0,"ssl.enabled": false}]`
+`eventrouter.targets` | List of Event router's targets with their parameters. Note that the first target of the list will be used as the default target if the default is not defined.| `[{"name": "sentinel","maxMessages": 10000,"port": 1305,"address": "sentinel","timetout": 5,"shortWait": 10,"longWait": 300,"jumpWait": 20,"keepConnection": 30,"heartbeat": 0,"ssl.enabled": false}]`
 `persistence.enabled` | Enable config persistence using PVC | `true`
 `persistence.keep` | Keep persistent volume after helm delete | `false`
 `persistence.eventrouterData.storageClass` | Persistent Volume Claim Storage Class | `nil`

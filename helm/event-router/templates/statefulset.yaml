@@ -112,6 +112,14 @@ spec:
           - name: "DEFAULT_ADDRESS"
             value: {{ .defaultTarget.address | quote }}
           {{- end }}
+          {{- if .defaultTarget.backupPort }}
+          - name: "DEFAULT_BACKUP_PORT"
+            value: {{ .defaultTarget.backupPort | quote }}
+          {{- end }}
+          {{- if .defaultTarget.backupAddress }}
+          - name: "DEFAULT_BACKUP_ADDRESS"
+            value: {{ .defaultTarget.backupAddress | quote }}
+          {{- end }}
           {{- if .defaultTarget.timeout }}
           - name: "DEFAULT_TIMEOUT"
             value: {{ .defaultTarget.timeout | quote }}
@@ -174,6 +182,14 @@ spec:
           {{- if $target.address }}
           - name: "TARGET{{ $c }}_ADDRESS"
             value: {{ $target.address | quote }}
+          {{- end }}
+          {{- if .$target.backupPort }}
+          - name: "TARGET{{ $c }}_BACKUP_PORT"
+            value: {{ .$target.backupPort | quote }}
+          {{- end }}
+          {{- if .$target.backupAddress }}
+          - name: "TARGET{{ $c }}_BACKUP_ADDRESS"
+            value: {{ .$target.backupAddress | quote }}
           {{- end }}
           {{- if $target.timetout }}
           - name: "TARGET{{ $c }}_TIMEOUT"
