@@ -188,7 +188,7 @@ customize_runtime()
             write_line_in_file "${i}" "PORT" " port" "conf/target.xml" "-n" "\""
             write_line_in_file "${i}" "ADDRESS" " addr" "conf/target.xml" "-n" "\""
             write_line_in_file "${i}" "BACKUP_PORT" " backup_port" "conf/target.xml" "-n" "\""
-            write_line_in_file "${i}" "BACKUP_ADDRESS" " backup_address" "conf/target.xml" "-n" "\""
+            write_line_in_file "${i}" "BACKUP_ADDRESS" " backup_addr" "conf/target.xml" "-n" "\""
             if [[ "${using_ssl}" = "YES" ]]; then
                 echo -n " ssl=\"yes\"" >> conf/target.xml
                 echo -n " profile=\"${name}\"" >> conf/target.xml
