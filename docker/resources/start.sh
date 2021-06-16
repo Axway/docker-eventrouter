@@ -192,6 +192,8 @@ customize_runtime()
             if [[ "${using_ssl}" = "YES" ]]; then
                 echo -n " ssl=\"yes\"" >> conf/target.xml
                 echo -n " profile=\"${name}\"" >> conf/target.xml
+            else
+                echo -n " ssl=\"no\"" >> conf/target.xml
             fi
             echo " />" >> conf/target.xml
 
