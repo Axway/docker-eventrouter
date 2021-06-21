@@ -258,6 +258,9 @@ customize_runtime()
 stop()
 {
     agtcmd stop
+    if [ $? -eq 0 ]; then
+        exit 0
+    fi
 }
 
 kill ()
@@ -309,7 +312,7 @@ while [ $i -lt $timeout ]; do
   healthz
   status_rc=$?
   if [ "$status_rc" = "0" ]; then
-    i=timeout
+    i=$timeout
   else
     i=$(($i+5))
     sleep 5

@@ -5,52 +5,78 @@
 # Copyright (c) 2021 Axway Software SA and its affiliates. All rights reserved.
 #
 
-sleep 20
+stop()
+{
+  echo
+  echo " -- Exit code ${1}; stop all containers"
+  docker stop test_er_first test_er_middle test_er_middle_backup test_er_last
+  exit ${1}
+}
 
-# wait startup
-started=0
-timeout=40
-i=0
-echo "Waiting for event router startup $i/$timeout..."
-while [ $i -lt $timeout ] && [ $started = 0 ]; do
-  nc -z $TARGET_NAME $TARGET_PORT
-  target1_rc=$?
-  nc -z $TARGET2_NAME $TARGET2_PORT
-  target2_rc=$?
-  if [ "$target1_rc" = "0" ] && [ "$target2_rc" = "0" ]; then
-    started=1
-  else
-    i=$(($i+5))
-    echo "Waiting for event router startup $i/$timeout..."
-    sleep 5
-  fi
-done
+waitstart()
+{
+  # wait startup
+  timeout=40
+  i=0
+  echo "Waiting for event router startup $i/$timeout..."
+  while [ $i -lt $timeout ]; do
+    t1_status=$(docker inspect --format='{{json .State.Health.Status}}' test_er_first)
+    t2_status=$(docker inspect --format='{{json .State.Health.Status}}' test_er_middle)
+    t3_status=$(docker inspect --format='{{json .State.Health.Status}}' test_er_middle_backup)
+    t4_status=$(docker inspect --format='{{json .State.Health.Status}}' test_er_last)
+    if [ "$t1_status" == "starting" ] || [ "$t2_status" == "starting" ] || [ "$t3_status" == "starting" ] || [ "$t4_status" == "starting" ]; then
+      i=$(($i+1))
+      sleep 1
+      echo "Waiting for event router startup $i/$timeout..."
+    else
+      i=$timeout
+    fi
+  done
+}
 
+waitstart
 
-
-# Test Event Router 1 port
-nc -z $TARGET_NAME $TARGET_PORT
+# Test First Event Router port
+nc -z $FIRST_TARGET_NAME $FIRST_TARGET_PORT
 if [ "$?" -ne "0" ]; then
-  echo "ERROR: failed to connect to $TARGET_NAME:$TARGET_PORT"
-  exit 1
+  echo "ERROR: failed to connect to $FIRST_TARGET_NAME:$FIRST_TARGET_PORT"
+  stop 1
 fi
-echo "Successful connection to $TARGET_NAME:$TARGET_PORT"
+echo "Successful connection to $FIRST_TARGET_NAME:$FIRST_TARGET_PORT"
 
-# Test Event Router 2 port
-nc -z $TARGET2_NAME $TARGET2_PORT
+# Test Last Event Router port
+nc -z $LAST_TARGET_NAME $LAST_TARGET_PORT
 if [ "$?" -ne "0" ]; then
-  echo "ERROR: failed to connect to $TARGET2_NAME:$TARGET2_PORT"
-  exit 1
+  echo "ERROR: failed to connect to $LAST_TARGET_NAME:$LAST_TARGET_PORT"
+  stop 1
 fi
-echo "Successful connection to $TARGET2_NAME:$TARGET2_PORT"
+echo "Successful connection to $LAST_TARGET_NAME:$LAST_TARGET_PORT"
+
+# Test First Event Router port
+nc -z $MIDDLE_TARGET_NAME $MIDDLE_TARGET_PORT
+if [ "$?" -ne "0" ]; then
+  echo "ERROR: failed to connect to $MIDDLE_TARGET_NAME:$MIDDLE_TARGET_PORT"
+  stop 1
+fi
+echo "Successful connection to $MIDDLE_TARGET_NAME:$MIDDLE_TARGET_PORT"
+
+# Test Last Event Router port
+nc -z $M_BACKUP_TARGET_NAME $M_BACKUP_TARGET_PORT
+if [ "$?" -ne "0" ]; then
+  echo "ERROR: failed to connect to $M_BACKUP_TARGET_NAME:$M_BACKUP_TARGET_PORT"
+  stop 1
+fi
+echo "Successful connection to $M_BACKUP_TARGET_NAME:$M_BACKUP_TARGET_PORT"
+
+echo " --- The 4 ERs are started"
 
 echo "TRKPRODUCTNAME=$UA_NAME" > /opt/axway/ua/conf.conf
 echo "TRKIDENT=TRKIDENT" >> /opt/axway/ua/conf.conf
 echo "TRKTNAME=/opt/axway/ua/TAMPON.dat" >> /opt/axway/ua/conf.conf
 echo "TRKTMODE=R" >> /opt/axway/ua/conf.conf
-echo "TRKIPADDR=$TARGET_NAME" >> /opt/axway/ua/conf.conf
-echo "TRKIPPORT=$TARGET_PORT" >> /opt/axway/ua/conf.conf
-echo "TRKTRACE=1" >> /opt/axway/ua/conf.conf
+echo "TRKIPADDR=$FIRST_TARGET_NAME" >> /opt/axway/ua/conf.conf
+echo "TRKIPPORT=$FIRST_TARGET_PORT" >> /opt/axway/ua/conf.conf
+echo "TRKTRACE=0" >> /opt/axway/ua/conf.conf
 echo "TRKSENTCODE=2" >> /opt/axway/ua/conf.conf
 echo "TRKMSGENCODING=UTF-8" >> /opt/axway/ua/conf.conf
 
@@ -69,23 +95,195 @@ EVT="$EVT,FILENAME=ABCDEF"
 EVT="$EVT,COMPRESSION=2"
 EVT="$EVT,config=/opt/axway/ua/conf.conf"
 
-TRKUTIL SendEvent OBJNAME=XFBTransfer,STATE=BEGIN,$EVT
+# Wait for message to be sent to 1st ER
+timeout=120
+i=0
+echo "Waiting for 1st ER to be ready $i/$timeout..."
+while [ $i -lt $timeout ]; do
+  if test -f /opt/axway/data_first/SENTINEL; then
+    i=$timeout
+  else
+    i=$(($i+1))
+    sleep 1
+    echo "Waiting for 1st ER to be ready $i/$timeout..."
+  fi
+done
 
-sleep 30
+# Sending 1st message
+TRKUTIL SendEvent OBJNAME=XFBTransfer,STATE=BEGIN,$EVT
+echo "-- 1st message sent"
+
+
+# Wait for message to be sent to backup
+timeout=180
+i=0
+echo "Waiting for 1st message to be sent to backup $i/$timeout..."
+while [ $i -lt $timeout ]; do
+  if test "$(wc -c < /opt/axway/data_first/SENTINEL)" -ne "51"; then
+    i=$(($i+1))
+    sleep 1
+    echo "Waiting for 1st message to be sent to backup $i/$timeout..."
+  else
+    i=$timeout
+  fi
+done
 
 ls -l /opt/axway/data*
 
-if test "$(wc -c < /opt/axway/data1/DEFAULT)" -ne "51"; then
-    echo "ERROR: Wrong number of characters in buffer file for eventrouter 1"
-    cat /opt/axway/data1/DEFAULT
-    exit 1
+if test "$(wc -c < /opt/axway/data_first/SENTINEL)" -ne "51"; then
+    echo "ERROR: Wrong number of characters in buffer file for first eventrouter"
+    cat /opt/axway/data_first/SENTINEL
+    stop 1
+fi
+
+if test "$(wc -c < /opt/axway/data_middle/SENTINEL)" -ne "51"; then
+    echo "ERROR: Wrong number of characters in buffer file for middle eventrouter"
+    cat /opt/axway/data_middle/SENTINEL
+    stop 1
+fi
+
+if test "$(wc -c < /opt/axway/data_backup/SENTINEL)" -ne "51"; then
+    echo "ERROR: Wrong number of characters in buffer file for backup eventrouter"
+    cat /opt/axway/data_backup/SENTINEL
+    stop 1
+fi
+
+if test "$(wc -c < /opt/axway/data_last/SENTINEL)" -ne "946"; then
+    echo "ERROR: Wrong number of characters in buffer file for last eventrouter"
+    cat /opt/axway/data_last/SENTINEL
+    stop 1
+fi
+
+echo "-- Stopping middle eventrouter"
+docker stop test_er_middle
+sleep 10
+
+docker ps -a | grep test_er_middle
+
+# Sending 2nd message
+TRKUTIL SendEvent OBJNAME=XFBTransfer,STATE=BEGIN,$EVT
+echo "-- 2nd message sent"
+
+# Wait for message to be sent to 1st ER
+timeout=20
+i=0
+echo "Waiting for 2nd message to be sent to 1st ER $i/$timeout..."
+while [ $i -lt $timeout ]; do
+  if test "$(wc -c < /opt/axway/data_first/SENTINEL)" -eq "51"; then
+    i=$(($i+1))
+    sleep 1
+    echo "Waiting for 2nd message to be sent to 1st ER $i/$timeout..."
+  else
+    i=$timeout
+  fi
+done
+
+# Wait for message to be sent to backup
+timeout=180
+i=0
+echo "Waiting for 2nd message to be sent to backup $i/$timeout..."
+while [ $i -lt $timeout ]; do
+  if test "$(wc -c < /opt/axway/data_first/SENTINEL)" -ne "51"; then
+    i=$(($i+1))
+    sleep 1
+    echo "Waiting for 2nd message to be sent to backup $i/$timeout..."
+  else
+    i=$timeout
+  fi
+done
+
+ls -l /opt/axway/data*
+
+if test "$(wc -c < /opt/axway/data_first/SENTINEL)" -ne "51"; then
+    echo "ERROR: Wrong number of characters in buffer file for first eventrouter"
+    cat /opt/axway/data_first/SENTINEL
+    stop 1
+fi
+
+if test "$(wc -c < /opt/axway/data_middle/SENTINEL)" -ne "51"; then
+    echo "ERROR: Wrong number of characters in buffer file for middle eventrouter"
+    cat /opt/axway/data_middle/SENTINEL
+    stop 1
+fi
+
+if test "$(wc -c < /opt/axway/data_backup/SENTINEL)" -ne "51"; then
+    echo "ERROR: Wrong number of characters in buffer file for backup eventrouter"
+    cat /opt/axway/data_backup/SENTINEL
+    stop 1
+fi
+
+if test "$(wc -c < /opt/axway/data_last/SENTINEL)" -ne "1841"; then
+    echo "ERROR: Wrong number of characters in buffer file for last eventrouter"
+    cat /opt/axway/data_last/SENTINEL
+    stop 1
 fi
 
 
-if test "$(wc -c < /opt/axway/data2/DEFAULT)" -ne "946"; then
-    echo "ERROR: Wrong number of characters in buffer file for eventrouter 2"
-    cat /opt/axway/data2/DEFAULT
-    exit 1
+echo "-- Starting middle eventrouter"
+docker start test_er_middle
+echo "-- Stopping backup eventrouter"
+docker stop test_er_middle_backup
+
+waitstart
+
+docker ps -a | grep test_er_middle
+
+# Sending 3rd message
+TRKUTIL SendEvent OBJNAME=XFBTransfer,STATE=BEGIN,$EVT
+echo "-- 3rd message sent"
+
+# Wait for message to be sent to 1st ER
+timeout=20
+i=0
+echo "Waiting for 3rd message to be sent to 1st ER $i/$timeout..."
+while [ $i -lt $timeout ]; do
+  if test "$(wc -c < /opt/axway/data_first/SENTINEL)" -eq "51"; then
+    i=$(($i+1))
+    sleep 1
+    echo "Waiting for 3rd message to be sent to 1st ER $i/$timeout..."
+  else
+    i=$timeout
+  fi
+done
+
+# Wait for message to be sent to middle ER
+timeout=180
+i=0
+echo "Waiting for 3rd message to be sent to middle ER $i/$timeout..."
+while [ $i -lt $timeout ]; do
+  if test "$(wc -c < /opt/axway/data_first/SENTINEL)" -ne "51"; then
+    i=$(($i+1))
+    sleep 1
+    echo "Waiting for 3rd message to be sent to middle ER $i/$timeout..."
+  else
+    i=$timeout
+  fi
+done
+
+ls -l /opt/axway/data*
+
+if test "$(wc -c < /opt/axway/data_first/SENTINEL)" -ne "51"; then
+    echo "ERROR: Wrong number of characters in buffer file for first eventrouter"
+    cat /opt/axway/data_first/SENTINEL
+    stop 1
 fi
 
+if test "$(wc -c < /opt/axway/data_middle/SENTINEL)" -ne "51"; then
+    echo "ERROR: Wrong number of characters in buffer file for middle eventrouter"
+    cat /opt/axway/data_middle/SENTINEL
+    stop 1
+fi
 
+if test "$(wc -c < /opt/axway/data_backup/SENTINEL)" -ne "51"; then
+    echo "ERROR: Wrong number of characters in buffer file for backup eventrouter"
+    cat /opt/axway/data_backup/SENTINEL
+    stop 1
+fi
+
+if test "$(wc -c < /opt/axway/data_last/SENTINEL)" -ne "2736"; then
+    echo "ERROR: Wrong number of characters in buffer file for last eventrouter"
+    cat /opt/axway/data_last/SENTINEL
+    stop 1
+fi
+
+stop 0

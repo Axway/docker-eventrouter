@@ -17,11 +17,15 @@ RUN apt-get update && apt-get install -y \
         curl \
         sed \
         netcat \
-        vim && \
+        vim \
+        apt-utils && \
+        # docker add
+        curl -sSL https://get.docker.com/ | sh && \
         rm -rf /var/lib/apt/lists && \
         mkdir -p /opt/axway && \
         addgroup axway && \
         adduser --disabled-password --gecos '' --home /opt/axway --no-create-home --ingroup axway axway && \
+        usermod -aG docker axway && \
         chown -R axway:axway /opt/axway
 
 USER axway
