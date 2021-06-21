@@ -6,6 +6,8 @@
 #
 trap 'finish' SIGTERM SIGHUP SIGINT EXIT
 
+compat=1
+
 # Check if server is up
 healthz()
 {
@@ -24,11 +26,13 @@ healthz()
 # $2 -> end of env var name
 # $3 -> key to be used in file
 # $4 -> filename to write on
+# $5 -> option pour la commande echo
+# $6 -> "\"" ou ""
 write_line_in_file()
 {
     if [[ "${1}" -eq "0" ]] ; then
         declare -n env_name="DEFAULT_${2}"
-        if [[ -z "${env_name}" ]]; then
+        if [[ -z "${env_name}"  && $compat -eq 1 ]]; then
             declare -n env_name="TARGET1_${2}"
         fi
     else
@@ -36,7 +40,16 @@ write_line_in_file()
     fi
 
     if [[ -n "${env_name}" ]]; then
-        echo "$5" "$3=$6${env_name}$6" >> "$4"
+        echo $5 "$3=$6${env_name}$6" >> "$4"
+    fi
+}
+
+# Test if any of the DEFAULT_* env variables are defined
+# If at least one is defined, not in compat mode
+verify_compat()
+{
+    if [[ "$(env | grep "^DEFAULT_" | wc -l)" -ne 0 ]]; then
+        compat=0
     fi
 }
 
@@ -285,6 +298,7 @@ if [[ "$ER_RECONFIG" = "YES" ]]; then
 fi
 
 if [ -f conf/trkagent.ini.template ]; then
+    verify_compat
     customize_runtime
     if [ $? -ne 0 ]; then
         echo "ERR: Failed to customize the runtime"
