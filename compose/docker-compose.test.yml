@@ -133,6 +133,8 @@ services:
       ER_PORT:                  1325
       ER_LOG_LEVEL:             0
       ER_USE_SSL:               "NO"
+
+      DEFAULT_LOG_LEVEL:        0
       
       TARGET1_NAME:             SENTINEL
       TARGET1_LOG_LEVEL:        1

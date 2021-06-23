@@ -28,7 +28,7 @@ ENV LANG=C.UTF-8
 
 # Download and install Sentinel Event Router package
 
-ARG PACKAGE="SentinelEventRouter_2.4.0_SP4_linux-x86-64_BN13484000.jar"
+ARG PACKAGE="SentinelEventRouter_2.4.0_SP4_linux-x86-64_BN13496000.jar"
 ARG URL_BASE="https://delivery.server.com/"
 ARG INSTALL_KIT="${URL_BASE}${PACKAGE}"
 
@@ -70,7 +70,7 @@ ENV LANG=C.UTF-8
 
 ARG BUILD_DATE
 ARG BUILD_VERSION="2.4.0_SP4"
-ARG BUILD_REVISION="13484000"
+ARG BUILD_REVISION="13496000"
 
 LABEL created="${BUILD_DATE}"
 LABEL url="https://www.axway.com"
