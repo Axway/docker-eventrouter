@@ -183,13 +183,13 @@ spec:
           - name: "TARGET{{ $c }}_ADDRESS"
             value: {{ $target.address | quote }}
           {{- end }}
-          {{- if .$target.backupPort }}
+          {{- if $target.backupPort }}
           - name: "TARGET{{ $c }}_BACKUP_PORT"
-            value: {{ .$target.backupPort | quote }}
+            value: {{ $target.backupPort | quote }}
           {{- end }}
-          {{- if .$target.backupAddress }}
+          {{- if $target.backupAddress }}
           - name: "TARGET{{ $c }}_BACKUP_ADDRESS"
-            value: {{ .$target.backupAddress | quote }}
+            value: {{ $target.backupAddress | quote }}
           {{- end }}
           {{- if $target.timetout }}
           - name: "TARGET{{ $c }}_TIMEOUT"

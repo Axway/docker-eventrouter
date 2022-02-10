@@ -139,6 +139,21 @@ $ helm install --name event-router ./event-router -f my-values.yaml
 
 > **Tip**: You can modify and use the default [values.yaml](values.yaml)
 
+## Support arbitrary user ids
+Sentinel Event Router is OpenShift compatible, which means that you can start it with a random user ID and the group id 0 (root). If you want to run the image with a user different than the default one, axway (UID=1000), you MUST set the GID of the user to 0. If you try to use a different group, the container exits with errors.
+
+OpenShift randomly assigns a UID when it starts the container, but you can use this flexible UID also when running the image manually. This might be useful, for example, in case you want to mount folders from the host system on Linux, in which case the UID should be set the same ID as your host user.
+
+You can dynamically set the user in the docker run command, by adding --user flag in one of the following formats (See Docker Run reference for details):
+
+[ user | user:group | uid | uid:gid | user:gid | uid:group ]
+
+In a Docker Compose environment, it can be changed via user: entry in the docker-compose.yaml. See Docker compose reference for details.
+
+In a Kubernetes or an OpenShift environment, it can be changed via runAsUser and runAsGroup entries in values.yml.
+
+If the GID is set to 0, the user can be any UID. If the UID is not 1000 (axway), the user will be automatically created when entering the container.
+
 ## Resources
 The resources needed for Sentinel Event Router to run correctly depends on how Sentinel Event Router is used.
 
