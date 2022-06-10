@@ -3,5 +3,3 @@ appVersion: 2.4.0.3
 name: event-router
 description: Helm chart for running Sentinel Event Router in Kubernetes
 version: "1.0"
-
-

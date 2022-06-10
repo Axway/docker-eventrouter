@@ -10,7 +10,7 @@ This chart bootstraps a Sentinel Event Router deployment on a [Kubernetes](http:
   - Helm 2.16+
   - Helm 3+
 
-## Installing the Chart
+## Installing the chart
 
 To install the chart with the release name `event-router`:
 
@@ -22,7 +22,7 @@ The command deploys Sentinel Event Router on the Kubernetes cluster in the defau
 
 > **Tip**: List all releases using `helm list`
 
-## Uninstalling the Chart
+## Uninstalling the chart
 
 To uninstall/delete the `event-router` deployment:
 
@@ -68,7 +68,6 @@ Parameter | Description | Default
 `affinity` | Affinity rules between each pods | `{}`
 `eventrouter.maxIncomingConenctions` | The maximum number of source applications that can simultaneously connect to the Event Router. | `1000`
 `eventrouter.messageSize` | The maximum length of a message. | `10000`
-`eventrouter.maxNumberMessages` | The maximum number of messages that the overflow and batch files can store. | `10000`
 `eventrouter.relay` | Whether or not the Sentinel Event Router is a relay between another Sentinel Event Router and the final destination. | `false`
 `eventrouter.logLevel` | The Logging Level of the DISP entity. From 0 to 4. | `0`
 `eventrouter.ssl.enabled` | Enables TCP/IP port with security profile. | `false`
@@ -131,13 +130,13 @@ $ helm install --name event-router ./event-router \
   --set resources={ "limits":{"cpu":"1000m","memory":"600Mi"},"requests":{"cpu":"200m","memory":"300Mi"}}
 ```
 
-Alternatively, a YAML file that specifies the values for the parameters can be provided while installing the chart. For example,
+Alternatively, you can provide a YAML file that specifies the parameter values during the chart installion. For example:
 
 ```console
 $ helm install --name event-router ./event-router -f my-values.yaml
 ```
 
-> **Tip**: You can modify and use the default [values.yaml](values.yaml)
+> **Tip**: You can modify and use the default [values.yaml](values.yaml).
 
 ## Support arbitrary user ids
 Sentinel Event Router is OpenShift compatible, which means that you can start it with a random user ID and the group id 0 (root). If you want to run the image with a user different than the default one, axway (UID=1000), you MUST set the GID of the user to 0. If you try to use a different group, the container exits with errors.
@@ -159,10 +158,18 @@ The resources needed for Sentinel Event Router to run correctly depends on how S
 
 #### Disk space (MB)
 The needed disk space is given by the followind equation:
-Disk space (MB) = eventrouter.maxNumberMessages * 0.004 * Number of targets + 0.100
+Disk space (MB) = SUM(eventrouter.targets.XX.maxMessages) * 0.004 + 0.100
 
-Number of targets | maxNumberMessages | Disk space (MB)
+Number of targets | maxMessages | Disk space (MB)
 --- | --- | ---
  1 | 1,000,000 | 4100
  2 | 100,000 | 900
  4 | 500,000 | 8100
+
+## Copyright
+
+Copyright (c) 2022 Axway Software SA and its affiliates. All rights reserved.
+
+## License
+
+All files in this repository are licensed by Axway Software SA and its affiliates under the Apache License, Version 2.0, available at http://www.apache.org/licenses/.

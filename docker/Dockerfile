@@ -1,8 +1,8 @@
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
 #
-# Copyright (c) 2021 Axway Software SA and its affiliates. All rights reserved.
+# Copyright (c) 2022 Axway Software SA and its affiliates. All rights reserved.
 #
-# AMPLIFY Sentinel Event Router 2.4.0 SP3 Docker image
+# AMPLIFY Sentinel Event Router 2.4.0 SP4 Docker image
 #
 # Building with:
 # docker build -f Dockerfile -t axway/er:2.4.0 .
@@ -11,18 +11,17 @@
 # Stage 1 : build
 #
 
-FROM ubuntu:latest AS builder
+FROM ubuntu:20.04 AS builder
 
 RUN apt-get update && apt-get install -y \
         unzip \
         vim && \
         rm -rf /var/lib/apt/lists && \
         mkdir -p /opt/axway && \
-        addgroup axway && \
-        adduser --disabled-password --gecos '' --home /opt/axway --no-create-home --ingroup axway axway && \
-        chown -R axway:axway /opt/axway
+        adduser --uid 1000 --disabled-password --gecos '' --home /opt/axway --no-create-home --gid 0 axway && \
+        chown -R axway:0 /opt/axway
 
-USER axway
+USER 1000
 WORKDIR /opt/axway
 ENV LANG=C.UTF-8
 
@@ -32,24 +31,26 @@ ARG PACKAGE="SentinelEventRouter_2.4.0_SP4_linux-x86-64_BN13496000.jar"
 ARG URL_BASE="https://delivery.server.com/"
 ARG INSTALL_KIT="${URL_BASE}${PACKAGE}"
 
-ADD --chown=axway:axway $INSTALL_KIT installkit.jar
+ADD --chown=axway:0 $INSTALL_KIT installkit.jar
 
 RUN unzip installkit.jar  -d er && \
     mv er/component/* er && \
     rm -rf setup installkit.jar er/component && \
     chmod -R 755 er/bin && \
+    chmod -R u+x /opt/axway && \
+    chmod -R g=u /opt/axway && \
     mkdir data
 
 # Copying useful scripts
 
-COPY --chown=axway:axway resources/*.sh ./
-COPY --chown=axway:axway resources/uid_entrypoint ./
+COPY --chown=axway:0 resources/*.sh ./
+COPY --chown=axway:0 resources/uid_entrypoint ./
 
 #
 # Stage 2 : create final image
 #
 
-FROM ubuntu:latest
+FROM ubuntu:20.04
 
 COPY --from=builder /opt/axway /opt/axway
 
@@ -57,13 +58,12 @@ RUN apt-get -y update && apt-get upgrade -y && apt-get install -y \
         vim \
         tzdata && \
         rm -rf /var/lib/apt/lists && \
-        addgroup axway && \
-        adduser --disabled-password --gecos '' --home /opt/axway --no-create-home --ingroup axway axway && \
+        adduser --uid 1000 --disabled-password --gecos '' --home /opt/axway --no-create-home --gid 0 axway && \
         chown -R axway:0 /opt/axway && \
         chmod -R u+x /opt/axway && \
         chmod -R g=u /opt/axway /etc/passwd
 
-USER axway
+USER 1000
 WORKDIR /opt/axway
 ENV HOME=/opt/axway
 ENV LANG=C.UTF-8
@@ -98,7 +98,6 @@ ENV ER_HEALTHCHECK_INTERVAL     10
 # Entry point
 
 ENTRYPOINT [ "/opt/axway/uid_entrypoint" ]
-
 CMD [ "./start.sh" ]
 
 HEALTHCHECK --interval=1m \

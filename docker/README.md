@@ -1,6 +1,6 @@
 # AMPLIFY Sentinel Event Router Docker
 
-AMPLIFY Sentinel Event Router 2.4.0 SP3 Docker image
+AMPLIFY Sentinel Event Router 2.4.0 SP4 Docker image
 
 ## Before you begin
 
@@ -29,34 +29,34 @@ ER_RELAY                   |  \<number>   |
 ER_INCOMING_MAX            |  \<number>   |  The maximum number of source applications that can simultaneously connect to the Event Router.
 ER_HEALTHCHECK_INTERVAL    |  \<number>   |  Time between healthchecks. In seconds.
 
-### How to build the Docker image
+## How to build the Docker image
 
-#### 1. Build the Docker image from your Dockerfile
+### 1. Build the Docker image from your Dockerfile
 
-##### 1.1. Build using a local Sentinel Event Router package
+#### 1.1. Build using a local Sentinel Event Router package
 
-1) Download the Sentinel Event Router package product package from [Axway Support](https://support.axway.com/)
+1) Download the Sentinel Event Router package product package from [Axway Support](https://support.axway.com/).
 
 The Dockerfile is compatible with Sentinel Event Router 2.4.0 SP3 version and higher.
 
 From the [Axway Support](https://support.axway.com/), download the latest package for linux-x86-64.
 
-2) Build the Docker image from your Dockerfile
+2) Build the Docker image from your Dockerfile.
 
 From the folder where the Dockerfile is located, using the downloaded package as a build argument, run the command:
 ```console
 docker build --build-arg INSTALL_KIT=SentinelEventRouter_2.4.0_SP3_linux-x86-64_BN12252000.jar -t eventrouter/eventrouter:2.4.0-SP3 .
 ```
 
-##### 1.2. Build using a Sentinel Event Router package stored on your own HTTP server
+#### 1.2. Build using a Sentinel Event Router package stored on your own HTTP server
 
-1) Download the Sentinel Event Router package product package from [Axway Support](https://support.axway.com/)
+1) Download the Sentinel Event Router package product package from [Axway Support](https://support.axway.com/).
 
 The Dockerfile is compatible with Sentinel Event Router 2.4.0 SP3 version and higher.
 
 From the [Axway Support](https://support.axway.com/), download the latest package for linux-x86-64.
 
-2) Build the Docker image from your Dockerfile
+2) Build the Docker image from your Dockerfile.
 
 From the folder where the Dockerfile is located, run the command:
 
@@ -65,7 +65,7 @@ docker build --build-arg URL_BASE=https://network.package.location/ -t eventrout
 ```
 *Note* You can customize the VERSION_BASE, RELEASE_BASE arguments from the Dockerfile to build a Docker image based on a different Sentinel Event Router version/level.
 
-#### 2. Check that the Docker image is successfully created
+### 2. Check that the Docker image is successfully created
 
 Run the command:
 
@@ -82,7 +82,7 @@ eventrouter/eventrouter     2.4.0-SP3         d9d764b02cc8        18 hours ago  
 
 ## Copyright
 
-Copyright (c) 2021 Axway Software SA and its affiliates. All rights reserved.
+Copyright (c) 2022 Axway Software SA and its affiliates. All rights reserved.
 
 ## License
 

@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "event-router.labels" . | nindent 4 }}
     {{- if .Values.podLabels }}
-    {{ toYaml .Values.podLabels }}
+    {{- toYaml .Values.podLabels | nindent 4 }}
     {{- end }}
   name: {{ template "event-router.serviceAccountName" . }}
   namespace: {{ .Release.Namespace | quote }}

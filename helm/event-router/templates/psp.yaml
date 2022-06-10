@@ -10,7 +10,7 @@ metadata:
   labels:
     {{- include "event-router.labels" . | nindent 4 }}
     {{- if .Values.podLabels }}
-    {{ toYaml .Values.podLabels }}
+    {{- toYaml .Values.podLabels | nindent 4 }}
     {{- end }}
 spec:
   privileged: false
@@ -57,7 +57,7 @@ metadata:
   labels:
     {{- include "event-router.labels" . | nindent 4 }}
     {{- if .Values.podLabels }}
-    {{ toYaml .Values.podLabels }}
+    {{- toYaml .Values.podLabels | nindent 4 }}
     {{- end }}
   name: {{ template "event-router.fullname" . }}
   namespace: {{ .Release.Namespace }}
@@ -77,7 +77,7 @@ metadata:
   labels:
     {{- include "event-router.labels" . | nindent 4 }}
     {{- if .Values.podLabels }}
-    {{ toYaml .Values.podLabels }}
+    {{- toYaml .Values.podLabels | nindent 4 }}
     {{- end }}
   name: {{ template "event-router.fullname" . }}
   namespace: {{ .Release.Namespace }}

@@ -214,6 +214,9 @@ eventrouter:
 # STORAGE
 ####################################
 
+### DEFAULT STORAGE (RUNTIME) ###
+## This is used to store the overflow file.
+
 ## Enable persistence using Persistent Volume Claims
 ## ref: http://kubernetes.io/docs/user-guide/persistent-volumes/
 ##

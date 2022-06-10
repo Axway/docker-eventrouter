@@ -8,7 +8,7 @@ metadata:
   labels:
     {{- include "event-router.labels" . | nindent 4 }}
     {{- if .Values.podLabels }}
-    {{ toYaml .Values.podLabels }}
+    {{- toYaml .Values.podLabels | nindent 4 }}
     {{- end }}
 data:
   {{ .Values.eventrouter.userTargetXML.fileName | quote }} : |-

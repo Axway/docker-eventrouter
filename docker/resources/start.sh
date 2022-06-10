@@ -2,7 +2,7 @@
 #
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
 #
-# Copyright (c) 2021 Axway Software SA and its affiliates. All rights reserved.
+# Copyright (c) 2022 Axway Software SA and its affiliates. All rights reserved.
 #
 trap 'finish' SIGTERM SIGHUP SIGINT EXIT
 
@@ -346,7 +346,7 @@ while [ $? -eq 0 ]; do
 
     # Do count every 10 interactions
     if ! (( $counter%10 )) ; then
-        agtcmd count
+        agtcmd count > /dev/null
         if [ $? -ne 0 ]; then
             echo "ERR: Failed to execute agtcmd count"
             exit 1

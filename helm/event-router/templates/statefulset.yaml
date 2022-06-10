@@ -8,7 +8,7 @@ metadata:
   labels:
     {{- include "event-router.labels" . | nindent 4 }}
     {{- if .Values.podLabels }}
-    {{ toYaml .Values.podLabels }}
+    {{- toYaml .Values.podLabels | nindent 4 }}
     {{- end }}
 spec:
   serviceName: {{ include "event-router.fullname" . }}
@@ -68,6 +68,7 @@ spec:
           - name: "ER_INCOMING_MAX"
             value: {{ .maxIncomingConenctions | quote }}
           {{- end }}
+        {{- if .ssl }}
         {{- if .ssl.enabled }}
           - name: "ER_USE_SSL"
             value: "YES"
@@ -91,11 +92,12 @@ spec:
           - name: "ER_USE_SSL"
             value: "NO"
         {{- end }}
+        {{- end }}
           {{- if and (.userTargetXML.fileName) (or .userTargetXML.createConfigMap .userTargetXML.existingConfigMap) }}
           - name: "USER_TARGET_XML"
             value: "/mnt/custom/.userTargetXML.fileName/.userTargetXML.fileName"
           {{- end }}
-
+        {{- if .defaultTarget }}
           {{- if .defaultTarget.logLevel }}
           - name: "DEFAULT_LOG_LEVEL"
             value: {{ .defaultTarget.logLevel | quote }}
@@ -145,7 +147,8 @@ spec:
             value: {{ .defaultTarget.heartbeat | quote }}
           {{- end }}
 
-        {{- if .defaultTarget.ssl.enabled }}
+         {{- if .defaultTarget.ssl }}
+         {{- if .defaultTarget.ssl.enabled }}
           - name: "DEFAULT_USE_SSL_OUT"
             value: "YES"
           {{- if .defaultTarget.ssl.cert.secretName }}
@@ -160,9 +163,11 @@ spec:
           - name: "DEFAULT_SSL_VERSION_MIN"
             value: {{ .defaultTarget.ssl.minVersion | quote }}
           {{- end }}
-        {{- else }}
+         {{- else }}
           - name: "DEFAULT_USE_SSL_OUT"
             value: "NO"
+         {{- end }}
+         {{- end }}
         {{- end }}
       {{- end }}
           - name: "ER_PORT" 
@@ -215,7 +220,8 @@ spec:
           - name: "TARGET{{ $c }}_HEARTBEAT"
             value: {{ $target.heartbeat | quote }}
           {{- end }}
-        {{- if $target.ssl.enabled  }}
+        {{- if $target.ssl }}
+        {{- if $target.ssl.enabled }}
           - name: "TARGET{{ $c }}_USE_SSL_OUT"
             value: "YES"
           {{- if $target.ssl.cipherSuite}}
@@ -233,6 +239,7 @@ spec:
         {{- else }}
           - name: "TARGET{{ $c }}_USE_SSL_OUT"
             value: "NO"
+        {{- end }}
         {{- end }}
         {{- end}}
         {{- if .Values.extraEnv }}
@@ -265,9 +272,10 @@ spec:
         {{- if .Values.readinessProbe.timeoutSeconds }}
           timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
         {{- end }}
-        
+
         resources:
           {{- toYaml .Values.resources | nindent 12 }}
+
         volumeMounts:
         - name: {{ include "event-router.fullname" . }}-volume
           mountPath: /opt/axway/data
@@ -287,19 +295,25 @@ spec:
           readOnly: true
           mountPath: /run/secrets/{{ .Values.eventrouter.ssl.certPassword.secretName }}
         {{- end }}
-        {{- if and .Values.eventrouter.defaultTarget.ssl.enabled }}
+        {{- if .Values.eventrouter.defaultTarget }}
+        {{- if .Values.eventrouter.defaultTarget.ssl }}
+        {{- if .Values.eventrouter.defaultTarget.ssl.enabled }}
         {{- if and (.Values.eventrouter.defaultTarget.ssl.cert.secretName) (or .Values.eventrouter.defaultTarget.ssl.cert.createSecretFile .Values.eventrouter.defaultTarget.ssl.cert.existingSecretFile) }}
         - name: {{ .Values.eventrouter.defaultTarget.ssl.cert.secretName }}
           readOnly: true
           mountPath: /run/secrets/{{ .Values.eventrouter.defaultTarget.ssl.cert.secretName }}
         {{- end }}
         {{- end }}
+        {{- end }}
+        {{- end }}
         {{- range .Values.eventrouter.targets }}
-        {{- if and .ssl.enabled }}
+        {{- if .ssl }}
+        {{- if .ssl.enabled }}
         {{- if and (.ssl.cert.secretName) (or .ssl.cert.createSecretFile .ssl.cert.existingSecretFile) }}
         - name: {{ .ssl.cert.secretName }}
           readOnly: true
           mountPath: /run/secrets/{{ .ssl.cert.secretName }}
+        {{- end }}
         {{- end }}
         {{- end }}
         {{- end }}
@@ -344,6 +358,7 @@ spec:
           {{- end }}
           defaultMode: 0777 
       {{- end }}
+      {{- if .Values.eventrouter.defaultTarget}}
       {{- if and (.Values.eventrouter.defaultTarget.ssl.cert.secretName) (or .Values.eventrouter.defaultTarget.ssl.cert.createSecretFile .Values.eventrouter.defaultTarget.ssl.cert.existingSecretFile) }}
       - name: {{ .Values.eventrouter.defaultTarget.ssl.cert.secretName }}
         secret:
@@ -353,6 +368,7 @@ spec:
           secretName: {{ .Values.eventrouter.defaultTarget.ssl.cert.existingSecretFile }}
           {{- end }}
           defaultMode: 0777 
+      {{- end }}
       {{- end }}
       {{- range .Values.eventrouter.targets }}
       {{- if and (.ssl.cert.secretName) (or .ssl.cert.createSecretFile .ssl.cert.existingSecretFile) }}

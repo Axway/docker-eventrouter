@@ -21,14 +21,14 @@ fi
 case "${1:-}" in
     "create")
         DEBUG kubectl get secrets
-        DEBUG helm upgrade --install "$HELM_NAME" ./event-router --set image.repository=eventrouter/eventrouter,image.tag=2.4.0-SP3
+        DEBUG helm upgrade --install "$HELM_NAME" ./event-router --set image.repository=eventrouter/eventrouter,image.tag=2.4.0-SP4
     ;;
 
     "delete")
         DEBUG helm delete $HELM_NAME
     ;;
 
-    "wait-started")
+    "wait-ready")
         DEBUG kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=event-router --timeout=10s
     ;;
 
@@ -37,26 +37,26 @@ case "${1:-}" in
     ;;
 
     "replace")
-        DEBUG helm upgrade --install "$HELM_NAME" ./event-router --set image.repository=eventrouter/eventrouter,image.tag=2.4.0-SP3
+        DEBUG helm upgrade --install "$HELM_NAME" ./event-router --set image.repository=eventrouter/eventrouter,image.tag=2.4.0-SP4
     ;;
 
     "status")
-        DEBUG kubectl get statefulset/event-router
+        DEBUG kubectl get statefulset/"$HELM_NAME"
     ;;
 
     "inspect")
-        DEBUG kubectl describe statefulset/event-router
-        DEBUG kubectl describe service/event-router
+        DEBUG kubectl describe statefulset/"$HELM_NAME"
+        DEBUG kubectl describe service/"$HELM_NAME"
     ;;
 
     "logs")
-        DEBUG kubectl logs statefulset/event-router
+        DEBUG kubectl logs statefulset/"$HELM_NAME"
     ;;
 
     *)
         if [ ! -z "${1:-}" ]; then
             echo "unsupported command $1"
         fi
-        echo "$0 create | delete | replace | status | inspect | logs | wait-ready"
+        echo "$0 create | delete | replace | status | inspect | logs | wait-ready | wait-delete"
     ;;
 esac

@@ -2,7 +2,7 @@
 #
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
 #
-# Copyright (c) 2021 Axway Software SA and its affiliates. All rights reserved.
+# Copyright (c) 2022 Axway Software SA and its affiliates. All rights reserved.
 #
 
 stop()
@@ -111,18 +111,30 @@ done
 
 # Sending 1st message
 TRKUTIL SendEvent OBJNAME=XFBTransfer,STATE=BEGIN,$EVT
-echo "-- 1st message sent"
+echo "-- 1st message sent ($?)"
+sleep 15
 
-
-# Wait for message to be sent to backup
-timeout=180
+# Wait for message to be sent
+timeout=120
 i=0
-echo "Waiting for 1st message to be sent to backup $i/$timeout..."
+echo "Waiting for 1st message to be sent to middle ER $i/$timeout..."
 while [ $i -lt $timeout ]; do
   if test "$(wc -c < /opt/axway/data_first/SENTINEL)" -ne "51"; then
     i=$(($i+1))
     sleep 1
-    echo "Waiting for 1st message to be sent to backup $i/$timeout..."
+    echo "Waiting for 1st message to be sent to middle ER $i/$timeout..."
+  else
+    i=$timeout
+  fi
+done
+timeout=180
+i=0
+echo "Waiting for 1st message to be sent to last ER $i/$timeout..."
+while [ $i -lt $timeout ]; do
+  if test "$(wc -c < /opt/axway/data_middle/SENTINEL)" -ne "51"; then
+    i=$(($i+1))
+    sleep 1
+    echo "Waiting for 1st message to be sent to last ER $i/$timeout..."
   else
     i=$timeout
   fi
@@ -162,17 +174,18 @@ docker ps -a | grep test_er_middle
 
 # Sending 2nd message
 TRKUTIL SendEvent OBJNAME=XFBTransfer,STATE=BEGIN,$EVT
-echo "-- 2nd message sent"
+echo "-- 2nd message sent ($?)"
+sleep 15
 
 # Wait for message to be sent to 1st ER
-timeout=20
+timeout=120
 i=0
-echo "Waiting for 2nd message to be sent to 1st ER $i/$timeout..."
+echo "Waiting for 2nd message to be sent to backup ER $i/$timeout..."
 while [ $i -lt $timeout ]; do
   if test "$(wc -c < /opt/axway/data_first/SENTINEL)" -eq "51"; then
     i=$(($i+1))
     sleep 1
-    echo "Waiting for 2nd message to be sent to 1st ER $i/$timeout..."
+    echo "Waiting for 2nd message to be sent to backup ER $i/$timeout..."
   else
     i=$timeout
   fi
@@ -181,12 +194,12 @@ done
 # Wait for message to be sent to backup
 timeout=180
 i=0
-echo "Waiting for 2nd message to be sent to backup $i/$timeout..."
+echo "Waiting for 2nd message to be sent to last ER $i/$timeout..."
 while [ $i -lt $timeout ]; do
-  if test "$(wc -c < /opt/axway/data_first/SENTINEL)" -ne "51"; then
+  if test "$(wc -c < /opt/axway/data_backup/SENTINEL)" -ne "51"; then
     i=$(($i+1))
     sleep 1
-    echo "Waiting for 2nd message to be sent to backup $i/$timeout..."
+    echo "Waiting for 2nd message to be sent to last ER $i/$timeout..."
   else
     i=$timeout
   fi
@@ -230,17 +243,18 @@ docker ps -a | grep test_er_middle
 
 # Sending 3rd message
 TRKUTIL SendEvent OBJNAME=XFBTransfer,STATE=BEGIN,$EVT
-echo "-- 3rd message sent"
+echo "-- 3rd message sent ($?)"
+sleep 15
 
 # Wait for message to be sent to 1st ER
-timeout=20
+timeout=120
 i=0
-echo "Waiting for 3rd message to be sent to 1st ER $i/$timeout..."
+echo "Waiting for 3rd message to be sent to middle ER $i/$timeout..."
 while [ $i -lt $timeout ]; do
   if test "$(wc -c < /opt/axway/data_first/SENTINEL)" -eq "51"; then
     i=$(($i+1))
     sleep 1
-    echo "Waiting for 3rd message to be sent to 1st ER $i/$timeout..."
+    echo "Waiting for 3rd message to be sent to middle ER $i/$timeout..."
   else
     i=$timeout
   fi
@@ -249,12 +263,12 @@ done
 # Wait for message to be sent to middle ER
 timeout=180
 i=0
-echo "Waiting for 3rd message to be sent to middle ER $i/$timeout..."
+echo "Waiting for 3rd message to be sent to last ER $i/$timeout..."
 while [ $i -lt $timeout ]; do
-  if test "$(wc -c < /opt/axway/data_first/SENTINEL)" -ne "51"; then
+  if test "$(wc -c < /opt/axway/data_middle/SENTINEL)" -ne "51"; then
     i=$(($i+1))
     sleep 1
-    echo "Waiting for 3rd message to be sent to middle ER $i/$timeout..."
+    echo "Waiting for 3rd message to be sent to last ER $i/$timeout..."
   else
     i=$timeout
   fi
