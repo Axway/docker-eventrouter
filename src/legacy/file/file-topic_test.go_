@@ -1,0 +1,50 @@
+package file
+
+import (
+	"fmt"
+	"testing"
+)
+
+func TestTopic(t *testing.T) {
+	qw := make(chan []byte, 10)
+	qwAck := make(chan int, 10)
+	doneR := make(chan interface{})
+	doneW := make(chan interface{})
+	go fileTopicWriteInit("../data", "test-topic", qw, qwAck, doneW)
+	size := 10
+	datain := []string{}
+	for i := 0; i < size; i++ {
+		datain = append(datain, fmt.Sprint("data", i))
+	}
+
+	ackCount := 0
+	go func() {
+		for range datain {
+			<-qwAck
+			ackCount++
+		}
+	}()
+
+	for _, data := range datain {
+		qw <- []byte(data)
+	}
+	doneW <- nil
+
+	qr := make(chan []byte, 10)
+	go fileTopicReadInit("../data", "test-topic", "test-client", qr, doneR)
+	count := 0
+	dataRead := []string{}
+	for data := range qr {
+		count++
+		/*if count > len(datain)*2 {
+			t.Error("too many messages")
+			break
+		}*/
+		dataRead = append(dataRead, string(data))
+		// log.Println("data", string(data))
+	}
+	doneR <- nil
+	if len(dataRead) != len(datain) {
+		t.Errorf("wrong count of messages %d %d", count, len(datain))
+	}
+}

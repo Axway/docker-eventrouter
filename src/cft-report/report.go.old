@@ -1,0 +1,121 @@
+package report
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"time"
+
+	prop ".."
+	log "github.com/sirupsen/logrus"
+)
+
+var sample = `
+{
+	"timestamp":"2021-12-06T16:46:47.491939Z",
+	"meta":{},
+	"granularity":86400000,
+	"schemaId":"https://lighthouse-staging.admin.staging.appctest.com/api/v1/report.schema.json",
+	"envId":"689e2595-0b0f-4ba2-a664-82733b2fc6b4",
+	"report":{
+		"2021-12-05T00:00:00.000Z":
+			{
+				"product":"MFT",
+				"usage":
+					{"CFT.Transfers":266},"meta":{}
+			},
+		"2021-12-06T00:00:00.000Z":
+			{
+				"product":"MFT",
+				"usage":
+					{"CFT.Transfers":4575},
+					"meta":{}
+			}
+}}`
+
+// event time vs arrival time ???
+
+var cycleids map[string]string
+var reports map[string]int
+
+func addEvent(eventdatetime string, cycleid string) {
+	if cycleids[cycleid] == "" {
+		cycleids[cycleid] = eventdatetime
+		reports[eventdatetime] = reports[eventdatetime] + 1
+	}
+}
+
+func generateReport(filename string, envId string) error {
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		log.Errorln("Cannot open "+filename, err)
+		return err
+	}
+
+	defer file.Close()
+	granularity := 86400000
+	timestamp := time.Now().Format(time.RFC3339Nano)
+
+	_, err = file.WriteString(fmt.Sprintf(
+		`{
+	"timestamp":"%s",
+	"meta":{},
+	"granularity":%d,
+	"schemaId":"https://lighthouse-staging.admin.staging.appctest.com/api/v1/report.schema.json",
+	"envId":"%s",
+	"report":{`, timestamp, granularity, envId))
+
+	if err != nil {
+		return err
+	}
+	for k, v := range reports {
+		_, err = file.WriteString(fmt.Sprintf(`"%s":{"product":"MFT","usage":{"CFT.Transfers":%d},"meta":{}}`, k, v))
+		if err != nil {
+			return err
+		}
+	}
+	_, err = file.WriteString(`}}`)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type ReportConsumer struct {
+	ctx2 string
+}
+
+type ReportConsumerConf struct {
+	Url        string
+	Initialize bool
+	Batchsize  int
+	Noact      bool
+}
+
+func reportConsumer(ctx context.Context, p *prop.Processor, inc chan prop.AckableEvent, out chan prop.AckableEvent) {
+	var q ReportConsumer
+	prop.GenProcessorStart(ctx, &q, p, inc, out)
+}
+
+func (q *ReportConsumer) close() {
+
+}
+
+func (q *ReportConsumer) ctx() string {
+	return q.ctx2
+}
+func (q *ReportConsumer) isAckAsync() bool {
+	return true
+}
+func (q *ReportConsumer) init(p *prop.Processor) error {
+
+}
+func (q *ReportConsumer) prepareEvent(event *prop.AckableEvent) (interface{}, error) {
+
+}
+func (q *ReportConsumer) flush(datas []interface{}) error {
+
+}
+func (q *ReportConsumer) processAcks(ctx context.Context, acks chan interface{}) {
+
+}

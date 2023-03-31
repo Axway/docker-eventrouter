@@ -1,0 +1,68 @@
+
+<?xml version="1.0" encoding="UTF-8"?>
+<TrkDescriptor>
+<TrkXML VERSION="1.0"/>                
+<TrkObject>                        
+<TrkIdentifier TYPE="Event" NAME="XFBTransfer" VERSION="1.0"/>
+<TrkAttr name="CYCLEID" val="XFJ2Xj+CAQEt7k//zMFafC6kV9iIgX"/>
+<TrkAttr name="EVENTDATE" val="2020.01.09"/>
+<TrkAttr name="EVENTTIME" val="00:51:11"/>
+<TrkAttr name="GMTDIFF" val="60"/>
+<TrkAttr name="ISALERT" val="0"/>
+<TrkAttr name="ISEND" val="0"/>
+<TrkAttr name="ISEXCEPTION" val="0"/>
+<TrkAttr name="PRODUCTIPADDR" val="PARVA9215272"/>
+<TrkAttr name="PRODUCTNAME" val="BNPGTW01"/>
+<TrkAttr name="PRODUCTOS" val="SYST_UNIX"/>
+<TrkAttr name="RETURNCODE" val="0"/>
+<TrkAttr name="STATE" val="SENDING"/>
+<TrkAttr name="APPLICATION" val="UBICCG04"/>
+<TrkAttr name="COMMANDTYPE" val="F"/>
+<TrkAttr name="COMPRESSION" val="3"/>
+<TrkAttr name="CREATIONDATE" val="2020.01.09"/>
+<TrkAttr name="CREATIONTIME" val="00:51:11"/>
+<TrkAttr name="DIRECTION" val="E"/>
+<TrkAttr name="FILENAME" val="/apps/gtw4/Gateway/commuta/20200108-D15A-03479-21296.xml.6444373"/>
+<TrkAttr name="FILESIZE" val="12835"/>
+<TrkAttr name="FILETYPE" val="0"/>
+<TrkAttr name="FINALRECEIVERID" val="M086204B"/>
+<TrkAttr name="INTERNALCYCLEID" val="SUIVG086241F                M086204B                0    UBICCG04                                                                    06444414200109      E"/>
+<TrkAttr name="ISPERMANENT" val="0"/>
+<TrkAttr name="ISSERVER" val="R"/>
+<TrkAttr name="ISSSL" val="0"/>
+<TrkAttr name="LOCALID" val="   6444414"/>
+<TrkAttr name="LOCATION" val="BNPGTW01"/>
+<TrkAttr name="MONITORVERSION" val="6.16.1_SP5"/>
+<TrkAttr name="ORIGINALSENDERID" val="S049162Z"/>
+<TrkAttr name="POSITIONNUMBER" val="934"/>
+<TrkAttr name="PRIORITY" val="1"/>
+<TrkAttr name="PROTOCOL" val="PSIT_HS_E"/>
+<TrkAttr name="PROTOCOLFILENAME" val="UBICCG04"/>
+<TrkAttr name="PROTOCOLID" val="6444414"/>
+<TrkAttr name="PROTOCOLPARAMETER" val="CFT A=20200108-D15A-03479-21296.xml"/>
+<TrkAttr name="RAPPL" val="3CA9CE7C"/>
+<TrkAttr name="RECEIVERID" val="M086204B"/>
+<TrkAttr name="RECORDFORMAT" val="3"/>
+<TrkAttr name="RECORDNUMBER" val="4"/>
+<TrkAttr name="RECORDSIZE" val="4096"/>
+<TrkAttr name="REQUESTCREATIONDATE" val="2020.01.09"/>
+<TrkAttr name="REQUESTCREATIONTIME" val="00:51:11"/>
+<TrkAttr name="REQUESTTYPE" val="S"/>
+<TrkAttr name="REQUESTUSERID" val="admin"/>
+<TrkAttr name="RETRYMAXNUMBER" val="10"/>
+<TrkAttr name="RETRYNUMBER" val="0"/>
+<TrkAttr name="SENDERID" val="G086241F"/>
+<TrkAttr name="SITE" val="M086204B"/>
+<TrkAttr name="SSLAUTH" val="N"/>
+<TrkAttr name="SSLCYPHER" val="0"/>
+<TrkAttr name="STARTDATE" val="2020.01.09"/>
+<TrkAttr name="STARTTIME" val="00:51:11"/>
+<TrkAttr name="TRANSCODING" val="B"/>
+<TrkAttr name="TRANSFERTYPE" val="T"/>
+<TrkAttr name="TRANSMITTEDBYTES" val="0"/>
+<TrkAttr name="GROUPNAME" val="GDEFAULT"/>
+<TrkAttr name="SESSIONTAG" val="h9WAuoRXWwOX7RqWA1o7"/>
+<TrkAttr name="TRANSFERTAG" val="l9lVuViXiAOAARAfAflf"/>
+<TrkAttr name="SWPOSSIBLEDUPLICATEIND" val="N"/>
+</TrkObject>
+</TrkDescriptor>

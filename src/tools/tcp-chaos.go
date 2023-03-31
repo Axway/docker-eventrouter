@@ -1,0 +1,85 @@
+package tools
+
+import (
+	"fmt"
+	"net"
+
+	log "github.com/sirupsen/logrus"
+)
+
+type TCPChaosConf struct {
+	name       string
+	sourceAddr string
+	targetAddr string
+}
+
+type TCPChaos struct {
+	conf *TCPChaosConf
+	ctx  string
+}
+
+func TcpChaosInit(conf *TCPChaosConf) {
+	var q TCPChaos
+	q.conf = conf
+	prefix := "[CHAOS-" + conf.name + "]"
+	ctxInit := "[" + prefix + "]"
+	addr := conf.sourceAddr
+
+	// Listen for incoming connections.
+	l, err := net.Listen("tcp", addr)
+	if err != nil {
+		log.Fatal(ctxInit+" Error listening:", err.Error())
+	}
+	// Close the listener when the application closes.
+
+	log.Println(ctxInit + " Listening on " + addr)
+	// Detach the main accept loop
+	go func() {
+		defer l.Close()
+		for {
+			// Listen for an incoming connection.
+			conn, err := l.Accept()
+			if err != nil {
+				log.Fatal(ctxInit+" Error accepting: ", err.Error())
+			}
+			ctx := fmt.Sprint("["+prefix+"-", getSessionId(), "]")
+			// Handle connections in a new goroutine
+			go tcpChaosHandle(conf, conn, ctx)
+		}
+	}()
+}
+
+func tcpChaosStream(conf *TCPChaosConf, connIn net.Conn, connOut net.Conn, ctx string) {
+	b := make([]byte, 1024)
+loop:
+	for {
+		n1, err := connIn.Read(b)
+		if err != nil {
+			log.Errorln(ctx, "error reading", err)
+			break loop
+		}
+		n2, err := connOut.Write(b[0:n1])
+		if err != nil {
+			log.Errorln(ctx, "error writing", err)
+			break loop
+		}
+
+		if n1 != n2 {
+			log.Errorln(ctx, "wrong write size", n1, n2)
+			break loop
+		}
+	}
+	connIn.Close()
+	connOut.Close()
+}
+
+func tcpChaosHandle(conf *TCPChaosConf, cin net.Conn, ctx string) {
+	cout, ctx, err := TcpConnect(conf.targetAddr, ctx)
+	if err != nil {
+		log.Errorln(ctx, "Error Connecting target Addr", err)
+		cin.Close()
+		return
+	}
+	go tcpChaosStream(conf, cin, cout, ctx)
+	go tcpChaosStream(conf, cin, cout, ctx)
+}

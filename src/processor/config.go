@@ -1,0 +1,36 @@
+package processor
+
+import (
+	"bytes"
+	"io/ioutil"
+
+	log "github.com/sirupsen/logrus"
+
+	"gopkg.in/yaml.v3"
+)
+
+type Config struct {
+	// processors map[string]ProcessorConf
+	Streams []*Flow `yaml:""`
+}
+
+func ParseConfigFile(filename string) (*Config, error) {
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		log.Error("Failed to open ", "filename", filename, "err", err)
+		return nil, err
+	}
+	return ParseConfigRawData(data)
+}
+
+func ParseConfigRawData(data []byte) (*Config, error) {
+	var config Config
+
+	r := yaml.NewDecoder(bytes.NewReader(data))
+	r.KnownFields(true)
+	err := r.Decode(&config)
+	if err != nil {
+		return nil, err
+	}
+	return &config, nil
+}

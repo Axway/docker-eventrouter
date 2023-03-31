@@ -1,0 +1,88 @@
+streams:
+  - name: "flow-qlt-server-2-file-raw-writer"
+    upstream: "generator"
+    disable: false
+    description: ""
+    flow:
+      - name: "qlt-server-reader"
+        conf:
+          port: 4024
+      #- name: "convert" #/*,scaleOrdered: 4*/
+      #- name: "control"
+      - name: "file-raw-writer"
+        conf:
+          filename: "./data/out/generator-raw.xml"
+  - name: "generator"
+    disable: false
+    description: ""
+    flow:
+      - name: "event-generator"
+        conf:
+          minDelay: 5
+          avgDelay: 100
+          maxDelay: 500
+      #- name: "convert" #/*,scaleOrdered: 4*/
+      #- name: "control"
+      - name: "qlt-client-writer"
+        conf:
+          addresses: "localhost:4024"
+          cnx: 1
+  - name: "flow-file-to-file"
+    upstream: "flow-qlt-server-2-file-raw-writer"
+    disable: false
+    description: ""
+    flow:
+      - name: "file-raw-reader"
+        conf:
+          filename: "./data/out/generator-raw.xml"
+          zou: ""
+      - name: "control"
+      - name: "file-raw-writer"
+        conf:
+          filename: "./data/out/filename-file"
+  - name: "flow-file-rawssss-reader-2-qlt-client-writer"
+    disable: true
+    description: ""
+    flow:
+      - name: "file-raw-reader"
+        conf:
+          filename: "./data/in/sample1.xml"
+          zou: ""
+      #- name: "convert" #/*,scaleOrdered: 4*/
+      #- name: "control"
+      - name: "qlt2json"
+      - name: "qlt-client-writer"
+        conf:
+          addresses: "localhost:4024"
+          cnx: 1
+  - name: "flow-kafka-write"
+    upstream: "flow-qlt-server-2-file-raw-writer"
+    disable: false
+    description: ""
+    flow:
+      - name: "file-raw-reader"
+        conf:
+          filename: "./data/out/generator-raw.xml"
+          zou: ""
+      - name: "control"
+      - name: "kafka-writer"
+        conf:
+          servers: "localhost:9093"
+          topic: "zouzou"
+          group: "g1"
+  - name: "flow-kafka-read"
+    upstream: "flow-kafka-write"
+    disable: false
+    description: ""
+    flow:
+      - name: "kafka-reader"
+        conf:
+          servers: "localhost:9093"
+          topic: "zouzou"
+          group: "g1"
+      - name: "file-raw-writer"
+        conf:
+          filename: "./data/out/filename-kafka"
+#processors:
+#  file_csv_producer:
+#    filename: "./data/csvprodductcer"
