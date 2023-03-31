@@ -35,8 +35,6 @@ rpm:
   needs:
     - build
   stage: pack
-  tags:
-    - docker-ex
   script:
     - ./rpm/build-rpm.sh
   artifacts:
@@ -52,7 +50,7 @@ test-rpm-pack:
     - rpm
   stage: test
   script:
-    - ./agent-rpm/test-rpm.sh
+    - ./rpm/test-rpm.sh
 
 build-docker:
   stage: build

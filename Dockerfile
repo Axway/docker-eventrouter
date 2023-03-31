@@ -6,11 +6,11 @@ WORKDIR /app/src
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY .git Makefile ./
+COPY .git .env Makefile ./
 COPY ./src/ ./src/
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-     make
+    make
 
 FROM alpine
 RUN apk add --no-cache ca-certificates
