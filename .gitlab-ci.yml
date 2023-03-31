@@ -1,3 +1,6 @@
+variables:
+  NAME: qlt-router
+
 stages:
   - build
   - pack
@@ -16,8 +19,9 @@ build:
   script:
     - mkdir -p .cache
     - export GOPATH="$CI_PROJECT_DIR/.cache"
-    #- ./scripts/setVersion.sh
+    - ./scripts/setVersion.sh
     - make
+    - $NAME
   artifacts:
     paths:
       - qlt-router
