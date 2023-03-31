@@ -25,7 +25,7 @@ sed -i 's/Version:       .*/'"Version:       $VERSION"'/g' "$H/rpmbuild/SPECS/rp
 cat "$H/rpmbuild/SPECS/agent.spec"
 
 cp $NAME "$H/rpmbuild/SOURCES/$NAME-$VERSION/${NAME}d"
-cp "$I/agent-rpm/$NAME" "$H/rpmbuild/SOURCES/$NAME-$VERSION/$NAME"
+cp "$I/rpm/$NAME" "$H/rpmbuild/SOURCES/$NAME-$VERSION/$NAME"
 (
     cd "$H/rpmbuild/SOURCES/"
     tar cvfz "$NAME-$VERSION.tar.gz" "$NAME-$VERSION"
