@@ -15,6 +15,6 @@ RUN /app/src/qlt-router version
 FROM alpine
 RUN apk add --no-cache ca-certificates
 
-COPY --from=build /app/src/qlt-router /qlt-router
+COPY --from=build /app/src/qlt-router /usr/bin/qlt-router
 
 CMD [ "qlt-router" ]
