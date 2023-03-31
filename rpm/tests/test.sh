@@ -91,7 +91,7 @@ errormsg() {
 check_ko() {
     echo_test KO "$@"
     if "$@"; then
-        error "$@ should fail"
+        error "$* should fail"
         exit 1
     fi
 }
@@ -99,7 +99,7 @@ check_ko() {
 check_ok() {
     echo_test OK "$@"
     if ! "$@"; then
-        error "$@ should not fail"
+        error "$* should not fail"
         exit 1
     fi
 }

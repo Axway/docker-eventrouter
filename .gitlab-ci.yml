@@ -5,7 +5,7 @@ stages:
   - deploy
   - security
 
-build-bin:
+build:
   image: golang:1.20.2
   stage: build
   cache:
@@ -24,7 +24,7 @@ build-bin:
       - ./.env
     expire_in: 2 day
 
-pack-rpm:
+rpm:
   image: rpmbuild/centos7
   dependencies:
     - build-bin

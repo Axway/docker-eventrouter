@@ -19,7 +19,7 @@ mkdir -p "$H/rpmbuild/SOURCES/$NAME-$VERSION"
 mkdir -p "$H/rpmbuild/SOURCES/$NAME-1.0.0"
 mkdir -p "$H/rpm"
 
-cp -f $I/agent-rpm/agent.spec "$H/rpmbuild/SPECS/"
+cp -f $I/rpm/rpm.spec "$H/rpmbuild/SPECS/"
 echo "$VERSION"
 sed -i 's/Version:       .*/'"Version:       $VERSION"'/g' "$H/rpmbuild/SPECS/rpm.spec"
 cat "$H/rpmbuild/SPECS/agent.spec"
