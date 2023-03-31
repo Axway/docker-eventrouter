@@ -21,7 +21,7 @@ mkdir -p "$H/rpm"
 
 cp -f $I/agent-rpm/agent.spec "$H/rpmbuild/SPECS/"
 echo "$VERSION"
-sed -i 's/Version:       .*/'"Version:       $VERSION"'/g' "$H/rpmbuild/SPECS/agent.spec"
+sed -i 's/Version:       .*/'"Version:       $VERSION"'/g' "$H/rpmbuild/SPECS/rpm.spec"
 cat "$H/rpmbuild/SPECS/agent.spec"
 
 cp $NAME "$H/rpmbuild/SOURCES/$NAME-$VERSION/${NAME}d"
@@ -33,7 +33,7 @@ cp "$I/agent-rpm/$NAME" "$H/rpmbuild/SOURCES/$NAME-$VERSION/$NAME"
     rm -rf "$NAME-$VERSION"
     find .
     find "$H/rpmbuild"
-    rpmbuild -bb "$H/rpmbuild/SPECS/agent.spec"
+    rpmbuild -bb "$H/rpmbuild/SPECS/rpm.spec"
 )
 
 PKGROOT=$H/rpm/x86_64
