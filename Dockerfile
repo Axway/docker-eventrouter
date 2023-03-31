@@ -1,7 +1,4 @@
-FROM golang:alpine AS build
-RUN apk add --no-cache ca-certificates
-
-RUN apk add --no-cache make git gcc musl-dev
+FROM golang:latest AS build
 WORKDIR /app/src
 COPY go.mod go.sum ./
 RUN go mod download
