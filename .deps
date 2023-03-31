@@ -1,9 +1,0 @@
-github.com/elastic/go-lumber/client/v2
-github.com/namsral/flag
-github.com/olivere/elastic
-github.com/prometheus/client_golang/prometheus
-github.com/prometheus/client_golang/prometheus/promauto
-github.com/prometheus/client_golang/prometheus/promhttp
-github.com/sirupsen/logrus
-github.com/x-cray/logrus-prefixed-formatter
-golang.org/x/net/html/charset

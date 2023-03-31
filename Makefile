@@ -1,4 +1,4 @@
-VERSION := 0.0.4-dev
+VERSION := 0.0.5-dev
 NAME := qlt-router
 DATE := $(shell date +'%Y-%M-%d_%H:%M:%S')
 BUILD := $(shell git rev-parse HEAD | cut -c1-8)
@@ -16,13 +16,16 @@ pack:
 	tar cvfJ $(NAME)-$(VERSION).tar.xz ./qlt-router ./README.*.md
 
 build:
-	(cd src ; go build -o ../$(NAME) $(LDFLAGS))
+	(cd src/main ; CGO_ENABLED=1 go build -o ../../$(NAME) -tags musl $(LDFLAGS))
 
 build-x86:
 	(cd src ; CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ../$(NAME) $(LDFLAGS))
 
+#dev: build
+#	find ./src -name "*.go" | entr ./qlt-router --config ./qlt-router.conf
+
 dev:
-	ls -d src/* | entr -r sh -c "make && ./$(NAME)"
+	ls -d ./qlt-router.conf src/* | entr -r sh -c "make && ./$(NAME) --config ./$(NAME).conf "
 
 docker-test:
 	docker-compose -f docker-compose.test.yml down
@@ -37,22 +40,16 @@ clean:
 	rm -f $(NAME) $(NAME).tar.gz
 
 test:
-	for dir in $$(find . -name "*_test.go" | grep -v ./vendor | xargs -n 1 dirname | sort -u -r); do echo "$$dir..."; go test -v $$dir || exit 1 ; done | tee output.txt
-	cat output.txt | egrep -- "--- FAIL:|--- SKIP:" || true
+	# for dir in $$(find . -name "*_test.go" | grep -v ./vendor | xargs -n 1 dirname | sort -u -r); do echo "$$dir..."; go test -v $$dir || exit 1 ; done | tee output.txt
+	# cat output.txt | egrep -- "--- FAIL:|--- SKIP:" || true
+
+	go test -v -timeout=5s ./src/...
 
 test-specific:
 	go test -v $$(ls *.go | grep -v "_test.go") $(ARGS)
 
-deps:
-	go list -f '{{range .TestImports}}{{.}} {{end}} {{range .Imports}}{{.}} {{end}}' ./... | tr ' ' '\n' | grep -e "^[^/_\.][^/]*\.[^/]*/" |sort -u >.deps
-
 deps-install:
-	go get -v $$(cat .deps)
-	#for dep in $$(cat .deps); do echo "installing '$$dep'... "; go get -v $$dep; done
-
-deps-install-force: deps
-	go get -u -v $$(cat .deps)
-	#for dep in $$(cat .deps); do echo "installing '$$dep'... "; go get -u -v $$dep; done
+	go mod download
 
 docker-run:
 	docker-compose up

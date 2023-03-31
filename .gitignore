@@ -5,3 +5,4 @@ licenses
 .vscode
 data
 .DS_Store
+/customer

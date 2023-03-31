@@ -1,49 +1,41 @@
 # qlt-router
 
-## Features
-- listen to qlt protocol QLT_PORT / QLT_HOST
-- filter QLT empty fields : "" 0 
-- route QLT messages to
-    - Elasticsearch 7 (API) : ELASTISEARCH_URL
-    - Logstash (Lumberjack): LUMBERJACK_ADDR
-    - Sentinel (QLT) : SENTINEL_ADDR untransformed
-    - Localfile : FILENAME
-- observability through prometheus
+## Contribute
 
-# Changelog
-- 0.0.4
-    - fix attribute name case for TrkIdentifier
-    - add version,build information when starting
-    - do not start all services (qlt, qlts) by default
-- 0.0.3
-    - support XML encoding (8859-1 for example)
-    - fix "<" in XML attributes instead of &lt;
-    - support multiple targets for sentinel_addrs and count
-- 0.0.2
-    - add TLS support for QLT server
-    - add TLS support for lumberjack
-    - add initial k8s/helm support
+### Development Prerequisites
 
-# Limitations
-- Unreliable message routing (message can be lost...)
-- No support for external QLT port in helm
+- go
+- make
+- docker / docker-compose
 
-# Todo
-- Refactor TLS
-- Add Non transforming QLT relay
-- Add cusotmization for tenant (QLT/LumberJack)
-- Message transformation : Configurable QLT message transformation
-    (numeric, date, uppercase)
-- Message Filtering
-- Reliability
-    - End-to-End Ack support
-    - Intermediate Buffer
-- Ingest pipelining ?
+### build
 
-## Cloud environment (helm)
-- curl http://qlt-router.eks.mft.apirs.net
-- helm list
-- helm install ./helm/qlt-router --name qlt-router --namespace jda
-- helm del --purge qlt-router
-- kubectl get svc,pods
-- kubectl logs -lapp.kubernetes.io/name=qlt-router
+```sh
+make 
+```
+
+### test
+
+```sh
+docker-compose -f docker-compose-external.yml
+make test
+# or
+go test -v -t 10 ./src/...
+```
+
+###  
+
+### Manage dependencies
+
+```sh
+go list -u -m all # view available dependency upgrades
+go get -u ./... # upgrade all dependencies at once
+go get -t -u ./... # upgrade all dependencies at once (test dependencies as well)
+go mod tidy
+```
+
+#### CHeck for vulnarimbilities
+```sh
+go install golang.org/x/vuln/cmd/govulncheck@latest
+govulncheck ./...
+```

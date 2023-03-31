@@ -7,15 +7,15 @@ services:
       #SENTINEL_ADDRS: "ingestion-lumberjack.branch2.trcblt.com:80"
       #ES_URL: "http://elasticsearch:9200"
       #FILENAME: "/data/sss.json"
-      
+
       #LUMBERJACK_ADDR: logstash:5044
-      
-      LUMBERJACK_ADDR: ingestion-lumberjack.branch2.trcblt.com:443
-      LUMBERJACK_CERT: ./config/qlt-router/lb-cert.pem
-      LUMBERJACK_KEY: ./config/qlt-router/lb-cert.key
+
+      #LUMBERJACK_ADDR: ingestion-lumberjack.branch2.trcblt.com:443
+      #LUMBERJACK_CERT: ./config/qlt-router/lb-cert.pem
+      #LUMBERJACK_KEY: ./config/qlt-router/lb-cert.key
 
       #LUMBERJACK_CA: ./config/qlt-router/lb-ca.pem
-      
+
       QLT_PORT: "3333"
       QLT_HOST: "0.0.0.0"
 
@@ -24,23 +24,35 @@ services:
       QLTS_CERT: "./certs/server.pem"
       QLTS_KEY: "./certs/server.key"
 
+      #PG_URL: postgresql://mypguser:mypgsecretpassword@postgres:5432/mypgdb
+      #PG_BATCH_SIZE: "50"
+
+      #PGCONSUMER_INITIALIZE: "true"
+      #PGCONSUMER_URL: postgresql://mypguser:mypgsecretpassword@postgres:5432/mypgdb
+
+      FILENAME: ./data/zouzou
+      CONFIG: /config/qlt-router/qlt-router.conf
 
     volumes:
-    - "./data:/data"
-    - "./config:/config"
-    - "./certs:/certs"
+      - "./data:/data"
+      - "./config:/config"
+      - "./certs:/certs"
+      - "./customer:/customer"
     ports:
-    - 8090:80
-    - 3333:3333
-    - 3334:3334
+      - 8090:80
+      - 3333:3333
+      - 3334:3334
+    networks:
+      - traefik_default
+      - default
 
   cft1:
     image: registry.dctest.docker-cluster.axwaytest.net/mft/docker-cft:3.3.2
     hostname: cft1
     environment:
-      CFT_CG_ENABLE: "No"
-      CFT_CG_HOST: fchost
-      CFT_CG_PORT: 12553
+      CFT_CG_ENABLE: "Yes"
+      CFT_CG_HOST: flowcentral.axwaytest.net
+      CFT_CG_PORT: 443
       CFT_CG_SHARED_SECRET: Secret01
       CFT_CG_PERIODICITY: "30"
       CFT_HOST: cft
@@ -50,53 +62,52 @@ services:
       CFT_POLICY: ""
       CFT_PESIT_PORT: 1761
       CFT_PESITSSL_PORT: 8092
-      CFT_FQDN:               cft
-      CFT_INSTANCE_ID:        cft_docker_01
-      CFT_INSTANCE_GROUP:     dev.docker
-      CFT_CATALOG_SIZE:       1000
-      CFT_COM_SIZE:           1000
-      CFT_COMS_PORT:          1765
-      CFT_COPILOT_PORT:       1766
-      CFT_COPILOT_CG_PORT:    1767
-      CFT_RESTAPI_PORT:       1768
-      CFT_CG_ENABLE:          "YES"
-      CFT_CG_POLICY:          ""
-      CFT_JVM:                1024
-      CFT_CFTDIRRUNTIME:      "./data/runtime"
-    #ports:
+      CFT_FQDN: zouzou
+      CFT_INSTANCE_ID: cft_docker_01
+      CFT_INSTANCE_GROUP: dev.docker
+      CFT_CATALOG_SIZE: 1000
+      CFT_COM_SIZE: 1000
+      CFT_COMS_PORT: 1765
+      CFT_COPILOT_PORT: 1766
+      CFT_COPILOT_CG_PORT: 1767
+      CFT_RESTAPI_PORT: 1768
+      CFT_CG_POLICY: ""
+      CFT_JVM: 1024
+      CFT_CFTDIRRUNTIME: "./data/runtime"
+      #ports:
       #- "1761-1762:1761-1762"
       #- "1765:1765"
       #- "1766:1766"
       #- "1767:1767"
       #- "1768:1768"
       #- "8092:8092"
-    #secrets:
-    #  - cft-license
+      #secrets:
+      #  - cft-license
     volumes:
-#      - "cft_data:/home/cft/data"
-      - ./licenses/cft-license.txt:/run/secrets/cft-license   
+      #      - "cft_data:/home/cft/data"
+      - ./licenses/cft-license.txt:/run/secrets/cft-license
 
   cft2:
     extends:
       service: cft1
     hostname: cft2
     environment:
-      CFT_INSTANCE_ID:        cft_docker_02
-  
+      CFT_INSTANCE_ID: cft_docker_02
+
   cft3:
     extends:
       service: cft1
     hostname: cft3
     environment:
-      CFT_INSTANCE_ID:        cft_docker_03
+      CFT_INSTANCE_ID: cft_docker_03
 
   kibana:
     image: docker.elastic.co/kibana/kibana:7.2.0
     volumes:
       - ./config/kibana.yml:/usr/share/kibana/config/kibana.yml
     ports:
-    - 5601:5601
-  
+      - 5601:5601
+
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.2.0 #:6.6.0
     container_name: elasticsearch
@@ -119,22 +130,121 @@ services:
   logstash:
     image: docker.elastic.co/logstash/logstash:7.2.0
     volumes:
-    - ./config/logstash-pipeline:/usr/share/logstash/pipeline
+      - ./config/logstash-pipeline:/usr/share/logstash/pipeline
 
   prometheus:
     image: prom/prometheus
     ports:
-    - 9090:9090
+      - 9090:9090
     volumes:
-    - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
-    - /prometheus-data
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - /prometheus-data
 
+  mongo:
+    image: mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: mymongosecret
+      MONGO_INITDB_DATABASE: mymongodb
+    ports:
+      - 27017:27017
+    volumes:
+      - mongo_data:/data/db
+
+  mongo-express:
+    image: mongo-express
+    restart: always
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: mymongosecret
+      ME_CONFIG_MONGODB_URL: mongodb://root:mymongosecret@mongo:27017/
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - 3000:3000
+
+  postgres:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: mypgsecretpassword
+      POSTGRES_USER: mypguser
+      POSTGRES_DB: mypgdb
+      PGDATA: /data
+    ports:
+      - 5432:5432
+    volumes:
+      - "pg_data:/data"
+
+  adminer:
+    image: adminer
+    ports:
+      - 8080:8080
+
+  zookeeper:
+    image: 'bitnami/zookeeper:latest'
+    ports:
+      - '2181:2181'
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+      #- ZOO_ENABLE_AUTH=yes
+      #- ZOO_SERVER_USERS=kafka
+      #- ZOO_SERVER_PASSWORDS=kafka_password
+
+  kafka:
+    image: 'bitnami/kafka:latest'
+    ports:
+      #- '9092:9092'
+      - '9092:9092'
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:9092
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      #- KAFKA_BROKER_ID=1
+      #- KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      #- KAFKA_ZOOKEEPER_PROTOCOL=SASL
+      #- KAFKA_ZOOKEEPER_USER=kafka
+      #- KAFKA_ZOOKEEPER_PASSWORD=kafka_password
+      #- ALLOW_PLAINTEXT_LISTENER=yes
+      #- KAFKA_CLIENT_USER=user
+      #- KAFKA_CLIENT_PASSWORD=password
+      #- KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      #- KAFKA_CFG_LISTENERS=CLIENT://:9092,EXTERNAL://:9093
+      #- KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT://kafka:9092,EXTERNAL://localhost:9093
+      #- KAFKA_CFG_INTER_BROKER_LISTENER_NAME=CLIENT
+
+    depends_on:
+      - zookeeper
+    volumes:
+      - kafka_data:/bitnami/kafka
+
+volumes:
+  pg_data:
+    driver: "local"
+
+  mongo_data:
+    driver: "local"
+
+  kafka_data:
+    driver: "local"
 #volumes:
 #  cft_data:
 #    driver: "local"
-  
-  
+
+
 #secrets:
 #  cft-license:
 #    file: ./licenses/cft-license.txt
 
+networks:
+  traefik_default:
+    external: true
+  default:
+    driver: bridge

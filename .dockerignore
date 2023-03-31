@@ -5,4 +5,5 @@ config
 data
 helm
 licenses
-scripts
+/scripts
+/customer
