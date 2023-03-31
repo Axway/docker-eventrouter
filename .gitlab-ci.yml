@@ -56,5 +56,6 @@ build-docker:
   stage: build
   script:
     - ./scripts/setVersion.sh
-    - docker build --pull -f ./Dockerfile -t qlt-router:$CI_COMMIT_SHA .
-    - docker rmi flowmanager-agent:$CI_COMMIT_SHA
+    - docker build --pull -f ./Dockerfile -t $NAME:$CI_COMMIT_SHA .
+    - docker run $NAME:$CI_COMMIT_SHA $NAME version
+    - docker rmi $NAME:$CI_COMMIT_SHA

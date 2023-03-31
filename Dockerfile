@@ -8,6 +8,7 @@ COPY ./src/ ./src/
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     make
+RUN /app/src/qlt-router version
 
 FROM alpine
 RUN apk add --no-cache ca-certificates
