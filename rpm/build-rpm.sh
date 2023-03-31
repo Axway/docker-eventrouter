@@ -24,7 +24,7 @@ echo "$VERSION"
 sed -i 's/Version:       .*/'"Version:       $VERSION"'/g' "$H/rpmbuild/SPECS/rpm.spec"
 cat "$H/rpmbuild/SPECS/rpm.spec"
 
-cp $NAME "$H/rpmbuild/SOURCES/$NAME-$VERSION/${NAME}d"
+cp "$I/$NAME" "$H/rpmbuild/SOURCES/$NAME-$VERSION/${NAME}d"
 cp "$I/rpm/$NAME" "$H/rpmbuild/SOURCES/$NAME-$VERSION/$NAME"
 (
     cd "$H/rpmbuild/SOURCES/"

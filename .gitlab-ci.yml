@@ -24,16 +24,16 @@ build:
     - ./$NAME version
   artifacts:
     paths:
-      - qlt-router
+      - $NAME
       - ./.env
     expire_in: 2 day
 
 rpm:
   image: rpmbuild/centos7
   dependencies:
-    - build-bin
+    - build
   needs:
-    - build-bin
+    - build
   stage: pack
   tags:
     - docker-ex
