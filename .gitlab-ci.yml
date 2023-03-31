@@ -15,8 +15,6 @@ build:
     paths:
       - .cache/
     key: GO
-  tags:
-    - docker-ex
   script:
     - ls -l .cache || true
     - mkdir -p .cache
