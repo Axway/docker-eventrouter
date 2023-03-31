@@ -22,7 +22,7 @@ mkdir -p "$H/rpm"
 cp -f $I/rpm/rpm.spec "$H/rpmbuild/SPECS/"
 echo "$VERSION"
 sed -i 's/Version:       .*/'"Version:       $VERSION"'/g' "$H/rpmbuild/SPECS/rpm.spec"
-cat "$H/rpmbuild/SPECS/agent.spec"
+cat "$H/rpmbuild/SPECS/rpm.spec"
 
 cp $NAME "$H/rpmbuild/SOURCES/$NAME-$VERSION/${NAME}d"
 cp "$I/rpm/$NAME" "$H/rpmbuild/SOURCES/$NAME-$VERSION/$NAME"
