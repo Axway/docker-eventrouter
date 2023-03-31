@@ -1,0 +1,58 @@
+stages:
+  - build
+  - pack
+  - test
+  - deploy
+  - security
+
+build-bin:
+  image: golang:1.20.2
+  stage: build
+  cache:
+    paths:
+      - .cache
+  tags:
+    - docker-ex
+  script:
+    - mkdir -p .cache
+    - export GOPATH="$CI_PROJECT_DIR/.cache"
+    #- ./scripts/setVersion.sh
+    - make
+  artifacts:
+    paths:
+      - qlt-router
+      - ./.env
+    expire_in: 2 day
+
+pack-rpm:
+  image: rpmbuild/centos7
+  dependencies:
+    - build-bin
+  needs:
+    - build-bin
+  stage: pack
+  tags:
+    - docker-ex
+  script:
+    - ./rpm/build-rpm.sh
+  artifacts:
+    paths:
+      - ./rpm/qlt-router*.rpm
+      - ./.env
+    expire_in: 2 day
+
+test-rpm-pack:
+  dependencies:
+    - pack-rpm
+  needs:
+    - pack-rpm
+  stage: test
+  script:
+    - ./agent-rpm/test-rpm.sh
+
+build-docker:
+  stage: build
+  script:
+    - ./scripts/setVersion.sh
+    - docker build --pull -f ./Dockerfile -t qlt-router:$CI_COMMIT_SHA .
+    - docker rmi flowmanager-agent:$CI_COMMIT_SHA

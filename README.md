@@ -7,6 +7,7 @@
 - go
 - make
 - docker / docker-compose
+- gitlab-runner - for local testing
 
 ### build
 

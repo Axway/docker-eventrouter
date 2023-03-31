@@ -6,3 +6,5 @@ licenses
 data
 .DS_Store
 /customer
+/builds
+/cache
