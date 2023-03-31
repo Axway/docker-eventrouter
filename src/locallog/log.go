@@ -1,7 +1,6 @@
 package locallog
 
 import (
-	"axway.com/qlt-router/src/config"
 	log "github.com/sirupsen/logrus"
 	prefixed "github.com/x-cray/logrus-prefixed-formatter"
 )
@@ -13,7 +12,6 @@ func InitLog() {
 	formatter.TimestampFormat = "2006-01-02 15:04:05.000000000"
 	log.SetFormatter(formatter)
 	log.SetLevel(log.DebugLevel)
-	config.Print()
 }
 
 func InitLogSetLevelWarn() {

@@ -21,7 +21,7 @@ build:
     - export GOPATH="$CI_PROJECT_DIR/.cache"
     - ./scripts/setVersion.sh
     - make
-    - $NAME
+    - ./$NAME version
   artifacts:
     paths:
       - qlt-router

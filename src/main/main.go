@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"axway.com/qlt-router/src/config"
 	"axway.com/qlt-router/src/connectors/file"
 	"axway.com/qlt-router/src/connectors/kafka"
 	"axway.com/qlt-router/src/connectors/mem"
@@ -58,8 +60,9 @@ func main() {
 		//		DisableColors: true,
 		FullTimestamp: true,
 	})*/
-
-	flag.String(flag.DefaultConfigFlagname, "", "path to config file")
+	//var configFile string
+	//flag.String(flag.DefaultConfigFlagname, "", "path to config file")
+	// flag.StringVar(&configFile, "config", "./qlt-router.yml", "path to config file")
 
 	// var confTcpChaos tools.TCPChaosConf
 	// processor.ParseConfig(&confTcpChaos, "chaos")
@@ -86,6 +89,26 @@ func main() {
 
 	flag.Parse()
 
+	args := flag.Args()
+
+	if len(args) > 0 {
+		switch args[0] {
+		case "version":
+			fmt.Println("Version:", Version, " Build:", Build, " Date:", Date)
+			os.Exit(0)
+		case "help":
+			flag.PrintDefaults()
+			os.Exit(0)
+		default:
+			flag.PrintDefaults()
+			os.Exit(1)
+		}
+	}
+
+	log.Println("[MAIN] Version:", Version, " Build:", Build, " Date:", Date)
+
+	config.Print()
+
 	conf, err := processor.ParseConfigFile("./qlt-router.yml")
 	if err != nil {
 		log.Fatalln("Cannot open config file", "err", err)
@@ -106,8 +129,6 @@ func main() {
 			log.Fatal("Internal error: Badly Implemented Clone()", p.Name)
 		}
 	}
-
-	log.Println("[MAIN] Version:", Version, " Build:", Build, " Date:", Date)
 
 	all := false
 

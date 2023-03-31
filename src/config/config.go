@@ -1,8 +1,9 @@
 package config
 
 import (
-	"fmt"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	bytesize "github.com/inhies/go-bytesize"
 )
@@ -56,6 +57,6 @@ func DeclareSize(name string, defaultValue string, description string) int64 {
 
 func Print() {
 	for k, v := range configValues {
-		fmt.Println("", k, "=", v.Value, v.Description)
+		log.Println("", k, "=", v.Value, v.Description)
 	}
 }
