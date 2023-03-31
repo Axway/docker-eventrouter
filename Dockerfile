@@ -1,10 +1,12 @@
-FROM golang:latest AS build
+FROM alpine:edge AS build
+RUN apk add --no-cache --update go gcc g++ make git
 WORKDIR /app/src
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY .git .env Makefile ./
 COPY ./src/ ./src/
+
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     make
@@ -13,10 +15,6 @@ RUN /app/src/qlt-router version
 FROM alpine
 RUN apk add --no-cache ca-certificates
 
-ENV QLT_PORT 1883
-ENV QLT_HOST 0.0.0.0
-
-COPY --from=build /app/src/qlt-router /usr/bin/qlt-router
-RUN /usr/bin/qlt-router
+COPY --from=build /app/src/qlt-router /qlt-router
 
 CMD [ "qlt-router" ]
