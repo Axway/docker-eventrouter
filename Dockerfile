@@ -17,5 +17,6 @@ ENV QLT_PORT 1883
 ENV QLT_HOST 0.0.0.0
 
 COPY --from=build /app/src/qlt-router /usr/bin/qlt-router
+RUN qlt-router
 
 CMD [ "qlt-router" ]
