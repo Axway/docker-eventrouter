@@ -1,8 +1,11 @@
-VERSION := 0.0.5-dev
+include .env
+#export $(shell sed 's/=.*//' .env)
+
+VERSION := ${VERSION}
 NAME := qlt-router
-DATE := $(shell date +'%Y-%M-%d_%H:%M:%S')
+DATE := $(shell date +'%Y-%m-%d_%H:%M:%S')
 BUILD := $(shell git rev-parse HEAD | cut -c1-8)
-LDFLAGS :=-ldflags '-s -w -X=main.Version=$(VERSION) -X=main.Build=$(BUILD) -X=main.Date=$(DATE)'
+LDFLAGS :=-ldflags '-s -w -X=main.Version=$(VERSION) -X=main.Build=$(BUILD) -X=main.Date=$(DATE) -lbsd'
 #LDFLAGS :=-ldflags '-s -w -extldflags "-static" -X=main.Version=$(VERSION) -X=main.Build=$(BUILD) -X=main.Date=$(DATE)'
 IMAGE := $(NAME)
 REGISTRY := registry.dctest.docker-cluster.axwaytest.net/internal
@@ -16,7 +19,7 @@ pack:
 	tar cvfJ $(NAME)-$(VERSION).tar.xz ./qlt-router ./README.*.md
 
 build:
-	(cd src/main ; CGO_ENABLED=1 go build -o ../../$(NAME) -tags musl $(LDFLAGS))
+	(cd src/main ; CGO_ENABLED=1 go build -o ../../$(NAME) $(LDFLAGS))
 
 build-x86:
 	(cd src ; CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ../$(NAME) $(LDFLAGS))
