@@ -3,7 +3,7 @@
 
 set -xeuo pipefail
 
-NAME=alt-router
+NAME=qlt-router
 H=$HOME
 #make linux-agent
 I=$(realpath $(dirname "$0")/..)
