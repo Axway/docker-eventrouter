@@ -21,6 +21,12 @@ pack:
 build:
 	(cd src/main ; CGO_ENABLED=1 go build -o ../../$(NAME) -tags musl $(LDFLAGS))
 
+build-docker:
+	(cd src/main ; CGO_ENABLED=1 go build -o ../../$(NAME) -tags musl $(LDFLAGS))
+
+build-rpm:
+	(cd src/main ; CGO_ENABLED=1 go build -o ../../$(NAME) $(LDFLAGS))
+
 build-x86:
 	(cd src ; CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ../$(NAME) $(LDFLAGS))
 

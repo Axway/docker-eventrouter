@@ -20,7 +20,7 @@ build:
     - mkdir -p .cache
     - export GOPATH="$CI_PROJECT_DIR/.cache"
     - ./scripts/setVersion.sh
-    - make
+    - make build-rpm
     - ./$NAME version
   artifacts:
     paths:
@@ -53,9 +53,10 @@ test-rpm-pack:
     - ./rpm/test-rpm.sh
 
 build-docker:
+  image: davinci1976/docker-ci
   stage: build
   script:
     - ./scripts/setVersion.sh
     - docker build --pull -f ./Dockerfile -t $NAME:$CI_COMMIT_SHA .
-    - docker run $NAME:$CI_COMMIT_SHA $NAME version
+    - docker run --rm $NAME:$CI_COMMIT_SHA $NAME version
     - docker rmi $NAME:$CI_COMMIT_SHA
