@@ -104,7 +104,7 @@ func (m *QLTServerReaderConnection) AckMsg(ack processor.EventAck) {
 		return
 	}
 	m.AckPos = msgid
-	log.Debugln(m.CtxS, "ack", "msgid", m.MsgId, "ackPos", m.AckPos)
+	// log.Debugln(m.CtxS, "ack", "msgid", m.MsgId, "ackPos", m.AckPos)
 }
 
 func (m *QLTServerReaderConnection) Ctx() string {

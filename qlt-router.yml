@@ -18,9 +18,9 @@ streams:
     flow:
       - name: "event-generator"
         conf:
-          minDelay: 5
-          avgDelay: 100
-          maxDelay: 500
+          mindelay: 10
+          avgdelay: 500
+          maxdelay: 2000
       #- name: "convert" #/*,scaleOrdered: 4*/
       #- name: "control"
       - name: "qlt-client-writer"
@@ -37,11 +37,12 @@ streams:
           filename: "./data/out/generator-raw.xml"
           zou: ""
       - name: "control"
+      - name: "qlt2json"
       - name: "file-raw-writer"
         conf:
           filename: "./data/out/filename-file"
   - name: "flow-file-rawssss-reader-2-qlt-client-writer"
-    disable: true
+    disable: false
     description: ""
     flow:
       - name: "file-raw-reader"
@@ -80,6 +81,7 @@ streams:
           servers: "localhost:9093"
           topic: "zouzou"
           group: "g1"
+      - name: "control"
       - name: "file-raw-writer"
         conf:
           filename: "./data/out/filename-kafka"

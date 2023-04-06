@@ -87,7 +87,7 @@ func (c *QltClient) WaitAck() error {
 func (c *QltClient) Send(_msg string) error {
 	retry := 0
 	delay := qltSendRetryInitialDelay
-	log.Debugln(c.CtxS, "Send", _msg)
+	// log.Debugln(c.CtxS, "Send", _msg)
 	for {
 		if err := c._Send(_msg); err == io.EOF {
 			if retry != 0 {
@@ -104,7 +104,7 @@ func (c *QltClient) Send(_msg string) error {
 			break
 		}
 	}
-	log.Debugln(c.CtxS, "Sent", _msg)
+	// log.Debugln(c.CtxS, "Sent", _msg)
 	return nil
 }
 

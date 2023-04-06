@@ -5,7 +5,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var flowChannelSize = config.DeclareInt("processor.flowChannelSize", 100, "Default Processor channel size")
+var flowChannelSize = config.DeclareInt("processor.flowChannelSize", 1000, "Default Processor channel size")
 
 type Channel struct {
 	Name string

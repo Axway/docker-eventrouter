@@ -103,7 +103,7 @@ func (flow *Flow) Start(ctx context.Context, all bool, ctl chan ControlEvent, ch
 		connector := step.Conf
 		p := NewProcessor(step.Name, connector, channels)
 
-		if p == nil { // FIXME: cannot be nil : already check when loading configuration
+		if p == nil { // FIXME: cannot be nil : already checked when loading configuration
 			log.Errorln("Processor", flow.Name+"/"+step.Name, "not found")
 			closest := (*processors)[0].Name
 			closest_d := tools.Levenshtein(step.Name, closest)

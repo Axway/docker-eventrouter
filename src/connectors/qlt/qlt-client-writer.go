@@ -99,13 +99,13 @@ func (q *QLTClientWriterConnection) PrepareEvent(event *processor.AckableEvent) 
 }
 
 func (q *QLTClientWriterConnection) Write(events []processor.AckableEvent) error {
-	log.Debugln(q.CtxS, "Write events", "events", events)
+	// log.Debugln(q.CtxS, "Write events", "events", events)
 	for _, event := range events {
 		str, _ := event.Msg.(string)
 		if err := q.Qlt.Send(str); err != nil {
 			panic(err)
 		}
-		log.Debugln(q.CtxS, "Wrote", str)
+		// log.Debugln(q.CtxS, "Wrote", str)
 		q.acks <- event
 	}
 
@@ -118,20 +118,20 @@ func (q *QLTClientWriterConnection) IsAckAsync() bool {
 
 func (q *QLTClientWriterConnection) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {
 	for {
-		log.Debugln(q.CtxS, "waiting msg to ack")
+		// log.Debugln(q.CtxS, "waiting msg to ack")
 		event, ok := <-q.acks
 		if !ok {
 			log.Infoln(q.CtxS, "close ack loop")
 			return
 		}
-		log.Debugln(q.CtxS, "waiting ack from qlt", "msgId", event.Msgid)
+		// log.Debugln(q.CtxS, "waiting ack from qlt", "msgId", event.Msgid)
 
 		err := q.Qlt.WaitAck()
 		if err != nil {
 			log.Errorln(q.CtxS, "error waiting ack: close ack loop", "err", err)
 			return
 		}
-		log.Debugln(q.CtxS, "ack received", "msgId", event.Msgid)
+		// log.Debugln(q.CtxS, "ack received", "msgId", event.Msgid)
 		acks <- event
 	}
 }

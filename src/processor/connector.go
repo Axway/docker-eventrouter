@@ -92,7 +92,9 @@ func (c *SourceProxy) Ctx() string {
 var (
 	ReaderAckSourceProxyChanSize = config.DeclareInt("processor.readerAckSourceProxyChanSize", 10, "Size of the reader ack channel")
 	ReaderAckSourceWait          = config.DeclareDuration("processor.readerAckSourceWait", "1s", "Duration to wait before waiting ack message")
-	WriterBatchSize              = config.DeclareInt("processor.writerBatchSize", 100, "Size of the Batch to writer connector")
+	ReaderReadRetryDelay         = config.DeclareDuration("processor.readerReadRetryDelay", "200ms", "Duration to wait before retrying reading")
+
+	WriterBatchSize = config.DeclareInt("processor.writerBatchSize", 100, "Size of the Batch to writer connector")
 )
 
 type ConnectorWithPrepare interface {
@@ -116,7 +118,9 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 	log.Infoln(ctxp, "Initializing Reader...")
 	ctl <- ControlEvent{p, p2, "STARTING", ""}
 
-	src := &SourceProxy{make(chan EventAck, ReaderAckSourceProxyChanSize), ctxp}
+	p.Chans.Create(ctxp+"ReaderAsyncAckProxy - FIXME/not tracked", 1000) // FIXME: not tracked
+	acks := make(chan EventAck, ReaderAckSourceProxyChanSize)            // FIXME: not tracked
+	src := &SourceProxy{acks, ctxp}
 
 	ackDone := make(chan interface{})
 
@@ -168,14 +172,15 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 			// log.Debugln(ctxp, "Reading messages...")
 			events, err := p2.Read()
 			if err != nil {
-				if errors.Is(err, io.EOF) {
-					log.Infoln(ctxp, "Stopping Reader (EOF)...")
-					ctl <- ControlEvent{p, p2, "STOPPED", "EOF"}
+				if !errors.Is(err, io.EOF) {
+					log.Errorln(ctxp, "Error reading", "err", err)
+					ctl <- ControlEvent{p, p2, "ERROR", err.Error()}
 					return
 				}
-				log.Errorln(ctxp, "Error reading", "err", err)
-				ctl <- ControlEvent{p, p2, "ERROR", err.Error()}
-				return
+
+				/*log.Infoln(ctxp, "Stopping Reader (EOF)...")
+				ctl <- ControlEvent{p, p2, "STOPPED", "EOF"}
+				return*/
 			}
 			// log.Debugln(ctxp, "Sending messages...", "batch", len(events), "acked", acked, "sent", sent, "all_ack", p.Out_ack, "all_sent", p.Out)
 			if lastAcked != acked && acked == sent {
@@ -188,7 +193,7 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 			lastAcked = acked
 			if len(events) == 0 {
 				// FIXME: should progressively increase from smaller value
-				time.Sleep(1 * time.Second)
+				time.Sleep(ReaderReadRetryDelay)
 			}
 			for _, e := range events {
 				out <- AckableEvent{src, e.Msgid, e.Msg, &e}
@@ -219,14 +224,15 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 
 	if p2.IsAckAsync() {
 		log.Infoln(ctxp, "Starting Writer Ack Loops (async writer)...")
-		acks := make(chan AckableEvent, 1000)
+		acks := p.Chans.Create(ctxp+"WriterAsyncAck", 1000)
+		// acks := make(chan AckableEvent, 1000)
 
-		go p2.ProcessAcks(ctx, acks)
+		go p2.ProcessAcks(ctx, acks.C)
 		go func() {
-			defer close(acks)
+			defer close(acks.C)
 			for {
 				select {
-				case event := <-acks:
+				case event := <-acks.C:
 
 					// log.Debugln(ctxp, "Ack Event:", event)
 					event.Src.AckMsg(event.Msgid)
@@ -264,6 +270,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 		for !donef {
 			flush = false
 			if len(events) == 0 {
+				// No event bached, wait for new events (or termination)
 				// log.Debugln(ctxp, "Waiting messages...")
 				select {
 				case event := <-in:
@@ -277,6 +284,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 					donef = true
 				}
 			} else {
+				// Some events in batched queue, try to enqueue more if available
 				// log.Debugln(ctxp, "Waiting more messages...", "batch", len(events))
 				select {
 				case event := <-in:
@@ -292,6 +300,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 				}
 			}
 
+			// Send batched events
 			if flush || len(events) > batchsize {
 				if acked == sent {
 					ctl <- ControlEvent{p, p2, "PROCESSING", fmt.Sprint(len(events), acked, acked+len(events))}
@@ -308,7 +317,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 					return
 				}
 				sent += len(events)
-				// FIXME: is this required
+				// FIXME: is this required ?
 				atomic.AddInt64(&p.Out, int64(len(events)))
 
 				if !p2.IsAckAsync() {
@@ -316,6 +325,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 					for _, event := range events {
 						event.Src.AckMsg(event.Msgid)
 					}
+					atomic.AddInt64(&p.Out_ack, int64(len(events)))
 					// toAckEvents = nil
 				}
 				events = nil
