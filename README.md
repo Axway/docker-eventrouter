@@ -24,7 +24,18 @@ make test
 go test -v -t 10 ./src/...
 ```
 
-###  
+### local ci
+
+```sh
+gitlab-runner exec shell build-bin
+gitlab-runner exec shell build-docker
+```
+
+### add dev ui
+
+```sh
+./scripts/upkg.sh
+```
 
 ### Manage dependencies
 
