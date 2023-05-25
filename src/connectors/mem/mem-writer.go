@@ -13,7 +13,9 @@ type MemWriter struct {
 	CtxS     string
 }
 
-type MemWriterConf struct{}
+type MemWriterConf struct {
+	MaxSize int
+}
 
 func (c *MemWriterConf) Start(context context.Context, p *processor.Processor, ctl chan processor.ControlEvent, inc, out chan processor.AckableEvent) (processor.ConnectorRuntime, error) {
 	q := MemWriter{c, nil, p.Name}
@@ -46,7 +48,13 @@ func (q *MemWriter) Write(events []processor.AckableEvent) error {
 		data, _ := q.PrepareEvent(&e)
 		datas[i] = data
 	}
-	q.Messages = append(q.Messages, datas...)
+	if q.Conf.MaxSize > 0 {
+		q.Messages = append(q.Messages, datas...)
+		n := len(q.Messages)
+		if q.Conf.MaxSize > 0 && n > int(q.Conf.MaxSize) {
+			q.Messages = q.Messages[n-q.Conf.MaxSize:]
+		}
+	}
 	// log.Debugln(q.ctx, q.Messages)
 	return nil
 }

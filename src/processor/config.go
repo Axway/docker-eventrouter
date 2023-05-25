@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"io/ioutil"
 
-	log "github.com/sirupsen/logrus"
+	log "axway.com/qlt-router/src/log"
 
 	"gopkg.in/yaml.v3"
 )

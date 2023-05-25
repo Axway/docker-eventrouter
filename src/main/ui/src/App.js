@@ -24,11 +24,15 @@ function Tooltip({ obj }) {
 
 function Pre({ obj }) {
     const a = []
-    for (const [k, v] of Object.entries(obj)) {
-        if (typeof v !== 'object') {
-            a.push((<div className="presection" key={k}><div className="prelabel">{k}</div> <div className="prevalue">{v}</div></div>))
-        } else {
-            a.push((<div className="presection" key={k}><div className="prelabel">{k}</div> <Pre obj={v} /></div>))
+    for (const [k, v] of Object.entries(obj || {})) {
+        try {
+            if (typeof v !== 'object') {
+                a.push((<div className="presection" key={k}><div className="prelabel">{k}</div> <div className="prevalue">{v}</div></div>))
+            } else {
+                a.push((<div className="presection" key={k}><div className="prelabel">{k}</div> <Pre obj={v} /></div>))
+            }
+        } catch (e) {
+            console.error("Pre:", v, e)
         }
     }
     return <div>{a}</div>
@@ -67,8 +71,8 @@ function DisplayStream({ x, processorsD, streamsD, channelsD, pref } = props) {
         const processName = x.Name + "/" + step.Name
         const p = processorsD[processName]
         if (i !== 0) {
-            steps.push(<span className="channel" key={p.Cin.Name + "-" + i}>
-                <span className="obj-type">Channel</span> {p?.Cin && p.Cin.Name} {p?.Cin && "" + p.Cin.Size}/{p?.Cin && "" + p.Cin.Pos}
+            steps.push(<span className="channel" key={p.Cin?.Name + "-" + i}>
+                <span className="obj-type">Channel</span> {p?.Cin && p.Cin?.Name} {p?.Cin && "" + p.Cin?.Size}/{p?.Cin && "" + p.Cin?.Pos}
             </span>)
         }
         steps.push(<span className="flow-step" key={processName + "-" + i}>
@@ -151,13 +155,16 @@ export default function App(props) {
         setMetrics(state)
     }
 
+    async function fetch() {
+        try {
+            await fetchState()
+            await fetchMetrics()
+        } catch (e) { }
+        setTimeout(fetch, 1000)
+    }
+
     useEffect(() => {
-        fetchState()
-        fetchMetrics()
-        setInterval(() => {
-            fetchState()
-            fetchMetrics()
-        }, 1000)
+        fetch()
     }, [])
 
     const channels = state.Channels?.Channels.map((x, i) => <li key={x.Name + "-" + i}>{x.Name}</li>)

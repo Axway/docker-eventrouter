@@ -8,9 +8,9 @@ import (
 )
 
 type TCPChaosConf struct {
-	name       string
-	sourceAddr string
-	targetAddr string
+	Name       string
+	SourceAddr string
+	TargetAddr string
 }
 
 type TCPChaos struct {
@@ -18,12 +18,18 @@ type TCPChaos struct {
 	ctx  string
 }
 
+var startport = 8000
+
+/*func NewTCPChaos(name, host, port string) *TCPChaos {
+	q := TCPChaosConf(name, "locahost:"+fmt.Sprint(startport), host+":"+port)
+}*/
+
 func TcpChaosInit(conf *TCPChaosConf) {
 	var q TCPChaos
 	q.conf = conf
-	prefix := "[CHAOS-" + conf.name + "]"
+	prefix := "[CHAOS-" + conf.Name + "]"
 	ctxInit := "[" + prefix + "]"
-	addr := conf.sourceAddr
+	addr := conf.SourceAddr
 
 	// Listen for incoming connections.
 	l, err := net.Listen("tcp", addr)

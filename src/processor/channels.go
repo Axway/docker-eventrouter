@@ -2,7 +2,7 @@ package processor
 
 import (
 	"axway.com/qlt-router/src/config"
-	log "github.com/sirupsen/logrus"
+	log "axway.com/qlt-router/src/log"
 )
 
 var flowChannelSize = config.DeclareInt("processor.flowChannelSize", 1000, "Default Processor channel size")
@@ -31,7 +31,7 @@ func NewChannels() *Channels {
 
 func (c *Channels) Display() {
 	for _, channel := range c.Channels {
-		log.Println("channel", channel.Name, len(channel.C))
+		log.Info("channel", "name", channel.Name, "size", len(channel.C))
 	}
 }
 

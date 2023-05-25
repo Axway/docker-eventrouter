@@ -43,6 +43,8 @@ func (c *QLTClientWriterConf) Start(context context.Context, p *processor.Proces
 	for i := 0; i < q.Conf.Cnx; i++ {
 		for _, addr := range addrs {
 			log.Debugln(q.CtxS, "connection", "addr", addr)
+			p.Chans.Create(q.CtxS+"-AckEvent (Not Tracked)", 100)
+			// TcpChaosInit(TCPChaosConf{Name: q.Ctx, Addr: addr})
 			c2 := &QLTClientWriterConnection{q.CtxS, addr, nil, make(chan processor.AckableEvent, 100)}
 			log.Debugln(q.CtxS, "AddReader!!!!*************************")
 			p.AddReader(c2)
@@ -145,7 +147,7 @@ func (q *QLTClientWriterConnection) Close() error {
 	if err != nil {
 		log.Errorln(q.CtxS, "close", "err", err)
 	} else {
-		log.Debugln(q.CtxS, "close OK")
+		log.Infoln(q.CtxS, "close OK")
 	}
 	return err
 }

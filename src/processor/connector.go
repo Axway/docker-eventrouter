@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"axway.com/qlt-router/src/config"
-	log "github.com/sirupsen/logrus"
+	log "axway.com/qlt-router/src/log"
 )
 
 type Connector interface {
@@ -31,11 +31,11 @@ type ControlEvent struct {
 }
 
 func (msg *ControlEvent) Log() {
-	log.Debugln(msg.From.Name+msg.From2.Ctx(), "(CTL-LOG)", msg.Id, msg.Msg)
+	log.Debug(msg.From.Name+msg.From2.Ctx()+" (CTL-LOG)", "id", msg.Id, "msg", msg.Msg)
 }
 
 func ControlEventDiscardAll(ctx context.Context, ctl chan ControlEvent) {
-	log.Infoln("CTL-LOG", "DiscardAll")
+	log.Info("CTL-LOG DiscardAll")
 	for {
 		select {
 		case <-ctl:
@@ -46,13 +46,13 @@ func ControlEventDiscardAll(ctx context.Context, ctl chan ControlEvent) {
 }
 
 func ControlEventLogAll(ctx context.Context, ctl chan ControlEvent) {
-	log.Debugln("CTL-LOG", "Running")
+	log.Debug("CTL-LOG Running")
 	for {
 		select {
 		case msg := <-ctl:
 			msg.Log()
 		case <-ctx.Done():
-			log.Debugln("CTL-LOG", "Stopping")
+			log.Debug("CTL-LOG Stopping")
 			return
 		}
 	}
@@ -94,7 +94,7 @@ var (
 	ReaderAckSourceWait          = config.DeclareDuration("processor.readerAckSourceWait", "1s", "Duration to wait before waiting ack message")
 	ReaderReadRetryDelay         = config.DeclareDuration("processor.readerReadRetryDelay", "200ms", "Duration to wait before retrying reading")
 
-	WriterBatchSize = config.DeclareInt("processor.writerBatchSize", 100, "Size of the Batch to writer connector")
+	WriterBatchSize = config.DeclareInt("processor.writerBatchSize", 10, "Size of the Batch to writer connector")
 )
 
 type ConnectorWithPrepare interface {
@@ -115,7 +115,7 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 	sent := 0
 	acked := 0
 
-	log.Infoln(ctxp, "Initializing Reader...")
+	log.Infoc(ctxp, "Initializing Reader...")
 	ctl <- ControlEvent{p, p2, "STARTING", ""}
 
 	p.Chans.Create(ctxp+"ReaderAsyncAckProxy - FIXME/not tracked", 1000) // FIXME: not tracked
@@ -129,13 +129,14 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 		return nil, err
 	}
 
-	log.Infoln(ctxp, "Starting Reader Proxy Ack Loop...")
+	log.Infoc(ctxp, "Starting Reader Proxy Ack Loop...")
 	go func() {
 		defer p2.Close()
-		defer log.Infoln(ctxp, "Closing Acks...", "acked", acked, "sent", sent, "all_ack", p.Out_ack, "all_sent", p.Out)
+		defer log.Infoc(ctxp, "Closing Acks...", "acked", acked, "sent", sent, "all_ack", p.Out_ack, "all_sent", p.Out)
 		done := false
 		for !done || acked != sent {
 			// log.Infoln(ctxp, "Waiting Acks...")
+			t := time.NewTimer(time.Duration(ReaderAckSourceWait) * time.Second)
 			select {
 			case msgid := <-src.ack:
 				// log.Infoln(ctxp, "Ack2...", "msgId", msgid, "acked", acked, "sent", sent, "all_ack", p.Out_ack, "all_sent", p.Out)
@@ -153,18 +154,19 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 					}
 				}
 			case <-ackDone:
-				log.Infoln(ctxp, "Closing Acks...", fmt.Sprint(acked, sent))
+				log.Infoc(ctxp, "Closing Acks...", "acked", acked, "sent", sent)
 				done = true
-			case <-time.After(time.Duration(ReaderAckSourceWait) * time.Second):
+			case <-t.C:
 				if acked != sent {
-					log.Debugln(ctxp, "Waiting Ack Timeout...", "acked", acked, "sent", sent, "all_ack", p.Out_ack, "all_sent", p.Out)
+					log.Debugc(ctxp, "Waiting Ack Timeout...", "acked", acked, "sent", sent, "all_ack", p.Out_ack, "all_sent", p.Out)
 				}
 			}
+			t.Stop()
 		}
-		log.Infoln(ctxp, "*** Closed Acks...")
+		log.Infoc(ctxp, "*** Closed Acks...")
 	}()
 
-	log.Infoln(ctxp, "Starting Reader Main Loop...")
+	log.Infoc(ctxp, "Starting Reader Main Loop...")
 	go func() {
 		ctl <- ControlEvent{p, p2, "RUNNING", ""}
 		lastAcked := -1
@@ -173,7 +175,7 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 			events, err := p2.Read()
 			if err != nil {
 				if !errors.Is(err, io.EOF) {
-					log.Errorln(ctxp, "Error reading", "err", err)
+					log.Errorc(ctxp, "Error reading", "err", err)
 					ctl <- ControlEvent{p, p2, "ERROR", err.Error()}
 					return
 				}
@@ -213,7 +215,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 	sent := 0
 	acked := 0
 
-	log.Infoln(ctxp, "Initializing Writer...")
+	log.Infoc(ctxp, "Initializing Writer...")
 	ctl <- ControlEvent{p, p2, "STARTING", "Writer"}
 
 	err := p2.Init(p)
@@ -223,7 +225,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 	}
 
 	if p2.IsAckAsync() {
-		log.Infoln(ctxp, "Starting Writer Ack Loops (async writer)...")
+		log.Infoc(ctxp, "Starting Writer Ack Loops (async writer)...")
 		acks := p.Chans.Create(ctxp+"WriterAsyncAck", 1000)
 		// acks := make(chan AckableEvent, 1000)
 
@@ -253,12 +255,12 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 		}()
 		time.Sleep(1 * time.Second) // FIXME: beurk
 	} else {
-		log.Infoln(ctxp, "Not Starting Writer Proxy Ack Loop ! (sync writer)")
+		log.Infoc(ctxp, "Not Starting Writer Proxy Ack Loop ! (sync writer)")
 	}
 
 	go func() {
 		defer p2.Close()
-		defer log.Infoln(ctxp, "Closing...")
+		defer log.Infoc(ctxp, "Closing...")
 
 		var events []AckableEvent
 		// var toAckEvents []AckableEvent
@@ -279,7 +281,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 					// toAckEvents = append(toAckEvents, event)
 				case <-ctx.Done():
 					flush = true
-					log.Infoln(ctxp, "done")
+					log.Infoc(ctxp, "done")
 					ctl <- ControlEvent{p, p2, "STOPPING", ""}
 					donef = true
 				}
@@ -292,7 +294,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 					events = append(events, event)
 					// toAckEvents = append(toAckEvents, event)
 				case <-ctx.Done():
-					log.Infoln(ctxp, "done")
+					log.Infoc(ctxp, "done")
 					ctl <- ControlEvent{p, p2, "STOPPING", ""}
 					donef = true
 				default:
@@ -312,7 +314,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 				// log.Debugln(ctxp, "Writing messages...", "batch", len(events))
 				err := p2.Write(events)
 				if err != nil {
-					log.Errorln(ctxp, "error writing messages...", "batch", len(events), "err", err)
+					log.Errorc(ctxp, "error writing messages...", "batch", len(events), "err", err)
 					ctl <- ControlEvent{p, p2, "ERROR", ""}
 					return
 				}

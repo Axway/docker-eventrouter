@@ -1,0 +1,30 @@
+streams:
+  - name: "qlt-sink"
+    upstream: "qlt-generator"
+    disable: false
+    description: ""
+    flow:
+      - name: "qlt-server-reader"
+        conf:
+          port: 1305
+      #- name: "convert" #/*,scaleOrdered: 4*/
+      - name: "control"
+      - name: "qlt2json"
+      - name: "mem-writer"
+        conf:
+          maxSize: 0
+  - name: "qlt-generator"
+    disable: false
+    description: ""
+    flow:
+      - name: "event-generator"
+        conf:
+          minDelay: 0
+          avgDelay: -1
+          maxDelay: 0
+      #- name: "convert" #/*,scaleOrdered: 4*/
+      #- name: "control"
+      - name: "qlt-client-writer"
+        conf:
+          addresses: "localhost:1305"
+          cnx: 2

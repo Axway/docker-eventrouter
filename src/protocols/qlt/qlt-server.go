@@ -6,7 +6,7 @@ import (
 	"net"
 
 	"axway.com/qlt-router/src/config"
-	log "github.com/sirupsen/logrus"
+	log "axway.com/qlt-router/src/log"
 )
 
 // QLTMessage to be passed to protocol
@@ -118,13 +118,13 @@ func NewQltServer(ctx string, conn net.Conn) *QLT {
 	qlt.buf = make([]byte, RecvBufferSize)
 	qlt.idx = 0
 	qlt.CtxS = ctx
-	log.Println(qlt.CtxS, "New")
+	log.Info(qlt.CtxS + " New")
 	return &qlt
 }
 
 func (q *QLT) Close() error {
 	err := q.Conn.Close()
-	log.Println(q.CtxS, "Close err=", err, "rcount", q.RCount, "wcount", q.WCount)
+	log.Info(q.CtxS+" Close", "err", err, "rcount", q.RCount, "wcount", q.WCount)
 	return err
 }
 
@@ -133,7 +133,7 @@ func (q *QLT) readData() error {
 	// log.Println(q.ctx, "Reading... idx=", q.idx)
 	rsize, err := q.Conn.Read(q.buf[q.idx:])
 	if err != nil {
-		log.Errorln(q.CtxS, "Error reading:", err.Error(), "Closing...")
+		log.Error(q.CtxS+" Error reading closing...", "err", err.Error())
 		return err
 	}
 	// log.Println(q.ctx, "Read:", "idx=", q.idx, "rsize=", rsize, "size=", q.idx+rsize)
@@ -145,7 +145,7 @@ func (q *QLT) WriteQLTAck() error {
 	// FIXME: timeout needed
 	_, err := q.Conn.Write([]byte{0, 1, QLTPacketTypeAck})
 	if err != nil {
-		log.Errorln(q.CtxS, "Error writing:", err.Error(), "Closing...")
+		log.Error(q.CtxS+" Error writing (Closing...)", "err", err)
 		return err
 	}
 	q.WCount++
@@ -165,7 +165,7 @@ func (q *QLT) ReadQLTPacket() (string, error) {
 			continue
 		}
 		if !qltIsPacketType(q.buf, QLTPacketTypeData) {
-			log.Errorln(q.CtxS, "Received unexpected message code", q.buf[2], "Closing...")
+			log.Error(q.CtxS+" Received unexpected message code (Closing...)", "code", q.buf[2])
 			code := fmt.Sprintf("%c (0x%x)", q.buf[2], q.buf[2])
 			return "", errors.New("Unexpected QLT code : " + code)
 		}

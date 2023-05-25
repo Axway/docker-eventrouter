@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
+	log "axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/protocols/qlt"
 	"axway.com/qlt-router/src/tools"
-	log "github.com/sirupsen/logrus"
 )
 
 func TestQlt(t *testing.T) {
@@ -30,30 +30,30 @@ func TestQlt(t *testing.T) {
 	defer c.Close()
 
 	msgSent := "my message"
-	log.Println("send message", msgSent)
+	log.Info("send message", "msgSent", msgSent)
 	err = c.Send(msgSent)
 	if err != nil {
 		t.Error("error sending message ", err)
 		return
 	}
 
-	log.Println("waiting qltserver...")
+	log.Info("waiting qltserver...")
 	count := 0
 	for qltServer == nil {
 		time.Sleep(10 * time.Millisecond)
 		count++
 	}
-	log.Println("qltserver wait count", count)
+	log.Info("qltserver wait count", "count", count)
 
 	msgReceived, err := qltServer.ReadQLTPacket()
 	if err != nil {
 		t.Error("error reading packet", err)
 		return
 	}
-	log.Println("received message", msgReceived)
+	log.Info("received message", "msgReceiverd", msgReceived)
 
 	if msgSent != msgReceived {
-		t.Error("error different message", msgSent, msgReceived)
+		t.Error("error different message", "msgSent", msgSent, "msgReceiverd", msgReceived)
 		return
 	}
 	err = qltServer.WriteQLTAck()

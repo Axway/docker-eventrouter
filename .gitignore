@@ -9,3 +9,5 @@ data
 /builds
 /cache
 /src/main/ui/upkg
+*.prof
+*.mprof

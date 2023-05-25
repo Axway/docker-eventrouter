@@ -1,33 +1,33 @@
 package main
 
 import (
+	//"context"
 	"context"
 	"embed"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime/pprof"
 	"syscall"
 	"time"
 
 	"axway.com/qlt-router/src/config"
+	awssqs "axway.com/qlt-router/src/connectors/aws-sqs"
 	"axway.com/qlt-router/src/connectors/file"
 	"axway.com/qlt-router/src/connectors/kafka"
 	"axway.com/qlt-router/src/connectors/mem"
 	"axway.com/qlt-router/src/connectors/qlt"
 	"axway.com/qlt-router/src/filters/qlt2json"
 	"axway.com/qlt-router/src/locallog"
+	log "axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
-	"github.com/namsral/flag"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
-
-func httpInit() {
-}
 
 var (
 	Version = ""
@@ -60,10 +60,13 @@ func main() {
 		//		DisableColors: true,
 		FullTimestamp: true,
 	})*/
-	//var configFile string
-	//flag.String(flag.DefaultConfigFlagname, "", "path to config file")
-	// flag.StringVar(&configFile, "config", "./qlt-router.yml", "path to config file")
-
+	var configFile string
+	var verbose bool
+	// flag.String(flag.DefaultConfigFlagname, "", "path to config file")
+	flag.StringVar(&configFile, "config", "./qlt-router.yml", "path to config file")
+	flag.BoolVar(&verbose, "verbose", false, "be verbose")
+	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
+	memprofile := flag.String("memprofile", "", "write memory profile to this file")
 	// var confTcpChaos tools.TCPChaosConf
 	// processor.ParseConfig(&confTcpChaos, "chaos")
 	// tools.TcpChaosInit(&confTcpChaos)
@@ -76,6 +79,8 @@ func main() {
 	processors.Register("control", &processor.ControlConf{})
 	processors.Register("file-raw-writer", &file.FileStoreRawWriterConfig{})
 	processors.Register("file-raw-reader", &file.FileStoreRawReaderConfig{})
+	processors.Register("mem-writer", &mem.MemWriterConf{})
+	processors.Register("aws-sqs-writer", &awssqs.AwsSQSWriterConf{})
 	// processors.Register("file_json_consumer", &file.FileStoreJsonConsumerConfig{})
 	processors.Register("qlt-client-writer", &qlt.QLTClientWriterConf{})
 	processors.Register("qlt-server-reader", &qlt.QLTServerReaderConf{})
@@ -88,6 +93,15 @@ func main() {
 	processors.Register("kafka-reader", &kafka.KafkaReaderConf{})
 
 	flag.Parse()
+
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
 
 	args := flag.Args()
 
@@ -105,21 +119,21 @@ func main() {
 		}
 	}
 
-	log.Println("[MAIN] Version:", Version, " Build:", Build, " Date:", Date)
+	log.Info("[MAIN]", "Version", Version, " Build", Build, " Date", Date)
 
 	config.Print()
 
-	conf, err := processor.ParseConfigFile("./qlt-router.yml")
+	conf, err := processor.ParseConfigFile(configFile)
 	if err != nil {
-		log.Fatalln("Cannot open config file", "err", err)
+		log.Fatal("Cannot open config file", "err", fmt.Sprint(err))
 	}
 	if len(conf.Streams) == 0 {
-		log.Fatalln("Not configured flows")
+		log.Fatal("Not configured flows")
 	}
-	log.Printf("config [internal]: %+v", conf.Streams)
+	log.Info("config [internal]", "streams", conf.Streams)
 	b, _ := yaml.Marshal(conf)
 
-	log.Printf("config [yaml]: %s", b)
+	log.Info("config [yaml]:", "marshall", b)
 
 	// Verify that CLone is properly implemented
 	for _, p := range processors.All() {
@@ -130,13 +144,17 @@ func main() {
 		}
 	}
 
+	// FIXME: comment
 	all := false
 
 	ctx := context.Background()
 	ctl := make(chan processor.ControlEvent, 100)
 	errors := 0
-	go processor.ControlEventLogAll(ctx, ctl)
-
+	if verbose {
+		go processor.ControlEventLogAll(ctx, ctl)
+	} else {
+		go processor.ControlEventDiscardAll(ctx, ctl)
+	}
 	channels := processor.NewChannels()
 
 	var runtimes []*processor.Processor
@@ -152,7 +170,7 @@ func main() {
 	}
 
 	if errors > 0 {
-		log.Fatalln("error configuring flows")
+		log.Fatal("error configuring flows")
 		os.Exit(1)
 	}
 
@@ -171,15 +189,15 @@ func main() {
 		fmt.Fprintf(w, "Welcome to qlt-router!")
 	})*/
 
-	log.Println("[HTTP] Setting up /metrics (prometheus)...")
+	log.Info("[HTTP] Setting up /metrics (prometheus)...")
 	http.Handle("/metrics", promhttp.Handler())
 
-	log.Println("[HTTP] Setting up /api...")
+	log.Info("[HTTP] Setting up /api...")
 	http.HandleFunc("/api/state", func(w http.ResponseWriter, r *http.Request) {
 		channels.Update()
 		b, err := json.Marshal(state)
 		if err != nil {
-			log.Errorln("Error Marshalling state", err)
+			log.Error("Error Marshalling state", "err", err)
 			w.Write([]byte("Error Marshalling state"))
 			w.WriteHeader(400)
 			return
@@ -187,7 +205,7 @@ func main() {
 		w.Write(b)
 	})
 
-	log.Println("[HTTP] Setting up / (static)...")
+	log.Info("[HTTP] Setting up / (static)...")
 	live := true
 	if live {
 		fs := http.FileServer(http.Dir("./src/main/ui"))
@@ -198,7 +216,7 @@ func main() {
 		http.Handle("/", fs)
 	}
 
-	log.Println("[HTTP] Listening on localhost:9900")
+	log.Info("[HTTP] Listening on localhost:9900")
 	go http.ListenAndServe("localhost:9900", nil)
 
 	time.Sleep(1 * time.Second)
@@ -208,7 +226,7 @@ func main() {
 	signal.Notify(hup, syscall.SIGHUP)
 	go func() {
 		for range hup {
-			log.Println("Got A HUP Signal! Now Reloading Conf....")
+			log.Info("Got A HUP Signal! Now Reloading Conf....")
 			channels.Display()
 		}
 	}()
@@ -216,4 +234,14 @@ func main() {
 	c := make(chan os.Signal, 2)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
+	log.Info("terminate")
+	if *memprofile != "" {
+		f, err := os.Create(*memprofile)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		pprof.WriteHeapProfile(f)
+		f.Close()
+		return
+	}
 }

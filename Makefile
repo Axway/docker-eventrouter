@@ -27,8 +27,14 @@ build-docker:
 build-rpm:
 	(cd src/main ; CGO_ENABLED=1 go build -o ../../$(NAME) $(LDFLAGS))
 
-build-x86:
-	(cd src ; CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ../$(NAME) $(LDFLAGS))
+build-linux-x86:
+	(cd src/main ; CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ../$(NAME) $(LDFLAGS))
+
+docker-external-up:
+	docker-compose -f docker-compose-external.yml up -d
+
+docker-external-down:
+	docker-compose -f docker-compose-external.yml down -v
 
 #dev: build
 #	find ./src -name "*.go" | entr ./qlt-router --config ./qlt-router.conf

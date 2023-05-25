@@ -7,7 +7,7 @@ import (
 	"axway.com/qlt-router/src/locallog"
 	"github.com/prometheus/client_golang/prometheus"
 
-	log "github.com/sirupsen/logrus"
+	log "axway.com/qlt-router/src/log"
 )
 
 func init() {
@@ -65,7 +65,7 @@ func NewProcessor(name string, conf Connector, channels *Channels) *Processor {
 }
 
 func (p *Processor) AddReader(reader Connector) (ConnectorRuntime, error) {
-	log.Debugln(p.Name, "Starting AddReader!!!!*************************")
+	log.Debugc(p.Name, "Starting AddReader!!!!*************************")
 	runtime, err := reader.Start(p.Context, p, p.Ctl, p.Cin.GetC(), p.Cout.GetC())
 	if err != nil {
 		p.Ctl <- ControlEvent{p, runtime, "ERROR", fmt.Sprint("connector start error: ", "err ", err)}
@@ -87,10 +87,10 @@ func (p *Processor) Start(ctx context.Context, ctl chan ControlEvent, cin *Chann
 
 func (p *Processor) Close() error {
 	if p.Runtime == nil {
-		log.Debugln(p.Name, "processor closing: empty runtime")
+		log.Debugc(p.Name, "processor closing: empty runtime")
 		return nil
 	}
-	log.Debugln(p.Name, "processor closing", "runtime", p.Runtime.Ctx())
+	log.Debugc(p.Name, "processor closing", "runtime", p.Runtime.Ctx())
 	return p.Runtime.Close()
 }
 

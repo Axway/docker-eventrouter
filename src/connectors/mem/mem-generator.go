@@ -79,18 +79,20 @@ func (m *MemGeneratorReader) Ctx() string {
 var qltSample string
 
 func (m *MemGeneratorReader) Read() ([]processor.AckableEvent, error) {
-	t := time.Now().UnixMilli()
-	p := 5
-	m.C = math.Cos(float64(t) / 1000 * math.Pi / float64(p))
-	m.CurrentDelay = m.Conf.AvgDelay + int(float64(m.Conf.MinDelay-m.Conf.AvgDelay)*m.C)
-	if m.CurrentDelay < m.Conf.MinDelay {
-		m.CurrentDelay = m.Conf.MinDelay
+	if m.Conf.AvgDelay != -1 {
+		t := time.Now().UnixMilli()
+		p := 5
+		m.C = math.Cos(float64(t) / 1000 * math.Pi / float64(p))
+		m.CurrentDelay = m.Conf.AvgDelay + int(float64(m.Conf.MinDelay-m.Conf.AvgDelay)*m.C)
+		if m.CurrentDelay < m.Conf.MinDelay {
+			m.CurrentDelay = m.Conf.MinDelay
+		}
+		if m.CurrentDelay > m.Conf.MaxDelay {
+			m.CurrentDelay = m.Conf.MaxDelay
+		}
+		// log.Debugln(m.CtxS, "********** delay", m.CurrentDelay, m.Conf.AvgDelay, m.C)
+		time.Sleep(time.Duration(m.CurrentDelay) * time.Millisecond)
 	}
-	if m.CurrentDelay > m.Conf.MaxDelay {
-		m.CurrentDelay = m.Conf.MaxDelay
-	}
-	// log.Debugln(m.CtxS, "********** delay", m.CurrentDelay, m.Conf.AvgDelay, m.C)
-	time.Sleep(time.Duration(m.CurrentDelay) * time.Millisecond)
 	msg := fmt.Sprint(qltSample, m.Current)
 	msgs := []processor.AckableEvent{{m, int64(m.Current), msg, nil}}
 	m.Current++

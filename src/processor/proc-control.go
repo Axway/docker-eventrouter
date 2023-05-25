@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	log "axway.com/qlt-router/src/log"
 )
 
 type (
@@ -49,41 +49,47 @@ func (conf *ControlConf) Start(ctx context.Context, p *Processor, ctl chan Contr
 				lastTime = n
 				lastCount = c.Count
 			}
+			t := time.NewTimer(1 * time.Second)
 			select {
 			case event := <-in:
 				if c.HasMsg <= 0 {
-					log.Warnln(ctxname, "restart message", c.Count, c.HasMsg)
+					log.Warnc(ctxname, "restart message", "count", c.Count, "hasmsg", c.HasMsg)
 				}
 				c.Count++
 				c.HasMsg++
 				c.SizeIn = len(in)
 				c.SizeOut = len(out)
 				time.Sleep(time.Millisecond * time.Duration(conf.DelayMS))
+
 			loopSend:
 				for {
+					t := time.NewTimer(1 * time.Second)
 					select {
 					case out <- event:
 						break loopSend
-					case <-time.After(1 * time.Second):
+					case <-t.C:
 						ctl <- ControlEvent{p, c, "STUCK", ""}
 						c.Status = "STUCK"
-						log.Warnln(ctxname, "stuck")
+						log.Warnc(ctxname, "stuck")
 					}
 					c.SizeIn = len(in)
 					c.SizeOut = len(out)
+					t.Stop()
 				}
+
 			case <-ctx.Done():
 				ctl <- ControlEvent{p, c, "STOPPED", ""}
 				c.Status = "STOPPED"
 				return
-			case <-time.After(1 * time.Second):
+			case <-t.C:
 				if c.HasMsg > 0 {
-					log.Warnln(ctxname, "no message", c.Count, c.HasMsg)
+					log.Warnc(ctxname, "no message", "count", c.Count, "hasMsg", c.HasMsg)
 					ctl <- ControlEvent{p, c, "NO_MESSAGE", ""}
 					c.Status = "NO_MESSAGE"
 					c.HasMsg = 0
 				}
 			}
+			t.Stop()
 		}
 	}()
 	return c, nil
@@ -112,7 +118,7 @@ func Dispatch(ctx context.Context, p *Processor, ctl chan ControlEvent, in chan 
 		select {
 		case qltMessage := <-in:
 			if hasMsg <= 0 {
-				log.Warnln("dispatch: restart message", count, hasMsg)
+				log.Warn("dispatch: restart message", "count", count, "hasMsg", hasMsg)
 			}
 			count++
 			hasMsg++
@@ -133,23 +139,23 @@ func Dispatch(ctx context.Context, p *Processor, ctl chan ControlEvent, in chan 
 						select {
 						case ch <- qltMessage:
 							break loopSelect
-						case <-time.After(1 * time.Second):
+						case <-time.After(1 * time.Second): // FIXME: Bad practice
 							ctl <- ControlEvent{p, nil, "STUCK", ""}
-							log.Warnln("dispatch: stuck", idx)
+							log.Warn("dispatch: stuck", "idx", idx)
 						}
 					}
 				}
 			} else {
-				log.Debugln(qltMessage.Src.Ctx(), "[", qltMessage.Msgid, "] Skip Message...", msg["broker"])
+				log.Debugc(qltMessage.Src.Ctx(), "Skip Message...", "msgid", qltMessage.Msgid, "broker", msg["broker"])
 			}
 
 			// qltMessage.qltEvent.Ack <- true
 		case <-ctx.Done():
 			ctl <- ControlEvent{p, nil, "STOPPED", ""}
 			return
-		case <-time.After(1 * time.Second):
+		case <-time.After(1 * time.Second): // FIXME: bad practice
 			if hasMsg > 0 {
-				log.Warnln("dispatch: no message", count, hasMsg)
+				log.Warn("dispatch: no message", "count", count, "hasMsg", hasMsg)
 				ctl <- ControlEvent{p, nil, "NO_MESSAGE", ""}
 				hasMsg = 0
 			}
@@ -171,7 +177,7 @@ func fanInOrdered(ctx context.Context, name string, ctl chan ControlEvent, in []
 		offset2, ok2 := msgid.(int64)
 		if ok1 && ok2 && offset1 > offset2 {
 			unordered++
-			log.Warnln(name, "unordered message", msgid, event.Msgid, unordered, unordered*100.0/count)
+			log.Warnc(name, "unordered message", "msgid", msgid, "eventMsgId", event.Msgid, "unordered", unordered, "unorderedPercent", unordered*100.0/count)
 		}
 		msgid = event.Msgid
 

@@ -7,10 +7,11 @@ import (
 	"os"
 	"strings"
 
+	log "axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/tools"
+	"github.com/esimov/gogu"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
 
@@ -49,35 +50,38 @@ func (f *FlowStep) UnmarshalYAML(n *yaml.Node) error {
 		return err
 	}
 
-	// log.Debugf("FlowStep: Unmarshall %+v %+v %+v", *obj, *f)
+	log.Debug("FlowStep: Unmarshall ", "obj", fmt.Sprintf("%+v", *obj))
 
 	p := RegisteredProcessors.Get(obj.Name)
 	if p == nil {
-		processors := make([]string, 0)
+		/*processors := make([]string, 0)
 		for _, p := range RegisteredProcessors {
 			processors = append(processors, p.Name)
-		}
-		s := strings.Join(processors, ",")
+		}*/
+		names := gogu.Map(RegisteredProcessors, func(p *Processor) string { return p.Name })
+		s := strings.Join(names, ",")
+		// log.Debug("yaml: unknown processor '" + obj.Name + "' " + s)
 		return errors.New("yaml: unknown processor '" + obj.Name + "' " + s)
 	}
-	log.Debugf("Unmarshall yaml: FlowStep1: %p %+v", p.Conf, p.Conf)
+	// log.Debug("Unmarshall yaml: FlowStep default", "name", obj.Name, "v", fmt.Sprintf("%+v", p.Conf), "v2", fmt.Sprintf("%+v", obj.Conf.Content[0]))
 	f.Conf = p.Conf.Clone()
 	f.Name = obj.Name
 	f.ScaleOrdered = obj.ScaleOrdered
 	f.ScaleUnordered = obj.ScaleUnordered
 
-	err := obj.Conf.Decode(f.Conf)
+	err := tools.YamlParseVerify(obj.Name, f.Conf, &obj.Conf)
+	// err := obj.Conf.Decode(f.Conf)
 
-	log.Debugf("Unmarshall yaml: FlowStep2: %p %+v", f.Conf, f.Conf)
+	log.Debug("Unmarshall yaml: FlowStep values", "name", obj.Name, "v", fmt.Sprintf("%+v", f.Conf))
 	return err
 }
 
 func (flow *Flow) Start(ctx context.Context, all bool, ctl chan ControlEvent, channels *Channels, processors *Processors) ([]*Processor, error) {
 	if flow.Disable && !all {
-		log.Warnln("flow", flow.Name, "disabled")
+		log.Warn("flow disabled", "name", flow.Name)
 		return nil, nil
 	}
-	log.Infoln("flow", flow.Name, "starting...")
+	log.Info("flow starting...", "name", flow.Name)
 	var in *Channel
 	var out *Channel
 	flowtxt := ""
@@ -104,7 +108,7 @@ func (flow *Flow) Start(ctx context.Context, all bool, ctl chan ControlEvent, ch
 		p := NewProcessor(step.Name, connector, channels)
 
 		if p == nil { // FIXME: cannot be nil : already checked when loading configuration
-			log.Errorln("Processor", flow.Name+"/"+step.Name, "not found")
+			log.Error("Processor not found", "name", flow.Name+"/"+step.Name)
 			closest := (*processors)[0].Name
 			closest_d := tools.Levenshtein(step.Name, closest)
 			for _, p := range *processors {
@@ -113,10 +117,10 @@ func (flow *Flow) Start(ctx context.Context, all bool, ctl chan ControlEvent, ch
 					closest = p.Name
 				}
 			}
-			log.Errorln("Processor", flow.Name+"/"+step.Name, "not found, maybe", closest)
+			log.Error("Processor not found", "name", flow.Name+"/"+step.Name, "closest", closest)
 			return nil, fmt.Errorf("Processor " + flow.Name + "/" + step.Name + " not found, maybe " + closest)
 		} else {
-			p2 := *p // Clone Processor
+			p2 := *p // FIXME: really? Clone Processor
 			p = &p2
 			p.Flow = flow
 			p.FlowStep = step
@@ -134,7 +138,7 @@ func (flow *Flow) Start(ctx context.Context, all bool, ctl chan ControlEvent, ch
 					ConstLabels: prometheus.Labels{"producer": step.Name, "flow": flow.Name},
 				})
 			}
-			log.Infoln("flow", flow.Name, p.Name, fmt.Sprintf("%+v", p.Conf))
+			log.Info("flow", "name", flow.Name, "processorName", p.Name, "conf", fmt.Sprintf("%+v", p.Conf))
 			if step.ScaleOrdered > 0 {
 				ParallelOrdered(ctx, channelName+"-scale", step.ScaleOrdered, ctl, in.C, out.C, channels, p)
 			} else if step.ScaleUnordered > 0 {
@@ -142,7 +146,7 @@ func (flow *Flow) Start(ctx context.Context, all bool, ctl chan ControlEvent, ch
 			} else {
 				r, err := p.Conf.Start(ctx, p, ctl, in.GetC(), out.GetC())
 				if err != nil {
-					log.Fatalln(flow.Name+"/"+step.Name, "failed to start", err)
+					log.Fatal("flow failed to start", "name", flow.Name+"/"+step.Name, "err", err)
 					os.Exit(1)
 				}
 				p.Runtime = r
@@ -153,6 +157,6 @@ func (flow *Flow) Start(ctx context.Context, all bool, ctl chan ControlEvent, ch
 		}
 		in = out
 	}
-	log.Infoln("flow", flow.Name, "::=", flowtxt)
+	log.Info("flow", "name", flow.Name, "desc", flowtxt)
 	return runtimeProcessor, nil
 }

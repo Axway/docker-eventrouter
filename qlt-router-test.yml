@@ -58,7 +58,7 @@ streams:
           cnx: 1
   - name: "flow-kafka-write"
     upstream: "flow-qlt-server-2-file-raw-writer"
-    disable: false
+    disable: true
     description: ""
     flow:
       - name: "file-raw-reader"
@@ -73,7 +73,7 @@ streams:
           group: "g1"
   - name: "flow-kafka-read"
     upstream: "flow-kafka-write"
-    disable: false
+    disable: true
     description: ""
     flow:
       - name: "kafka-reader"

@@ -38,10 +38,11 @@
 - connector : (new) websocket
 - connector : (new) qlt-client-pull/qlt-server-writer
 - connector : (*) mem-writer / mem-reader / generator()
-
+- connector : SQS
+- connector : MQTT
 - filter : xml-json
 - filter : control (stuck/empty status)
-- filter : parrallel (ordered/any)
+- filter : parallel (ordered/any)
 - chaos : ensure first disconnect/reconnect/Retry/delays/timeout/bad (data stream)
 - tls : (everywhere)
 - deduplication
