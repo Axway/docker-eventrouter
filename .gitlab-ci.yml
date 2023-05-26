@@ -57,7 +57,7 @@ test-rpm-pack:
     - ./rpm/test-rpm.sh
 
 build-docker:
-  image: davinci1976/docker-ci
+  image: davinci1976/docker-ci:unstable
   stage: build
   script:
     - ./scripts/setVersion.sh
