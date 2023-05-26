@@ -1,6 +1,10 @@
 variables:
   NAME: qlt-router
 
+default:
+  tags:
+    - docker-ex
+
 stages:
   - build
   - pack
