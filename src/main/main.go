@@ -11,7 +11,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"reflect"
 	"runtime/pprof"
+	"strings"
 	"syscall"
 	"time"
 
@@ -65,32 +67,33 @@ func main() {
 	// flag.String(flag.DefaultConfigFlagname, "", "path to config file")
 	flag.StringVar(&configFile, "config", "./qlt-router.yml", "path to config file")
 	flag.BoolVar(&verbose, "verbose", false, "be verbose")
+
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
 	memprofile := flag.String("memprofile", "", "write memory profile to this file")
 	// var confTcpChaos tools.TCPChaosConf
 	// processor.ParseConfig(&confTcpChaos, "chaos")
 	// tools.TcpChaosInit(&confTcpChaos)
 
-	processors := &processor.RegisteredProcessors
+	connectors := &processor.RegisteredProcessors
 
-	processors.Register("event-generator", &mem.MemGeneratorReaderConf{})
-	processors.Register("qlt2dict", &qlt2json.ConvertStreamConf{})
-	processors.Register("qlt2json", &qlt2json.Convert2JsonConf{})
-	processors.Register("control", &processor.ControlConf{})
-	processors.Register("file-raw-writer", &file.FileStoreRawWriterConfig{})
-	processors.Register("file-raw-reader", &file.FileStoreRawReaderConfig{})
-	processors.Register("mem-writer", &mem.MemWriterConf{})
-	processors.Register("aws-sqs-writer", &awssqs.AwsSQSWriterConf{})
+	connectors.Register("event-generator", &mem.MemGeneratorReaderConf{})
+	connectors.Register("qlt2dict", &qlt2json.ConvertStreamConf{})
+	connectors.Register("qlt2json", &qlt2json.Convert2JsonConf{})
+	connectors.Register("control", &processor.ControlConf{})
+	connectors.Register("file-raw-writer", &file.FileStoreRawWriterConfig{})
+	connectors.Register("file-raw-reader", &file.FileStoreRawReaderConfig{})
+	connectors.Register("mem-writer", &mem.MemWriterConf{})
+	connectors.Register("aws-sqs-writer", &awssqs.AwsSQSWriterConf{})
 	// processors.Register("file_json_consumer", &file.FileStoreJsonConsumerConfig{})
-	processors.Register("qlt-client-writer", &qlt.QLTClientWriterConf{})
-	processors.Register("qlt-server-reader", &qlt.QLTServerReaderConf{})
+	connectors.Register("qlt-client-writer", &qlt.QLTClientWriterConf{})
+	connectors.Register("qlt-server-reader", &qlt.QLTServerReaderConf{})
 	// processors.Register("pg_buffer_consumer", &postgres.PgDBConsumerConf{})
 	// processors.Register("pg_buffer_producer", &postgres.PgDBProducerConf{})
 	// processors.Register("es_json_consumer", &elasticsearch.EsConsumerConf{})
 	// processors.Register("mongo_json_consumer", &mongo.MongoConsumerConf{})
 	// processors.Register("lumberjack_json_consumer", &elasticsearch.LumberjackConsumerConf{})
-	processors.Register("kafka-writer", &kafka.KafkaWriterConf{})
-	processors.Register("kafka-reader", &kafka.KafkaReaderConf{})
+	connectors.Register("kafka-writer", &kafka.KafkaWriterConf{})
+	connectors.Register("kafka-reader", &kafka.KafkaReaderConf{})
 
 	flag.Parse()
 
@@ -109,6 +112,27 @@ func main() {
 		switch args[0] {
 		case "version":
 			fmt.Println("Version:", Version, " Build:", Build, " Date:", Date)
+			os.Exit(0)
+		case "list-connectors":
+			for _, p := range connectors.All() {
+				fmt.Println(p.Name)
+				typ := reflect.TypeOf(p.Conf).Elem()
+				for i := 0; i < typ.NumField(); i++ {
+					tag := typ.Field(i).Tag.Get("yaml")
+					name := typ.Field(i).Name
+					name = strings.ToLower(string(name[0])) + name[1:] // Ack to ensure first letter as lowercase by default
+					key := tag
+					t := typ.Field(i).Type
+					if key == "" {
+						key = name
+					}
+					fmt.Println("  ", key, t)
+				}
+			}
+			os.Exit(0)
+
+		case "list-config":
+			config.Print()
 			os.Exit(0)
 		case "help":
 			flag.PrintDefaults()
@@ -136,7 +160,7 @@ func main() {
 	log.Info("config [yaml]:", "marshall", b)
 
 	// Verify that CLone is properly implemented
-	for _, p := range processors.All() {
+	for _, p := range connectors.All() {
 		c1 := p.Conf
 		c2 := p.Conf.Clone()
 		if c1 == c2 {
@@ -161,7 +185,7 @@ func main() {
 
 	for _, flow := range conf.Streams {
 		if !flow.Disable {
-			r, err := flow.Start(ctx, all, ctl, channels, processors)
+			r, err := flow.Start(ctx, all, ctl, channels, connectors)
 			if err != nil {
 				errors++
 			}

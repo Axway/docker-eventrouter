@@ -1,10 +1,11 @@
 package config
 
 import (
+	"fmt"
+	"sort"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
+	"github.com/esimov/gogu"
 	bytesize "github.com/inhies/go-bytesize"
 )
 
@@ -56,7 +57,21 @@ func DeclareSize(name string, defaultValue string, description string) int64 {
 }
 
 func Print() {
-	for k, v := range configValues {
-		log.Println("", k, "=", v.Value, v.Description)
+	keys := gogu.Keys(configValues)
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] <= keys[j]
+	})
+	max := 0
+	for _, key := range keys {
+		v := configValues[key]
+		s := fmt.Sprint(key, "=", v.Value)
+		if len(s) > max {
+			max = len(s)
+		}
+	}
+	for _, key := range keys {
+		v := configValues[key]
+		s := fmt.Sprint(key, "=", v.Value)
+		fmt.Printf("%-*s \t# %s\n", max, s, v.Description)
 	}
 }
