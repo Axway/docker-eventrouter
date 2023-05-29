@@ -24,8 +24,9 @@ echo "$VERSION"
 sed -i 's/Version:       .*/'"Version:       $VERSION"'/g' "$H/rpmbuild/SPECS/rpm.spec"
 cat "$H/rpmbuild/SPECS/rpm.spec"
 
-cp "$I/$NAME" "$H/rpmbuild/SOURCES/$NAME-$VERSION/${NAME}d"
+cp "./artefacts/$NAME" "$H/rpmbuild/SOURCES/$NAME-$VERSION/${NAME}d"
 cp "$I/rpm/$NAME" "$H/rpmbuild/SOURCES/$NAME-$VERSION/$NAME"
+sed -i 's/APPVERSION=.*/APPVERSION="'"$VERSION"'"/g' "$H/rpmbuild/SOURCES/$NAME-$VERSION/$NAME"
 (
     cd "$H/rpmbuild/SOURCES/"
     tar cvfz "$NAME-$VERSION.tar.gz" "$NAME-$VERSION"
@@ -42,5 +43,5 @@ if [ ! -d "$PKGROOT" ]; then
 fi
 
 ls -l "$PKGROOT"
-cp "$PKGROOT"/* "$I/rpm"
+cp "$PKGROOT"/* "$I/artefacts"
 #curl -k -v -u $ARTIFACTORY_NEW_REGISTRY_USER:$ARTIFACTORY_NEW_REGISTRY_PASSWORD -T flowmanager-agent-$VERSION-1.el7.x86_64.rpm "$ARTIFACTORY_URL/$FLOWMANAGER_GENERIC_RELEASE_REPO/flowmanager-rpm-agent/axway-flowmanager-agent-$VERSION.rpm"
