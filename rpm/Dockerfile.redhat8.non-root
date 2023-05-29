@@ -1,0 +1,5 @@
+FROM redhat/ubi8-minimal
+RUN microdnf update && microdnf install findutils procps tar gzip systemd curl && microdnf clean all
+
+COPY ./artefacts/*.rpm /
+COPY rpm/tests /config/tests

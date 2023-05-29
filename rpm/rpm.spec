@@ -1,14 +1,16 @@
 Name:           qlt-router
 Version:        1.0.0
-Release:        1%{?dist}
+Release:        1
 Summary:        QLT Router
 BuildArch:      x86_64
 
 License:        Axway License
 Source0:        %{name}-%{version}.tar.gz
 
-Requires:       bash
+#Requires:       bash
 AutoReq:        no
+
+Prefix:         /
 
 %description
 qlt-router filters/routes/transforms/aggregates Axway Sentinel events toward multiple targets : sentinel, kafka, eleasticsearch, files, postgres,... 

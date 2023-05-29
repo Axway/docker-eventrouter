@@ -6,61 +6,80 @@ default:
     - docker-ex
 
 stages:
+  - prepare
   - build
   - pack
   - test
   - deploy
   - security
 
+version:
+  stage: prepare
+  script:
+    - ./scripts/setVersion.sh
+  artifacts:
+    paths:
+      - ./.env
+
 build:
   image: golang:1.20.2
   stage: build
+  dependencies:
+    - version
   cache:
     paths:
       - .cache/
     key: GO
   script:
+    - (test -d /artefacts && ln -s /artefacts ./artefacts) || mkdir -p artefacts
     - ls -l .cache || true
     - mkdir -p .cache
     - export GOPATH="$CI_PROJECT_DIR/.cache"
     - ./scripts/setVersion.sh
     - make build-rpm
     - ./$NAME version
+    - cp $NAME ./artefacts/
   artifacts:
     paths:
-      - $NAME
-      - ./.env
+      - ./artefacts/$NAME
     expire_in: 2 day
 
 rpm:
   image: rpmbuild/centos7
   dependencies:
+    - version
     - build
   needs:
+    - version
     - build
   stage: pack
   script:
+    - test -d /artefacts && ln -s /artefacts ./artefacts
     - ./rpm/build-rpm.sh
   artifacts:
     paths:
-      - ./rpm/qlt-router*.rpm
+      - ../artefacts/rpm/$NAME*.rpm
       - ./.env
     expire_in: 2 day
 
 test-rpm-pack:
   dependencies:
+    - version
     - rpm
   needs:
+    - version
     - rpm
   stage: test
   script:
+    - test -d /artefacts && ln -s /artefacts ./artefacts
     - ./rpm/test-rpm.sh
 
 build-docker:
   image: davinci1976/docker-ci:unstable
   stage: build
+  dependencies:
+    - version
   script:
-    - ./scripts/setVersion.sh
     - docker build --pull -f ./Dockerfile -t $NAME:$CI_COMMIT_SHA .
     - docker run --rm $NAME:$CI_COMMIT_SHA $NAME version
     - docker rmi $NAME:$CI_COMMIT_SHA
