@@ -6,8 +6,8 @@ set -xeuo pipefail
 NAME=qlt-router
 H=$HOME
 #make linux-agent
-I=$(realpath $(dirname "$0")/..)
-. $I/.env
+I=$(realpath "$(dirname "$0")/..")
+. "$I/.env"
 
 ls -l
 
@@ -19,7 +19,7 @@ mkdir -p "$H/rpmbuild/SOURCES/$NAME-$VERSION"
 mkdir -p "$H/rpmbuild/SOURCES/$NAME-1.0.0"
 mkdir -p "$H/rpm"
 
-cp -f $I/rpm/rpm.spec "$H/rpmbuild/SPECS/"
+cp -f "$I/rpm/rpm.spec" "$H/rpmbuild/SPECS/"
 echo "$VERSION"
 sed -i 's/Version:       .*/'"Version:       $VERSION"'/g' "$H/rpmbuild/SPECS/rpm.spec"
 cat "$H/rpmbuild/SPECS/rpm.spec"
@@ -27,6 +27,7 @@ cat "$H/rpmbuild/SPECS/rpm.spec"
 cp "./artefacts/$NAME" "$H/rpmbuild/SOURCES/$NAME-$VERSION/${NAME}d"
 cp "$I/rpm/$NAME" "$H/rpmbuild/SOURCES/$NAME-$VERSION/$NAME"
 sed -i 's/APPVERSION=.*/APPVERSION="'"$VERSION"'"/g' "$H/rpmbuild/SOURCES/$NAME-$VERSION/$NAME"
+sed -i 's/__APPNAME__/'"$NAME"'"/g' "$H/rpmbuild/SOURCES/$NAME-$VERSION/$NAME"
 (
     cd "$H/rpmbuild/SOURCES/"
     tar cvfz "$NAME-$VERSION.tar.gz" "$NAME-$VERSION"

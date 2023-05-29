@@ -5,8 +5,8 @@ NAME="qlt-router"
 
 set -euo pipefail
 
-I=$(realpath $(dirname "$0")/..)
-cd $I
+I=$(realpath "$(dirname "$0")/..")
+cd "$I"
 
 docker build -f ./rpm/Dockerfile.redhat8 -t $NAME-tests .
 docker run --user 10000:10000 --env USER=zouzou --rm $NAME-tests /config/tests/test.sh
