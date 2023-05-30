@@ -64,9 +64,11 @@ func main() {
 	})*/
 	var configFile string
 	var verbose bool
+	var port string
 	// flag.String(flag.DefaultConfigFlagname, "", "path to config file")
 	flag.StringVar(&configFile, "config", "./qlt-router.yml", "path to config file")
 	flag.BoolVar(&verbose, "verbose", false, "be verbose")
+	flag.StringVar(&port, "port", "8080", "http port")
 
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
 	memprofile := flag.String("memprofile", "", "write memory profile to this file")
@@ -240,8 +242,8 @@ func main() {
 		http.Handle("/", fs)
 	}
 
-	log.Info("[HTTP] Listening on localhost:9900")
-	go http.ListenAndServe("localhost:9900", nil)
+	log.Info("[HTTP] Listening on localhost:" + port)
+	go http.ListenAndServe("localhost:"+port, nil)
 
 	time.Sleep(1 * time.Second)
 	channels.Display()

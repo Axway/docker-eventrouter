@@ -2,6 +2,7 @@
 # 0.0.1sink
 - add `list-connectors` `list-config` commands (in addition to `help`, `version`)
 - add preliminary support for AWS SQS
+- add `--port` for basic ui/prometheus/health 
 - add `--config` option
 - add `--memprof` `--cpuprof` options
 - verify configuration file connectors attribute, fail to start if not found
