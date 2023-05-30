@@ -58,7 +58,7 @@ rpm:
     - ./rpm/build-rpm.sh
   artifacts:
     paths:
-      - ../artefacts/rpm/$NAME*.rpm
+      - ./artefacts/rpm/$NAME*.rpm
       - ./.env
     expire_in: 2 day
 
