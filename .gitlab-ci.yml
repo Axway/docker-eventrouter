@@ -25,7 +25,7 @@ version:
 build:
   image: golang:buster
   stage: build
-  dependencies:
+  needs:
     - version
   cache:
     paths:
@@ -46,9 +46,6 @@ build:
 
 rpm:
   image: rpmbuild/centos7
-  dependencies:
-    - version
-    - build
   needs:
     - version
     - build
@@ -63,9 +60,6 @@ rpm:
 
 rpm-tests:
   image: davinci1976/docker-ci:unstable
-  dependencies:
-    - version
-    - rpm
   needs:
     - version
     - rpm
@@ -77,7 +71,7 @@ rpm-tests:
 build-docker:
   image: davinci1976/docker-ci:unstable
   stage: build
-  dependencies:
+  needs:
     - version
   script:
     - docker build --pull -f ./Dockerfile -t $NAME:$CI_COMMIT_SHA .
