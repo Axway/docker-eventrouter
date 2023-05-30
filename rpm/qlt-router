@@ -6,7 +6,7 @@
 set -eEuo pipefail
 shopt -s extdebug
 
-APPNAME="qlt-router"
+APPNAME=qlt-router
 APPVERSION="0.0.0"
 APPCONF=".env"
 
@@ -314,7 +314,7 @@ check_pid() {
 case "${1:-}" in
     start) ## ## start __APPNAME__
       if ! check_pid; then
-        "$INSTALLDIR/bin/${APPNAME}d" --config="$RUNTIME/etc/$APPNAME.conf" > "$RUNTIME/var/log/$APPNAME.log" 2>&1 </dev/null &
+        "$INSTALLDIR/usr/bin/${APPNAME}d" --config="$RUNTIME/etc/$APPNAME.conf" > "$RUNTIME/var/log/$APPNAME.log" 2>&1 </dev/null &
         echo "$!" > "$RUNTIME/var/run/$APPNAME.pid"
       else
         echo "$APPNAME is already started"
@@ -377,7 +377,7 @@ Description=Flowmanager Agent
 After=network.target
 
 [Service]
-ExecStart="$INSTALLDIR/bin/${APPNAME}d" --config="$RUNTIME/etc/${APPNAME}.conf"
+ExecStart="$INSTALLDIR/usr/bin/${APPNAME}d" --config="$RUNTIME/etc/${APPNAME}.conf"
 WorkingDirectory="$RUNTIME"
 User=$USER
 Type=simple
