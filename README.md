@@ -26,9 +26,16 @@ go test -v -t 10 ./src/...
 
 ### local ci
 
+- mac colima
+```
+export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
+````
+
 ```sh
-gitlab-runner exec shell build-bin
-gitlab-runner exec shell build-docker
+gitlab-runner exec docker --docker-volumes "$PWD/artefacts:/artefacts" --docker-volumes "$PWD/cache:/cache" build
+gitlab-runner exec docker --docker-volumes "$PWD/artefacts:/artefacts" rpm
+./rpm/test-rpm.sh 
+gitlab-runner exec docker build-docker
 ```
 
 ### add dev ui

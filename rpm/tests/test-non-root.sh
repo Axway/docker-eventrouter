@@ -140,12 +140,12 @@ check_ok $NAME help
 check_ok $NAME init "$RUNTIME"
 check_ok cat $RUNTIME/etc/$NAME.conf
 
-cat >$RUNTIME/etc/$NAME.conf <<EOF
-accept-eula=true
-name=zouzou
-dosa=/config/tests/env-axway/dosa.json
-dosa-key=/config/tests/env-axway/dosa-key.pem
-EOF
+#cat >$RUNTIME/etc/$NAME.conf <<EOF
+#accept-eula=true
+#name=zouzou
+#dosa=/config/tests/env-axway/dosa.json
+#dosa-key=/config/tests/env-axway/dosa-key.pem
+#EOF
 
 check_ok cat $RUNTIME/etc/$NAME.conf
 

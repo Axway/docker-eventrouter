@@ -22,7 +22,7 @@ version:
       - ./.env
 
 build:
-  image: golang:1.20.2
+  image: golang:buster
   stage: build
   dependencies:
     - version
@@ -35,7 +35,6 @@ build:
     - ls -l .cache || true
     - mkdir -p .cache
     - export GOPATH="$CI_PROJECT_DIR/.cache"
-    - ./scripts/setVersion.sh
     - make build-rpm
     - ./$NAME version
     - cp $NAME ./artefacts/
@@ -62,7 +61,8 @@ rpm:
       - ./.env
     expire_in: 2 day
 
-test-rpm-pack:
+rpm-tests:
+  image: davinci1976/docker-ci:unstable
   dependencies:
     - version
     - rpm
