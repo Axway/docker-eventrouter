@@ -403,13 +403,23 @@ EOF
         mkdir -p "$runtime/var"
         mkdir -p "$runtime/var/lib"
         mkdir -p "$runtime/var/run"
-        mkdir -p "$runtime/var/run/states"
         mkdir -p "$runtime/var/log"
 
         #cp -rf "$LIBDIR/etc"/* "$runtime/etc"
 
         cat >"$runtime/etc/${APPNAME}.conf" <<EOF 
-name=$HOSTNAME
+streams:
+  - name: "qlt-sink"
+    upstream: "qlt-generator"
+    disable: false
+    description: ""
+    flow:
+      - name: "qlt-server-reader"
+        conf:
+          port: 1305
+      - name: "mem-writer"
+        conf:
+          maxSize: 0
 EOF
 
         ln -s "$0" "$runtime/usr/bin/$(basename "$0")"
