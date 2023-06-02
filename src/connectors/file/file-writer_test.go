@@ -26,7 +26,7 @@ func TestFileStoreRawWriterStart(t *testing.T) {
 	channels := processor.NewChannels()
 	cIn := channels.Create("file-store-in", -1)
 	// cIn := make(chan processor.AckableEvent, 1000)
-	wp := processor.NewProcessor("file-store", &file.FileStoreRawWriterConfig{targetFilename}, channels)
+	wp := processor.NewProcessor("file-store", &file.FileStoreRawWriterConfig{targetFilename, 0, 0}, channels)
 	rp := processor.NewProcessor("mem-reader", &mem.MemReadersConf{msgs}, channels)
 
 	wp.Start(context.Background(), ctl, cIn, nil)
@@ -35,17 +35,6 @@ func TestFileStoreRawWriterStart(t *testing.T) {
 	defer rp.Close()
 
 	var err error
-	for {
-		op := <-ctl
-		op.Log()
-		if op.From == rp && op.Id == "STOPPED" {
-			break
-		}
-		if op.Id == "ERROR" {
-			err = errors.New("connector Error: " + op.Msg)
-			break
-		}
-	}
 	for err == nil {
 		op := <-ctl
 		op.Log()

@@ -1,5 +1,6 @@
 
 # 0.0.1sink
+- connector: `file`, add `MaxFile`, `MaxSize` for automatic file rotation and jsonfile sample
 - add `list-connectors` `list-config` commands (in addition to `help`, `version`)
 - add preliminary support for AWS SQS
 - add `--port` for basic ui/prometheus/health 

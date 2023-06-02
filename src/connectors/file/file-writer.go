@@ -8,11 +8,15 @@ import (
 	"strings"
 
 	"axway.com/qlt-router/src/processor"
-	log "github.com/sirupsen/logrus"
+	"axway.com/qlt-router/src/tools"
+
+	log "axway.com/qlt-router/src/log"
 )
 
 type FileStoreRawWriterConfig struct {
 	Filename string
+	MaxFile  int
+	MaxSize  int64
 }
 
 type FileStoreRawWriter struct {
@@ -22,12 +26,16 @@ type FileStoreRawWriter struct {
 	Filename string
 	file     *os.File
 	lf       string
+	Size     int64
 }
+
+var count = 0
 
 func (c *FileStoreRawWriterConfig) Start(context context.Context, p *processor.Processor, ctl chan processor.ControlEvent, inc, out chan processor.AckableEvent) (processor.ConnectorRuntime, error) {
 	q := &FileStoreRawWriter{}
 	q.Conf = c
-	q.CtxS = p.Name
+	count++
+	q.CtxS = p.Name + fmt.Sprint("-", count)
 	return processor.GenProcessorHelperWriter(context, q, p, ctl, inc, out)
 }
 
@@ -41,23 +49,49 @@ func (q *FileStoreRawWriter) Ctx() string {
 }
 
 func (q *FileStoreRawWriter) Init(p *processor.Processor) error {
+	return q.Open()
+}
+
+func (q *FileStoreRawWriter) Open() error {
+	if q.file != nil {
+		panic("multiple open")
+	}
+
 	q.Filename = q.Conf.Filename
-	log.Println(q.CtxS, "opening file...", "filename", fmt.Sprintf("%p", q.Conf), q.Conf.Filename)
+	log.Infoc(q.CtxS, "opening file...", "filename", q.Conf.Filename)
 	f, err := os.OpenFile(q.Filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
-		log.Errorln(q.CtxS, "error opening file for appending", "filename", q.Filename, "err", err)
+		log.Errorc(q.CtxS, "error opening file for appending", "filename", q.Filename, "err", err)
 		return err
 	}
 	q.file = f
 	offset, err := q.file.Seek(0, io.SeekCurrent)
 	if err != nil {
-		log.Errorln(q.CtxS, "error get position", "filename", q.Filename, "err", err)
+		log.Errorc(q.CtxS, "error get position", "filename", q.Filename, "err", err)
 		return err
 	}
+	q.lf = ""
 	if offset != 0 {
 		q.lf = "\n"
 	}
+	q.Size = offset
+
 	return nil
+}
+
+func (q *FileStoreRawWriter) Rotate() error {
+	err := tools.FileRotate(q.CtxS, q.Conf.Filename, q.Conf.MaxFile)
+	if err != nil {
+		return err
+	}
+
+	err = q.file.Close()
+	if err != nil {
+		log.Warnc(q.CtxS, "error while rotating : close error", "filename", q.Filename, "err", err)
+	}
+	q.file = nil
+	err = q.Open()
+	return err
 }
 
 func (q *FileStoreRawWriter) PrepareEvent(event *processor.AckableEvent) (string, error) {
@@ -74,8 +108,17 @@ func (q *FileStoreRawWriter) Write(events []processor.AckableEvent) error {
 
 	// log.Debugln(q.CtxS, "writing", "count", len(datas))
 
-	if _, err := q.file.Write([]byte(q.lf + strings.Join(datas, "\n"))); err != nil {
-		log.Errorln(q.CtxS, "error write message in file", "filename", q.Filename, "err", err)
+	buf := []byte(q.lf + strings.Join(datas, "\n"))
+	log.Debugc(q.CtxS, "write buffer", "buffer", string(buf))
+
+	q.Size += int64(len(buf))
+	if q.Conf.MaxSize > 0 && q.Size > q.Conf.MaxSize {
+		log.Infoc(q.CtxS, "rotating", "filename", q.Filename, "size", q.Size, "maxsize", q.Conf.MaxSize)
+		q.Rotate()
+	}
+
+	if _, err := q.file.Write(buf); err != nil {
+		log.Errorc(q.CtxS, "error write message in file", "filename", q.Filename, "err", err)
 		return err
 	}
 	q.lf = "\n"
