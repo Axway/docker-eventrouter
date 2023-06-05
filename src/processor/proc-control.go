@@ -111,6 +111,7 @@ func (r *ControlRuntime) Ctx() string {
 func (r *ControlRuntime) Close() error { return nil }
 
 func Dispatch(ctx context.Context, p *Processor, ctl chan ControlEvent, in chan AckableEvent, outs *[]chan AckableEvent) {
+	ctxS := "dispatch"
 	count := 0
 	hasMsg := -1
 	ctl <- ControlEvent{p, nil, "RUNNING", ""}
@@ -118,7 +119,7 @@ func Dispatch(ctx context.Context, p *Processor, ctl chan ControlEvent, in chan 
 		select {
 		case qltMessage := <-in:
 			if hasMsg <= 0 {
-				log.Warn("dispatch: restart message", "count", count, "hasMsg", hasMsg)
+				log.Warnc(ctxS, "restart message", "count", count, "hasMsg", hasMsg)
 			}
 			count++
 			hasMsg++
@@ -141,7 +142,7 @@ func Dispatch(ctx context.Context, p *Processor, ctl chan ControlEvent, in chan 
 							break loopSelect
 						case <-time.After(1 * time.Second): // FIXME: Bad practice
 							ctl <- ControlEvent{p, nil, "STUCK", ""}
-							log.Warn("dispatch: stuck", "idx", idx)
+							log.Warnc(ctxS, "dispatch: stuck", "idx", idx)
 						}
 					}
 				}
@@ -155,7 +156,7 @@ func Dispatch(ctx context.Context, p *Processor, ctl chan ControlEvent, in chan 
 			return
 		case <-time.After(1 * time.Second): // FIXME: bad practice
 			if hasMsg > 0 {
-				log.Warn("dispatch: no message", "count", count, "hasMsg", hasMsg)
+				log.Warnc(ctxS, "dispatch: no message", "count", count, "hasMsg", hasMsg)
 				ctl <- ControlEvent{p, nil, "NO_MESSAGE", ""}
 				hasMsg = 0
 			}

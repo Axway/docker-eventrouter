@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"strings"
 
+	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
 	_ "github.com/jackc/pgx/v4/stdlib"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -17,42 +17,42 @@ const (
 	QLTTABLECONSUMER = "QLTBufferConsumer"
 )
 
-func pgDBInit(conn *sql.DB) error {
+func pgDBInit(ctx string, conn *sql.DB) error {
 	count, err := pgDBCount(conn)
 	if err != nil {
-		log.Warnln("[DB-PG] error fectching previous rows", err)
+		log.Warnc(ctx, "[DB-PG] error fectching previous rows", "err", err)
 	} else {
-		log.Debugln("[DB-PG]  rows", count)
+		log.Debugc(ctx, "[DB-PG]  rows", count)
 	}
 
 	rows, err := pgDBRead(conn, 10, 0)
 	if err != nil {
-		log.Warnln("[DB-PG] error fectching previous rows", err)
+		log.Warnc(ctx, "[DB-PG] error fectching previous rows", "err", err)
 	} else {
-		log.Debugln("[DB-PG]  rows", len(rows), rows)
+		log.Debugc(ctx, "[DB-PG]  rows", len(rows), rows)
 	}
 
 	_, err = conn.Exec("DROP TABLE IF EXISTS " + QLTTABLE)
 	if err != nil {
-		log.Errorln("[DB-PG] error dropping table", err)
+		log.Errorc(ctx, "[DB-PG] error dropping table", "err", err)
 		return err
 	}
 
 	_, err = conn.Exec("DROP TABLE IF EXISTS " + QLTTABLECONSUMER)
 	if err != nil {
-		log.Errorln("[DB-PG] error dropping table", err)
+		log.Errorc(ctx, "[DB-PG] error dropping table", "err", err)
 		return err
 	}
 
 	_, err = conn.Exec("CREATE TABLE IF NOT EXISTS " + QLTTABLE + " ( id BIGSERIAL PRIMARY KEY, name TEXT )")
 	if err != nil {
-		log.Errorln("[DB-PG] error initializing table: ", err)
+		log.Errorc(ctx, "[DB-PG] error initializing table: ", "err", err)
 		return err
 	}
 
 	_, err = conn.Exec("CREATE TABLE IF NOT EXISTS " + QLTTABLECONSUMER + " ( name TEXT PRIMARY KEY, position BIGINT )")
 	if err != nil {
-		log.Errorln("[DB-PG] error initializing table: ", err)
+		log.Errorc(ctx, "[DB-PG] error initializing table: ", "err", err)
 		return err
 	}
 	return nil
@@ -86,12 +86,12 @@ func (c *PGWriterConf) Clone() processor.Connector {
 }
 
 func (q *PGWriter) Close() error {
-	log.Infoln(q.ctx, "Closing...")
+	log.Infoc(q.ctx, "Closing...")
 	err := q.conn.Close()
 	if err != nil {
-		log.Errorln(q.ctx, "close", "err", err)
+		log.Errorc(q.ctx, "close", "err", err)
 	} else {
-		log.Debugln(q.ctx, "close OK")
+		log.Debugc(q.ctx, "close OK")
 	}
 	return err
 }
@@ -105,17 +105,16 @@ func (q *PGWriter) IsAckAsync() bool {
 }
 
 func (q *PGWriter) Init(p *processor.Processor) error {
-	log.Println(q.ctx, "Opening database", q.conf.Url, "...")
+	log.Infoc(q.ctx, "Opening database", "url", q.conf.Url)
 	conn, err := sql.Open("pgx", q.conf.Url)
 	if err != nil {
-		log.Errorln(q.ctx, "Error opening file for appending", err)
-		log.Fatal(err)
+		log.Fatalc(q.ctx, "Error opening file for appending", "err", err)
 	}
 
 	q.conn = conn
 
 	if q.conf.Initialize {
-		err := pgDBInit(conn)
+		err := pgDBInit(q.ctx, conn)
 		if err != nil {
 			conn.Close()
 			return err
@@ -139,7 +138,7 @@ func (q *PGWriter) Write(msgs []processor.AckableEvent) error {
 	// log.Debugln(q.ctx, "rows", len(msgs))
 	_, err := q.conn.Exec(stmt, valueArgs...)
 	if err != nil {
-		log.Errorln(q.ctx, "INSERT failed: ", err, len(msgs))
+		log.Errorc(q.ctx, "INSERT failed ", "n", len(msgs), "err", err)
 		return err
 	}
 
@@ -147,7 +146,7 @@ func (q *PGWriter) Write(msgs []processor.AckableEvent) error {
 }
 
 func (q *PGWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {
-	log.Fatal("Not supported")
+	log.Fatalc(q.ctx, "Not supported")
 }
 
 func pgDBCount(conn *sql.DB) (int, error) {

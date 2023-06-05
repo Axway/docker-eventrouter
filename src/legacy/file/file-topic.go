@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"axway.com/qlt-router/src/log"
 )
 
 // Simple system for queuing leveraging underlying OS cache

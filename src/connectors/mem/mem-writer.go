@@ -3,8 +3,8 @@ package mem
 import (
 	"context"
 
+	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
-	log "github.com/sirupsen/logrus"
 )
 
 type MemWriter struct {
@@ -64,7 +64,7 @@ func (q *MemWriter) IsAckAsync() bool {
 }
 
 func (q *MemWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {
-	log.Fatal("Not supported")
+	log.Fatalc(q.CtxS, "Not supported")
 }
 
 func (q *MemWriter) Close() error {

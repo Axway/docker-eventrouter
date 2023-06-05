@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
+	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
 	"axway.com/qlt-router/src/protocols/qlt"
-	log "github.com/sirupsen/logrus"
 )
 
 type QLTClientWriter struct {
@@ -42,11 +42,11 @@ func (c *QLTClientWriterConf) Start(context context.Context, p *processor.Proces
 	}
 	for i := 0; i < q.Conf.Cnx; i++ {
 		for _, addr := range addrs {
-			log.Debugln(q.CtxS, "connection", "addr", addr)
+			log.Debugc(q.CtxS, "connection", "addr", addr)
 			p.Chans.Create(q.CtxS+"-AckEvent (Not Tracked)", 100)
 			// TcpChaosInit(TCPChaosConf{Name: q.Ctx, Addr: addr})
 			c2 := &QLTClientWriterConnection{q.CtxS, addr, nil, make(chan processor.AckableEvent, 100)}
-			log.Debugln(q.CtxS, "AddReader!!!!*************************")
+			log.Debugc(q.CtxS, "AddReader!!!!*************************")
 			p.AddReader(c2)
 		}
 	}
@@ -80,11 +80,11 @@ func (q *QLTClientWriterConnection) Ctx() string {
 }
 
 func (q *QLTClientWriterConnection) Init(p *processor.Processor) error {
-	log.Println(q.CtxS, "Connecting to ", q.Addr, "...")
+	log.Infoc(q.CtxS, "Connecting to ", "addr", q.Addr)
 	for i := 0; i < 10; i++ {
 		client, err := qlt.NewQltClient(q.CtxS, q.Addr)
 		if err != nil {
-			log.Errorln(q.CtxS, "failed to connect", "addr", q.Addr, "err", err)
+			log.Errorc(q.CtxS, "failed to connect", "addr", q.Addr, "err", err)
 			// return err
 		} else {
 			q.Qlt = client
@@ -123,14 +123,14 @@ func (q *QLTClientWriterConnection) ProcessAcks(ctx context.Context, acks chan p
 		// log.Debugln(q.CtxS, "waiting msg to ack")
 		event, ok := <-q.acks
 		if !ok {
-			log.Infoln(q.CtxS, "close ack loop")
+			log.Infoc(q.CtxS, "close ack loop")
 			return
 		}
 		// log.Debugln(q.CtxS, "waiting ack from qlt", "msgId", event.Msgid)
 
 		err := q.Qlt.WaitAck()
 		if err != nil {
-			log.Errorln(q.CtxS, "error waiting ack: close ack loop", "err", err)
+			log.Errorc(q.CtxS, "error waiting ack: close ack loop", "err", err)
 			return
 		}
 		// log.Debugln(q.CtxS, "ack received", "msgId", event.Msgid)
@@ -140,14 +140,14 @@ func (q *QLTClientWriterConnection) ProcessAcks(ctx context.Context, acks chan p
 
 func (q *QLTClientWriterConnection) Close() error {
 	if q.Qlt == nil {
-		log.Warnln(q.CtxS, "close", "warn", "not opened")
+		log.Warnc(q.CtxS, "close warn not opened")
 		return nil
 	}
 	err := q.Qlt.Close()
 	if err != nil {
-		log.Errorln(q.CtxS, "close", "err", err)
+		log.Errorc(q.CtxS, "close", "err", err)
 	} else {
-		log.Infoln(q.CtxS, "close OK")
+		log.Infoc(q.CtxS, "close OK")
 	}
 	return err
 }

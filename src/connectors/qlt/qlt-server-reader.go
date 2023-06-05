@@ -4,10 +4,10 @@ import (
 	"context"
 	"net"
 
+	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
 	"axway.com/qlt-router/src/protocols/qlt"
 	"axway.com/qlt-router/src/tools"
-	log "github.com/sirupsen/logrus"
 )
 
 type QLTServerReader struct {
@@ -26,15 +26,15 @@ func (q *QLTServerReader) Ctx() string {
 
 func (q *QLTServerReader) Close() error {
 	if q.listener == nil {
-		log.Warnln(q.ctx, "listener closing: empty listener")
+		log.Warnc(q.ctx, "listener closing: empty listener")
 		return nil
 	}
-	log.Infoln(q.ctx, "listener closing")
+	log.Infoc(q.ctx, "listener closing")
 	err := q.listener.Close()
 	if err != nil {
-		log.Errorln(q.ctx, "listener close error", "err", err)
+		log.Errorc(q.ctx, "listener close error", "err", err)
 	} else {
-		log.Debugln(q.ctx, "listener closed")
+		log.Debugc(q.ctx, "listener closed")
 	}
 	return err
 }
@@ -69,7 +69,7 @@ func (conf *QLTServerReaderConf) Start(ctx context.Context, p *processor.Process
 	}
 	q := &QLTServerReader{conf, p.Name, listener}
 	if err != nil {
-		log.Errorln(q.ctx, "error starting listening server", "err", err)
+		log.Errorc(q.ctx, "error starting listening server", "err", err)
 	}
 	return q, err
 }
@@ -99,7 +99,7 @@ func (m *QLTServerReaderConnection) AckMsg(ack processor.EventAck) {
 	}
 	err := m.Qlt.WriteQLTAck()
 	if err != nil {
-		log.Errorln(m.CtxS, "error writing ack", "err", err)
+		log.Errorc(m.CtxS, "error writing ack", "err", err)
 		m.Close()
 		return
 	}
@@ -125,9 +125,9 @@ func (m *QLTServerReaderConnection) Read() ([]processor.AckableEvent, error) {
 func (m *QLTServerReaderConnection) Close() error {
 	err := m.Qlt.Close()
 	if err != nil {
-		log.Errorln(m.CtxS, "close error", "err", err)
+		log.Errorc(m.CtxS, "close error", "err", err)
 	} else {
-		log.Debugln(m.CtxS, "close")
+		log.Debugc(m.CtxS, "close")
 	}
 	return err
 }

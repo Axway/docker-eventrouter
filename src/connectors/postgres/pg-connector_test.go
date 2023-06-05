@@ -2,11 +2,11 @@ package postgres
 
 import (
 	"context"
+	"log"
 	"testing"
 
 	"axway.com/qlt-router/src/connectors/mem"
 	"axway.com/qlt-router/src/processor"
-	log "github.com/sirupsen/logrus"
 )
 
 func TestPGConnector(t *testing.T) {

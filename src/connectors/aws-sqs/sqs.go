@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -77,7 +77,7 @@ func (q *AwsSQSWriter) Write(events []processor.AckableEvent) error {
 	// Send the message to the SQS queue
 	_, err := q.Svc.SendMessageBatch(inputs)
 	if err != nil {
-		log.Errorln("Error sending messages:", "err", err)
+		log.Errorc("Error sending messages:", "err", err)
 		return err
 	}
 
@@ -89,7 +89,7 @@ func (q *AwsSQSWriter) IsAckAsync() bool {
 }
 
 func (q *AwsSQSWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {
-	log.Fatal("Not supported")
+	log.Fatalc(q.CtxS, "Not supported")
 }
 
 func (q *AwsSQSWriter) Close() error {

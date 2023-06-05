@@ -29,9 +29,9 @@ func NewChannels() *Channels {
 	return &Channels{}
 }
 
-func (c *Channels) Display() {
+func (c *Channels) Display(ctxS string) {
 	for _, channel := range c.Channels {
-		log.Info("channel", "name", channel.Name, "size", len(channel.C))
+		log.Infoc(ctxS, "channel", "name", channel.Name, "size", len(channel.C))
 	}
 }
 

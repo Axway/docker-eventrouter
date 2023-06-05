@@ -2,10 +2,11 @@ package kafka
 
 import (
 	"context"
+	"fmt"
 
+	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	log "github.com/sirupsen/logrus"
 )
 
 type KafkaReaderConf struct {
@@ -36,14 +37,14 @@ func (c *KafkaReaderConf) Clone() processor.Connector {
 func (q *KafkaReader) Init(p *processor.Processor) error {
 	k, err := kafka.NewConsumer(&kafka.ConfigMap{"bootstrap.servers": q.Conf.Servers, "group.id": q.Conf.Group, "auto.offset.reset": "earliest"})
 	if err != nil {
-		log.Errorln(q.CtxS, "error creation kafka consumer", "err", err)
+		log.Errorc(q.CtxS, "error creation kafka consumer", "err", err)
 		return err
 	}
 	q.k = k
 
 	err = q.k.SubscribeTopics([]string{q.Conf.Topic}, nil)
 	if err != nil {
-		log.Errorln(q.CtxS, "error subscribing topics", "err", err)
+		log.Errorc(q.CtxS, "error subscribing topics", "err", err)
 		return err
 	}
 	return err
@@ -63,7 +64,7 @@ func (q *KafkaReader) Read() ([]processor.AckableEvent, error) {
 	msg, err := q.k.ReadMessage(-1)
 	if err != nil {
 		// The client will automatically try to recover from all errors.
-		log.Printf(q.CtxS+"Consumer error: %v (%v)\n", err, msg)
+		log.Errorc(q.CtxS, "consumer error", "err", err, "msg", fmt.Sprintf("%+v", msg))
 		return nil, err
 	}
 	c := msg.TopicPartition
@@ -73,12 +74,12 @@ func (q *KafkaReader) Read() ([]processor.AckableEvent, error) {
 }
 
 func (q *KafkaReader) Close() error {
-	log.Infoln(q.CtxS, "closing kafka-reader")
+	log.Infoc(q.CtxS, "closing kafka-reader")
 	err := q.k.Close()
 	if err != nil {
-		log.Errorln(q.CtxS, "error closing kafka-reader", "err", err)
+		log.Errorc(q.CtxS, "error closing kafka-reader", "err", err)
 	} else {
-		log.Infoln(q.CtxS, "closed kafka-reader")
+		log.Infoc(q.CtxS, "closed kafka-reader")
 	}
 	return err
 }

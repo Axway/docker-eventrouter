@@ -5,21 +5,24 @@ import (
 	"fmt"
 	"os"
 
+	"axway.com/qlt-router/src/log"
 	_ "github.com/godror/godror"
-	log "github.com/sirupsen/logrus"
 )
 
-const hostname = "10.128.131.139"
-const port = 1521
+const (
+	hostname = "10.128.131.139"
+	port     = 1521
+)
 
-//const hostname = "52.136.219.167"
-//const port = 1521
-
+// const hostname = "52.136.219.167"
+// const port = 1521
 const service = "PDBBP2I"
 
-//const service = "oracle19c"
-const username = "SNTLBP2I"
-const password = "SNTLBP2I"
+// const service = "oracle19c"
+const (
+	username = "SNTLBP2I"
+	password = "SNTLBP2I"
+)
 
 type MetalScanner struct {
 	valid bool
@@ -110,7 +113,7 @@ func oracle() {
 
 	log.Infoln("Oracle Query Response")
 	for rows.Next() {
-		//rows.Scan(&thedate)
+		// rows.Scan(&thedate)
 		row := make([]interface{}, len(cols))
 		for idx := range cols {
 			row[idx] = new(MetalScanner)
@@ -121,7 +124,7 @@ func oracle() {
 			fmt.Println(err)
 		}
 		for idx, column := range cols {
-			var scanner = row[idx].(*MetalScanner)
+			scanner := row[idx].(*MetalScanner)
 
 			val := fmt.Sprint(scanner.value)
 			if val != "" && val != "<nil>" {

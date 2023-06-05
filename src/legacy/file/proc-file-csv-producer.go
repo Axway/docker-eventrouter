@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
-	"github.com/ulikunitz/xz/lzma"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/ulikunitz/xz/lzma"
 )
 
 func min(a, b int) int {

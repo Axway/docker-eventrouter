@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
+	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/html/charset"
 )
 
@@ -221,7 +221,7 @@ func convertStreamDummy2(eventsIn chan processor.AckableEvent, eventOut chan pro
 		qltEvent := <-eventsIn
 		event, err := convertToMap(qltEvent.Msg.(string))
 		if err != nil {
-			log.Errorln(qltEvent.Src.Ctx(), "[", qltEvent.Msgid, "] XML Parsing failed '", err, "' Closing...")
+			log.Errorc(qltEvent.Src.Ctx(), "XML parsing error, closing...", "msgid", qltEvent.Msgid, "err", err)
 			qltEvent.Src.AckMsg(qltEvent.Msgid)
 			// qltEvent.Ack <- false
 			continue
@@ -242,7 +242,8 @@ func convertStreamNoTransform(p *processor.Processor, eventsIn chan processor.Ac
 type Convert2JsonConf struct{ _ string }
 
 func (conf *Convert2JsonConf) Start(ctx context.Context, p *processor.Processor, ctl chan processor.ControlEvent, eventsIn, eventOut chan processor.AckableEvent) (processor.ConnectorRuntime, error) {
-	log.Infoln("[ConvertStreamXML2Dict] start")
+	ctxS := "[ConvertStreamXML2Dict]"
+	log.Infoc(ctxS, "start")
 	done := ctx.Done()
 	go func() {
 		for {
@@ -250,13 +251,13 @@ func (conf *Convert2JsonConf) Start(ctx context.Context, p *processor.Processor,
 			case qltEvent := <-eventsIn:
 				msg, err := convert1(qltEvent.Msg.(string))
 				if err != nil {
-					log.Errorln(qltEvent.Src.Ctx(), "convertStream [", qltEvent.Msgid, "] XML Parsing failed '", err, "' Closing...")
+					log.Errorc(qltEvent.Src.Ctx(), "convertStream: XML parsing failed, closing...", "msgid", qltEvent.Msgid, "err", err)
 					eventOut <- processor.AckableEvent{qltEvent.Src, qltEvent.Msgid, nil, &qltEvent}
 					continue
 				}
 				eventOut <- processor.AckableEvent{qltEvent.Src, qltEvent.Msgid, msg, &qltEvent}
 			case <-done:
-				log.Infoln("[ConvertStreamXML2Dict] done")
+				log.Infoc(ctxS, "[ConvertStreamXML2Dict] done")
 				return
 			}
 		}
@@ -272,7 +273,8 @@ func (c *Convert2JsonConf) Clone() processor.Connector {
 type ConvertStreamConf struct{ _ string }
 
 func (conf *ConvertStreamConf) Start(ctx context.Context, p *processor.Processor, ctl chan processor.ControlEvent, eventsIn, eventOut chan processor.AckableEvent) (processor.ConnectorRuntime, error) {
-	log.Infoln("[ConvertStreamXML2Dict] start")
+	ctxS := "[ConvertStreamXML2Dict]"
+	log.Infoc(ctxS, "start")
 	done := ctx.Done()
 	go func() {
 		for {
@@ -280,7 +282,7 @@ func (conf *ConvertStreamConf) Start(ctx context.Context, p *processor.Processor
 			case qltEvent := <-eventsIn:
 				event, err := convertToMap(qltEvent.Msg.(string))
 				if err != nil {
-					log.Errorln(qltEvent.Src.Ctx(), "convertStream [", qltEvent.Msgid, "] XML Parsing failed '", err, "' Closing...")
+					log.Errorc(qltEvent.Src.Ctx(), "convertStream XML Parsing failed, closing... '", "msgid", qltEvent.Msgid, "err", err)
 					eventOut <- processor.AckableEvent{qltEvent.Src, qltEvent.Msgid, nil, &qltEvent}
 					continue
 				}
@@ -292,7 +294,7 @@ func (conf *ConvertStreamConf) Start(ctx context.Context, p *processor.Processor
 				msg := processEvent(event)
 				eventOut <- processor.AckableEvent{qltEvent.Src, qltEvent.Msgid, msg, &qltEvent}
 			case <-done:
-				log.Infoln("[ConvertStreamXML2Dict] done")
+				log.Infoc(ctxS, "done")
 				return
 			}
 		}

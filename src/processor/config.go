@@ -14,13 +14,13 @@ type Config struct {
 	Streams []*Flow `yaml:""`
 }
 
-func ParseConfigFile(filename string) (*Config, error) {
+func ParseConfigFile(ctx string, filename string) (*Config, error) {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
-		log.Error("Failed to open ", "filename", filename, "err", err)
+		log.Errorc(ctx, "Failed to open ", "filename", filename, "err", err)
 		return nil, err
 	}
-	log.Debug("config file raw", "filename", filename, "data", string(data))
+	log.Debugc(ctx, "config file raw", "filename", filename, "data", string(data))
 	return ParseConfigRawData(data)
 }
 

@@ -7,8 +7,7 @@ import (
 	"math"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
+	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
 )
 
@@ -66,7 +65,7 @@ func (m *MemGeneratorReader) Init(p *processor.Processor) error {
 func (m *MemGeneratorReader) AckMsg(ack processor.EventAck) {
 	msgid, ok := ack.(int64)
 	if !ok {
-		log.Fatalln(m.CtxS, "invalid ack type", ack)
+		log.Fatalc(m.CtxS, "invalid ack type", "ack", ack)
 	}
 	m.AckPos = msgid
 }

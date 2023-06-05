@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync/atomic"
 
-	log "github.com/sirupsen/logrus"
+	"axway.com/qlt-router/src/log"
 )
 
 var counter = new(int64)
@@ -24,10 +24,10 @@ func getSessionId() string {
 func TcpConnect(addr string, prefix string) (net.Conn, string, error) {
 	ctx := fmt.Sprint("["+prefix+"-", getSessionId(), "]")
 
-	log.Println(prefix+"- Dialing...", addr)
+	log.Infoc(prefix, "Dialing...", "addr", addr)
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
-		log.Errorln(prefix, "- Dial failed :", addr, err)
+		log.Errorc(prefix, "Dial failed :", "addr", addr, "err", err)
 		return nil, "", err
 	}
 	return conn, ctx, nil
@@ -39,7 +39,7 @@ func TlsConnect(addr string, caFilename string, certFilename string, keyFilename
 	// Load our TLS key pair to use for authentication
 	cert, err := tls.LoadX509KeyPair(certFilename, keyFilename)
 	if err != nil {
-		log.Fatal(prefix+" Unable to load cert", certFilename, keyFilename, err)
+		log.Fatalc(prefix, " Unable to load cert", "certFilename", certFilename, "keyFilename", keyFilename, "err", err)
 	}
 
 	// Load our CA certificate
@@ -48,7 +48,7 @@ func TlsConnect(addr string, caFilename string, certFilename string, keyFilename
 	if caFilename != "" {
 		clientCACert, err := ioutil.ReadFile(caFilename)
 		if err != nil {
-			log.Fatal(prefix+"Unable to open ca", caFilename, err)
+			log.Fatalc(prefix, "Unable to open ca", "caFilename", caFilename, "err", err)
 		}
 		insecureSkipVerify = false
 		clientCertPool.AppendCertsFromPEM(clientCACert)
@@ -64,18 +64,18 @@ func TlsConnect(addr string, caFilename string, certFilename string, keyFilename
 
 	conn, err := tls.Dial("tcp", addr, tlsConfig)
 	if err != nil {
-		log.Errorln(ctx+"client: dial:", err)
+		log.Errorc(ctx, "client: dial:", "err", err)
 		return nil, "", err
 	}
 
-	log.Println(ctx+"client: connected to: ", conn.RemoteAddr())
+	log.Infoc(ctx, "client: connected to: ", "addr", conn.RemoteAddr())
 	state := conn.ConnectionState()
 	for i, cert := range state.PeerCertificates {
 		subject := cert.Subject
 		issuer := cert.Issuer
 
-		log.Printf(ctx+"client: %d s:/C=%s/ST=%v/L=%v/O=%v/OU=%v/CN=%s", i, strings.Join(subject.Country, ","), strings.Join(subject.Province, ","), strings.Join(subject.Locality, ","), strings.Join(subject.Organization, ","), strings.Join(subject.OrganizationalUnit, ","), subject.CommonName)
-		log.Printf(ctx+"client:   i:/C=%s/ST=%v/L=%v/O=%v/OU=%v/CN=%s", strings.Join(issuer.Country, ","), strings.Join(issuer.Province, ","), strings.Join(issuer.Locality, ","), strings.Join(issuer.Organization, ","), strings.Join(issuer.OrganizationalUnit, ","), issuer.CommonName)
+		log.Infoc(prefix, fmt.Sprintf("client: %d s:/C=%s/ST=%v/L=%v/O=%v/OU=%v/CN=%s", i, strings.Join(subject.Country, ","), strings.Join(subject.Province, ","), strings.Join(subject.Locality, ","), strings.Join(subject.Organization, ","), strings.Join(subject.OrganizationalUnit, ","), subject.CommonName))
+		log.Infoc(prefix, fmt.Sprintf("client:   i:/C=%s/ST=%v/L=%v/O=%v/OU=%v/CN=%s", strings.Join(issuer.Country, ","), strings.Join(issuer.Province, ","), strings.Join(issuer.Locality, ","), strings.Join(issuer.Organization, ","), strings.Join(issuer.OrganizationalUnit, ","), issuer.CommonName))
 
 		der, err := x509.MarshalPKIXPublicKey(cert.PublicKey)
 		if err != nil {
@@ -86,10 +86,9 @@ func TlsConnect(addr string, caFilename string, certFilename string, keyFilename
 			Bytes: der,
 		}
 		p := pem.EncodeToMemory(&block)
-		log.Debugln("\n" + string(p))
+		log.Debugc(prefix, "pem", "data", string(p))
 	}
-	log.Println(ctx+"client: handshake: ", state.HandshakeComplete)
-	log.Println(ctx+"client: mutual: ", state.NegotiatedProtocolIsMutual)
+	log.Infoc(ctx, "client: handshake: ", "handshake", state.HandshakeComplete, "mutual", state.NegotiatedProtocolIsMutual)
 
 	return conn, ctx, nil
 }
@@ -99,12 +98,12 @@ func TcpServe(addr string, handleRequest func(net.Conn, string), prefix string) 
 	// Listen for incoming connections.
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Error(ctxInit+" error listening:", err.Error())
+		log.Errorc(ctxInit, "error listening", "err", err)
 		return nil, err
 	}
 	// Close the listener when the application closes.
 
-	log.Println(ctxInit + " listening on " + addr)
+	log.Infoc(ctxInit, "listening", "addr", addr)
 	// Detach the main accept loop
 	go func() {
 		defer l.Close()
@@ -115,7 +114,7 @@ func TcpServe(addr string, handleRequest func(net.Conn, string), prefix string) 
 				if errors.Is(err, net.ErrClosed) {
 					return
 				}
-				log.Errorln(ctxInit+" error accepting: ", err.Error())
+				log.Errorc(ctxInit, "error accepting conenction", "err", err)
 				return
 			}
 			ctx := fmt.Sprint("["+prefix+"-", getSessionId(), "]")
@@ -127,23 +126,25 @@ func TcpServe(addr string, handleRequest func(net.Conn, string), prefix string) 
 }
 
 func TlsLogInfo(tlscon *tls.Conn, ctx string) {
-	log.Print(ctx + " TLS - Server: conn: Handshake completed")
+	log.Infoc(ctx, " TLS - Server: conn: Handshake completed")
 	state := tlscon.ConnectionState()
 
-	log.Printf(ctx+" TLS - Server: Version %x", state.Version)
-	log.Printf(ctx+" TLS - Server: HandshakeComplete: %t", state.HandshakeComplete)
-	log.Printf(ctx+" TLS - Server: NegotiatedProtocol: %s", state.NegotiatedProtocol)
-	log.Printf(ctx+" TLS - Server: NegotiatedProtocolIsMutual %t ", state.NegotiatedProtocolIsMutual)
-	log.Printf(ctx+" TLS - Server: ServerName: %s", state.ServerName)
-	log.Printf(ctx+" TLS - Server: CipherSuite %x", state.CipherSuite)
-	log.Println(ctx+" TLS - Server: OCSPResponse", state.OCSPResponse)
-	log.Println(ctx + " TLS - Server: client public key is:")
+	log.Infoc(ctx, "TLS - Server info",
+		"version", state.Version,
+		"serverName", state.ServerName,
+		"CipherSuite", state.CipherSuite,
+		"OCSPResponse", state.OCSPResponse,
+		"handshakecomplete", state.HandshakeComplete,
+		"negotiatedProtocol", state.NegotiatedProtocol,
+		"negotiatedProtocolIsMutual", state.NegotiatedProtocolIsMutual,
+	)
+	log.Infoc(ctx, "TLS - Server: client public key is:")
 	for i, cert := range state.PeerCertificates {
 		subject := cert.Subject
 		issuer := cert.Issuer
 
-		log.Printf(ctx+" TLS - Server: %d s:/C=%s/ST=%v/L=%v/O=%v/OU=%v/CN=%s", i, strings.Join(subject.Country, ","), strings.Join(subject.Province, ","), strings.Join(subject.Locality, ","), strings.Join(subject.Organization, ","), strings.Join(subject.OrganizationalUnit, ","), subject.CommonName)
-		log.Printf(ctx+" TLS - Server:   i:/C=%s/ST=%v/L=%v/O=%v/OU=%v/CN=%s", strings.Join(issuer.Country, ","), strings.Join(issuer.Province, ","), strings.Join(issuer.Locality, ","), strings.Join(issuer.Organization, ","), strings.Join(issuer.OrganizationalUnit, ","), issuer.CommonName)
+		log.Infoc(ctx, fmt.Sprintf(" TLS - Server: %d s:/C=%s/ST=%v/L=%v/O=%v/OU=%v/CN=%s", i, strings.Join(subject.Country, ","), strings.Join(subject.Province, ","), strings.Join(subject.Locality, ","), strings.Join(subject.Organization, ","), strings.Join(subject.OrganizationalUnit, ","), subject.CommonName))
+		log.Infoc(ctx, fmt.Sprintf(" TLS - Server:   i:/C=%s/ST=%v/L=%v/O=%v/OU=%v/CN=%s", strings.Join(issuer.Country, ","), strings.Join(issuer.Province, ","), strings.Join(issuer.Locality, ","), strings.Join(issuer.Organization, ","), strings.Join(issuer.OrganizationalUnit, ","), issuer.CommonName))
 
 		der, err := x509.MarshalPKIXPublicKey(cert.PublicKey)
 		if err != nil {
@@ -154,7 +155,7 @@ func TlsLogInfo(tlscon *tls.Conn, ctx string) {
 			Bytes: der,
 		}
 		p := pem.EncodeToMemory(&block)
-		log.Debugln("\n" + string(p))
+		log.Debugc(ctx, "pem", "data", string(p))
 	}
 }
 
@@ -172,7 +173,7 @@ func TlsServe(
 	// Listen for incoming connections.
 	cert, err := tls.LoadX509KeyPair(certFilename, keyFilename)
 	if err != nil {
-		log.Errorf(ctxInit+" TLS - loadkeys: %s", err)
+		log.Errorc(ctxInit, " TLS - loadkeys", "err", err)
 		return nil, err
 
 	}
@@ -187,11 +188,11 @@ func TlsServe(
 		certpool = x509.NewCertPool()
 		pem, err := ioutil.ReadFile(caFilename)
 		if err != nil {
-			log.Errorf(ctxInit+" TLS - Error - Failed to read client certificate authority: %v", err)
+			log.Errorc(ctxInit, " TLS - Error - Failed to read client certificate authority", "err", err)
 			return nil, err
 		}
 		if !certpool.AppendCertsFromPEM(pem) {
-			log.Errorf(ctxInit + " TLS - Error - Can't parse client certificate authority")
+			log.Errorc(ctxInit, " TLS - Error - Can't parse client certificate authority", "err", err)
 			return nil, err
 		}
 	}
@@ -205,18 +206,18 @@ func TlsServe(
 
 	l, err := tls.Listen("tcp", addr, &config)
 	if err != nil {
-		log.Errorln(ctxInit+" TLS - Error listening tls://"+addr, err.Error())
+		log.Errorc(ctxInit, "TLS - Error listening", "addr", addr, "err", err)
 		return nil, err
 	}
 	// Close the listener when the application closes.
-	log.Println(ctxInit + " TLS - listening on tls://" + addr)
+	log.Infoc(ctxInit, "TLS - listening", "addr", addr)
 	go func() {
 		defer l.Close()
 		for {
 			// Listen for an incoming connection.
 			conn, err := l.Accept()
 			if err != nil {
-				log.Println(ctxInit+" TLS - Server: Error accepting: ", err.Error())
+				log.Infoc(ctxInit, "TLS - Server: Error accepting: ", "err", err)
 				continue
 			}
 			// Handle connections in a new goroutine.
@@ -227,7 +228,7 @@ func TlsServe(
 					// log.Print(ctx + " TLS - Server: conn: type assert to TLS succeedded")
 					err := tlsconn.Handshake()
 					if err != nil {
-						log.Errorf(ctx+" TLS - Server: handshake failed: %s", err)
+						log.Errorc(ctx, "TLS - Server: handshake failed", "err", err)
 						return
 					}
 
@@ -235,7 +236,7 @@ func TlsServe(
 
 					handleRequest(conn, ctx)
 				} else {
-					log.Println(ctx + " TLS - server: conn: closed")
+					log.Errorc(ctx, "TLS - server: conn: closed")
 				}
 			}()
 		}

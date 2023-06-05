@@ -31,11 +31,11 @@ type ControlEvent struct {
 }
 
 func (msg *ControlEvent) Log() {
-	log.Debug(msg.From.Name+msg.From2.Ctx()+" (CTL-LOG)", "id", msg.Id, "msg", msg.Msg)
+	log.Debugc(msg.From.Name+msg.From2.Ctx(), " (CTL-LOG)", "id", msg.Id, "msg", msg.Msg)
 }
 
-func ControlEventDiscardAll(ctx context.Context, ctl chan ControlEvent) {
-	log.Info("CTL-LOG DiscardAll")
+func ControlEventDiscardAll(ctxS string, ctx context.Context, ctl chan ControlEvent) {
+	log.Infoc(ctxS, "CTL-LOG DiscardAll")
 	for {
 		select {
 		case <-ctl:
@@ -45,14 +45,14 @@ func ControlEventDiscardAll(ctx context.Context, ctl chan ControlEvent) {
 	}
 }
 
-func ControlEventLogAll(ctx context.Context, ctl chan ControlEvent) {
-	log.Debug("CTL-LOG Running")
+func ControlEventLogAll(ctxS string, ctx context.Context, ctl chan ControlEvent) {
+	log.Debugc(ctxS, "CTL-LOG Running")
 	for {
 		select {
 		case msg := <-ctl:
 			msg.Log()
 		case <-ctx.Done():
-			log.Debug("CTL-LOG Stopping")
+			log.Debugc(ctxS, "CTL-LOG Stopping")
 			return
 		}
 	}

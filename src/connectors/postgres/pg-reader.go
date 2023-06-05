@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
+	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
-	log "github.com/sirupsen/logrus"
 )
 
 type PGReader struct {
@@ -46,10 +46,10 @@ func (c *PGReaderConf) Clone() processor.Connector {
 
 func (q *PGReader) Init(p *processor.Processor) error {
 	time.Sleep(1 * time.Second)
-	log.Println(q.ctx, "Opening database", "'"+q.conf.Url+"'", "...")
+	log.Infoc(q.ctx, "Opening database", "url", "'"+q.conf.Url+"'")
 	conn, err := sql.Open("pgx", q.conf.Url)
 	if err != nil {
-		log.Errorln(q.ctx, "Error opening file for appending", err)
+		log.Errorc(q.ctx, "Error opening file for appending", "err", err)
 		return err
 	}
 
@@ -67,12 +67,12 @@ func (q *PGReader) Init(p *processor.Processor) error {
 }
 
 func (q *PGReader) Close() error {
-	log.Infoln(q.ctx, "Closing...")
+	log.Infoc(q.ctx, "Closing...")
 	err := q.conn.Close()
 	if err != nil {
-		log.Errorln(q.ctx, "close", "err", err)
+		log.Errorc(q.ctx, "close", "err", err)
 	} else {
-		log.Debugln(q.ctx, "close OK")
+		log.Debugc(q.ctx, "close OK")
 	}
 	return err
 }
@@ -80,7 +80,7 @@ func (q *PGReader) Close() error {
 func (q *PGReader) Read() ([]processor.AckableEvent, error) {
 	rows, err := pgDBRead(q.conn, 1000, int(q.offset))
 	if err != nil {
-		log.Errorln(q.ctx, "error reading db", err)
+		log.Errorc(q.ctx, "error reading db", "err", err)
 		return nil, err
 	}
 
@@ -107,7 +107,7 @@ func (q *PGReader) AckMsg(ack processor.EventAck) {
 func (q *PGReader) commitAck(offset int64) error {
 	_, err := q.conn.Exec("UPDATE "+QLTTABLECONSUMER+" SET position = $2 WHERE name = $1", q.conf.ReaderName, offset)
 	if err != nil {
-		log.Errorln(q.ctx, "Error commiting Ack", err)
+		log.Errorc(q.ctx, "Error commiting Ack", "err", err)
 		return err
 	}
 	q.lastackedmsgid = offset
@@ -118,7 +118,7 @@ func (q *PGReader) initializeReaderEntry() (int64, error) {
 	// FIXME: retrieve last
 	_, err := q.conn.Exec("INSERT INTO "+QLTTABLECONSUMER+" (name, position) VALUES ($1, $2) ON CONFLICT DO NOTHING", q.conf.ReaderName, 0)
 	if err != nil {
-		log.Errorln(q.ctx, "Error creating consumer "+q.conf.ReaderName, err)
+		log.Errorc(q.ctx, "Error creating consumer ", "readerName", q.conf.ReaderName, "err", err)
 		return 0, err
 	}
 	return 0, nil

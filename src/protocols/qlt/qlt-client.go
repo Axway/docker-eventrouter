@@ -33,7 +33,7 @@ func NewQltClient(ctx string, addr string) (*QltClient, error) {
 	c.CtxS = ctx
 
 	if err := c.Connect(); err != nil {
-		log.Error(c.CtxS+" Dial failed", "addr", c.Addr, "err", err)
+		log.Errorc(c.CtxS, " Dial failed", "addr", c.Addr, "err", err)
 		return nil, err
 	}
 	// go c._AckLoop()
@@ -41,21 +41,21 @@ func NewQltClient(ctx string, addr string) (*QltClient, error) {
 }
 
 func (c *QltClient) Connect() error {
-	log.Info(c.CtxS+" connecting... ", "addr", c.Addr)
+	log.Infoc(c.CtxS, " connecting... ", "addr", c.Addr)
 	// FIXME: timeout needed
 	conn, err := net.Dial("tcp", c.Addr)
 	if err != nil {
-		log.Error(c.CtxS+" dial failed", "addr", c.Addr, "err", err)
+		log.Errorc(c.CtxS, " dial failed", "addr", c.Addr, "err", err)
 		return err
 	}
-	log.Info(c.CtxS+" connected", "addr", c.Addr)
+	log.Infoc(c.CtxS, " connected", "addr", c.Addr)
 	c.conn = conn
 	return nil
 }
 
 func (c *QltClient) Close() error {
 	err := c.conn.Close()
-	log.Info(c.CtxS+" close", "rcount", c.RCount, "rsize", c.RSize, "wcount", c.WCount, "wsize", c.WSize, "err", err)
+	log.Infoc(c.CtxS, " close", "rcount", c.RCount, "rsize", c.RSize, "wcount", c.WCount, "wsize", c.WSize, "err", err)
 	return err
 }
 
@@ -65,19 +65,19 @@ func (c *QltClient) WaitAck() error {
 	// FIXME: timeout needed
 	rsize, err := c.conn.Read(buf)
 	if err != nil {
-		log.Error(c.CtxS+" Error reading ack", "err", err.Error())
+		log.Errorc(c.CtxS, " Error reading ack", "err", err)
 		return err
 	}
 	if rsize < 3 {
 		// FIXME: in theory the packet can be split in small pieces: retry needed
-		log.Error(c.CtxS+" Error reading:", "err", err.Error())
+		log.Errorc(c.CtxS, " Error reading:", "err", err)
 		return err
 	}
 	c.RCount++
 	c.RSize += rsize
 	if !qltIsPacketType(buf, QLTPacketTypeAck) {
 		err := errors.New("unexpected packet type")
-		log.Error(c.CtxS+" Error reading:", "err", err.Error())
+		log.Errorc(c.CtxS, " Error reading:", "err", err)
 		return err
 	}
 
@@ -95,7 +95,7 @@ func (c *QltClient) Send(_msg string) error {
 				if delay > qltSendRetryMaxDelay {
 					delay = qltSendRetryMaxDelay
 				}
-				log.Warn(c.CtxS+"  retrying...", "delay", delay/1000)
+				log.Warnc(c.CtxS, "  retrying...", "delay", delay/1000)
 				time.Sleep(delay)
 			}
 			retry++
@@ -119,7 +119,7 @@ func (c *QltClient) _Send(_msg string) error {
 	wbuf[2] = '1'
 	// FIXME: timeout needed
 	if _, err := c.conn.Write(wbuf); err != nil {
-		log.Error(c.CtxS+" write error", "err", err)
+		log.Errorc(c.CtxS, "write error", "err", err)
 		return err
 	}
 	c.WCount++

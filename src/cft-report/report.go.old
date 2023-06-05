@@ -7,7 +7,6 @@ import (
 	"time"
 
 	prop ".."
-	log "github.com/sirupsen/logrus"
 )
 
 var sample = `

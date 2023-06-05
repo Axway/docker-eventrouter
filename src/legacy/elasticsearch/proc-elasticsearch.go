@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/olivere/elastic"
 )
@@ -93,7 +93,7 @@ func (conf *EsConsumerConf) Start(ctx context.Context, p *processor.Processor, c
 
 	q.ctx = "[ES]"
 
-	log.Println(q.ctx, "Initializing Elasticsearch", conf.url)
+	log.Infoc(q.ctx, "Initializing Elasticsearch", "url", conf.url)
 	// Starting with elastic.v5, you must pass a context to execute each service
 
 	client, err := elastic.NewClient(elastic.SetURL(conf.url))
@@ -105,13 +105,13 @@ func (conf *EsConsumerConf) Start(ctx context.Context, p *processor.Processor, c
 	if err != nil {
 		panic(err)
 	}
-	log.Printf(q.ctx, "Elasticsearch returned with code %d and version %s\n", code, info.Version.Number)
+	log.Infoc(q.ctx, "Elasticsearch pinged", "code", code, "version", info.Version.Number)
 
 	esversion, err := client.ElasticsearchVersion(conf.url)
 	if err != nil {
 		panic(err)
 	}
-	log.Printf(q.ctx, "Elasticsearch version %s\n", esversion)
+	log.Infoc(q.ctx, "Elasticsearch version", "version", esversion)
 
 	// Use the IndexExists service to check if a specified index exists.
 	exists, err := client.IndexExists(conf.indexName).Do(ctx)
@@ -147,21 +147,21 @@ func (conf *EsConsumerConf) Start(ctx context.Context, p *processor.Processor, c
 	if !deleteIndex.Acknowledged {
 		// Not acknowledged
 	}*/
-	log.Println(q.ctx, "Starting es loop")
+	log.Infoc(q.ctx, "Starting es loop")
 	count := 1
 	done := ctx.Done()
 	for {
-		log.Println(q.ctx, "Waiting MessageMessage on ESQueue...")
+		log.Debugc(q.ctx, "Waiting MessageMessage on ESQueue...")
 		select {
 		case event := <-ESQueue:
-			log.Println(q.ctx, "Message for es")
+			log.Debugc(q.ctx, "Message for es")
 
 			// t := time.Now().Format(time.RFC3339Nano)
 			// event["created"] = t
 			msg := processor.ConvertToJSON(event.Msg.(map[string]string))
 
 			count++
-			log.Println(q.ctx, "msg", string(msg))
+			log.Debugc(q.ctx, "converted message", "msg", string(msg))
 			put2, err := client.Index().
 				Index(conf.indexName).
 				Type("event").
@@ -172,9 +172,9 @@ func (conf *EsConsumerConf) Start(ctx context.Context, p *processor.Processor, c
 				// Handle error
 				panic(err)
 			}
-			log.Printf(q.ctx, "Indexed %s to index %s, type %s", put2.Id, put2.Index, put2.Type)
+			log.Debugc(q.ctx, "message indexed", "indexed", put2.Id, "index", put2.Index, "type", put2.Type)
 		case <-done:
-			log.Infoln(q.ctx, "done")
+			log.Infoc(q.ctx, "done")
 			return
 		}
 	}

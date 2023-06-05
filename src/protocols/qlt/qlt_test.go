@@ -11,6 +11,7 @@ import (
 )
 
 func TestQlt(t *testing.T) {
+	ctxS := "test-" + t.Name()
 	port := "9899"
 	var qltServer *qlt.QLT
 	l, err := tools.TcpServe("localhost:"+port, func(conn net.Conn, ctx string) {
@@ -30,27 +31,27 @@ func TestQlt(t *testing.T) {
 	defer c.Close()
 
 	msgSent := "my message"
-	log.Info("send message", "msgSent", msgSent)
+	log.Infoc(ctxS, "send message", "msgSent", msgSent)
 	err = c.Send(msgSent)
 	if err != nil {
 		t.Error("error sending message ", err)
 		return
 	}
 
-	log.Info("waiting qltserver...")
+	log.Infoc(ctxS, "waiting qltserver...")
 	count := 0
 	for qltServer == nil {
 		time.Sleep(10 * time.Millisecond)
 		count++
 	}
-	log.Info("qltserver wait count", "count", count)
+	log.Infoc(ctxS, "qltserver wait count", "count", count)
 
 	msgReceived, err := qltServer.ReadQLTPacket()
 	if err != nil {
 		t.Error("error reading packet", err)
 		return
 	}
-	log.Info("received message", "msgReceiverd", msgReceived)
+	log.Infoc(ctxS, "received message", "msgReceiverd", msgReceived)
 
 	if msgSent != msgReceived {
 		t.Error("error different message", "msgSent", msgSent, "msgReceiverd", msgReceived)

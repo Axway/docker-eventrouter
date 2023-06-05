@@ -3,12 +3,13 @@ package kafka
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 
 	"axway.com/qlt-router/src/config"
+	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -46,13 +47,13 @@ func (q *KafkaWriter) Init(p *processor.Processor) error {
 	q.CtxS = "[KAFKA-WRITER] " + p.Flow.Name
 	hostname, err := os.Hostname()
 	if err != nil {
-		log.Fatalln(q.CtxS, err)
+		log.Fatalc(q.CtxS, "err", err)
 	}
 	conf := kafka.ConfigMap{"bootstrap.servers": q.Conf.Servers, "client.id": hostname /*"group.id": q.conf.Group,*/, "acks": "all"}
-	log.Infof("%s New Producer +%v", q.CtxS, conf)
+	log.Infoc(q.CtxS, "New Producer", "conf", fmt.Sprintf("%+v", conf))
 	k, err := kafka.NewProducer(&conf)
 	if err != nil {
-		log.Fatalln(q.CtxS, err)
+		log.Fatalc(q.CtxS, "err", err)
 	}
 	q.k = k
 	// q.delivery_chan = make(chan kafka.Event, kafkaWriteDeliveryQueueSize)
@@ -60,9 +61,9 @@ func (q *KafkaWriter) Init(p *processor.Processor) error {
 
 	meta, err := k.GetMetadata(nil, true, 1000)
 	if err != nil {
-		log.Fatalln(q.CtxS, "fetch metadata", err)
+		log.Fatalc(q.CtxS, "fetch metadata", "err", err)
 	}
-	log.Infoln(q.CtxS, "metadata", meta)
+	log.Infoc(q.CtxS, "metadata", "meta", meta)
 	return nil
 }
 
@@ -70,7 +71,7 @@ func (q *KafkaWriter) ProcessAcks(ctx context.Context, acks chan processor.Ackab
 	// Delivery report handler for produced messages
 	// events := q.k.Events()
 	done := ctx.Done()
-	defer log.Info(q.CtxS, "Stopped processing acks")
+	defer log.Infoc(q.CtxS, "Stopped processing acks")
 loop:
 	for {
 		// log.Debugln(q.CtxS, "Starting processing ack")
@@ -80,7 +81,7 @@ loop:
 		case event, ok = <-q.acks.C:
 			// log.Debugln(q.CtxS, "Received Ack", event)
 			if !ok {
-				log.Infoln(q.CtxS, "close ack loop")
+				log.Infoc(q.CtxS, "close ack loop")
 				return
 			}
 		case <-done:
@@ -94,7 +95,7 @@ loop:
 			case *kafka.Message:
 				if ev.TopicPartition.Error != nil {
 					// FIXME: failure: should resend !!!
-					log.Fatalf(q.CtxS+"Delivery failed: %v\n", ev.TopicPartition)
+					log.Fatalc(q.CtxS, "Delivery failed", "partition", fmt.Sprintf("%+v", ev.TopicPartition))
 				} else {
 					// log.Printf(q.Ctx+"Delivered message to %v\n", ev.TopicPartition)
 					/*fmt.Printf("Delivered message to topic %s [%d] at offset %v\n",
@@ -110,14 +111,14 @@ loop:
 }
 
 func (q *KafkaWriter) Close() error {
-	log.Infoln(q.CtxS, "Closing...")
+	log.Infoc(q.CtxS, "Closing...")
 	n := q.k.Flush(int(kafkaCloseFlushTimeout.Milliseconds()))
 	q.k.Close()
 	if n != 0 {
-		log.Infoln(q.CtxS, "Failed to close consumer:", n)
+		log.Errorc(q.CtxS, "Failed to close consumer", "n", n)
 		return errors.New("Unfinished work")
 	}
-	log.Infoln(q.CtxS, "Closed")
+	log.Infoc(q.CtxS, "Closed")
 	return nil
 }
 
@@ -149,7 +150,7 @@ func (q *KafkaWriter) Write(events []processor.AckableEvent) error {
 			Value:          data,
 		}, nil)
 		if err != nil {
-			log.Errorln(q.CtxS, "error writing event", "err", err)
+			log.Errorc(q.CtxS, "error writing event", "err", err)
 			return err
 		}
 		// log.Debugln(q.CtxS, "Wrote Event")

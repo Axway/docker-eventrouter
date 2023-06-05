@@ -10,7 +10,6 @@ require (
 	github.com/jackc/pgx/v4 v4.18.1
 	github.com/olivere/elastic v6.2.37+incompatible
 	github.com/prometheus/client_golang v1.14.0
-	github.com/sirupsen/logrus v1.9.0
 	github.com/ulikunitz/xz v0.5.11
 	go.mongodb.org/mongo-driver v1.11.3
 	golang.org/x/net v0.8.0

@@ -2,11 +2,12 @@ package kafka
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"axway.com/qlt-router/src/connectors/mem"
+	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
-	log "github.com/sirupsen/logrus"
 )
 
 func TestKafkaConnector(t *testing.T) {
@@ -62,7 +63,7 @@ streams:
 		op := <-ctl
 		op.Log()
 		if op.From.Name == "mem-reader" && op.Id == "ACK_ALL_DONE" /* && rp.Out_ack == int64(all_count)*/ {
-			log.Printf("op %+v", op.From)
+			log.Infoc("test", "op ", "from", fmt.Sprint("%+v", op.From))
 			break
 		}
 	}
@@ -70,7 +71,7 @@ streams:
 		op := <-ctl
 		op.Log()
 		if op.From.Name == "kafka-reader" && op.Id == "ACK_ALL_DONE" /* && rp.Out_ack == int64(all_count)*/ {
-			log.Printf("op %+v", op.From)
+			log.Infoc("test", "op ", "from", fmt.Sprint("%+v", op.From))
 			break
 		}
 	}

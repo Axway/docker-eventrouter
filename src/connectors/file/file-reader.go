@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
+	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
-	log "github.com/sirupsen/logrus"
 )
 
 type FileStoreRawReaderConfig struct {
@@ -50,10 +50,10 @@ func (q *FileStoreRawReader) Ctx() string {
 
 func (q *FileStoreRawReader) Init(p *processor.Processor) error {
 	q.Filename = q.conf.Filename //+ "." + p.Flow.Name
-	log.Println(q.CtxS, "Opening file", q.Filename, "...")
+	log.Infoc(q.CtxS, "Opening file", "filename", q.Filename)
 	f, err := os.OpenFile(q.Filename, os.O_RDONLY, 0o644)
 	if err != nil {
-		log.Errorln(q.CtxS, "Error opening file for reading", q.Filename, err)
+		log.Errorc(q.CtxS, "Error opening file for reading", "filename", q.Filename, "err", err)
 		return err
 	}
 	q.file = f
@@ -102,7 +102,7 @@ func (q *FileStoreRawReader) AckMsg(msgid processor.EventAck) {
 	// log.Debugln(q.CtxS, "Ackmsg", msgid)
 	offset, ok := msgid.(int64)
 	if !ok || offset <= q.AckOffset {
-		log.Fatalln(q.CtxS, "AckMsg", q.Offset, msgid)
+		log.Fatalc(q.CtxS, "AckMsg", "offset", q.Offset, "msgid", msgid)
 	}
 	q.AckOffset = offset
 }
@@ -110,10 +110,10 @@ func (q *FileStoreRawReader) AckMsg(msgid processor.EventAck) {
 func (q *FileStoreRawReader) Close() error {
 	err := q.file.Close()
 	if err != nil {
-		log.Println(q.CtxS, "Close", "filename", q.Filename, "err", err)
+		log.Errorc(q.CtxS, "Close", "filename", q.Filename, "err", err)
 		return err
 	} else {
-		log.Println(q.CtxS, "Close", q.Filename)
+		log.Infoc(q.CtxS, "Close", "filename", q.Filename)
 	}
 	return nil
 }

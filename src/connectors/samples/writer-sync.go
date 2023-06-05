@@ -3,8 +3,8 @@ package sample
 import (
 	"context"
 
+	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
-	log "github.com/sirupsen/logrus"
 )
 
 // replace SampleWriterSync
@@ -52,7 +52,7 @@ func (q *SampleWriterSync) IsAckAsync() bool {
 }
 
 func (q *SampleWriterSync) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {
-	log.Fatal("Not supported")
+	log.Fatalc(q.CtxS, "Not supported")
 }
 
 func (q *SampleWriterSync) Close() error {

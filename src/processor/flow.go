@@ -42,8 +42,8 @@ func (f *FlowStep) UnmarshalYAML(n *yaml.Node) error {
 	if err := tools.YamlParseVerify("connector", obj, n); err != nil {
 		return err
 	}
-
-	log.Debug("FlowStep: Unmarshall ", "obj", fmt.Sprintf("%+v", *obj))
+	ctx := "Flowstep"
+	log.Debugc(ctx, "unmarshal", "obj", fmt.Sprintf("%+v", *obj))
 
 	p := RegisteredProcessors.Get(obj.Name)
 	if p == nil {
@@ -61,16 +61,17 @@ func (f *FlowStep) UnmarshalYAML(n *yaml.Node) error {
 	err := tools.YamlParseVerify(obj.Name, f.Conf, &obj.Conf)
 	// err := obj.Conf.Decode(f.Conf)
 
-	log.Debug("Unmarshall yaml: FlowStep values", "name", obj.Name, "v", fmt.Sprintf("%+v", f.Conf))
+	log.Debugc(ctx, "Unmarshal yaml: values", "name", obj.Name, "v", fmt.Sprintf("%+v", f.Conf))
 	return err
 }
 
 func (flow *Flow) Start(ctx context.Context, all bool, ctl chan ControlEvent, channels *Channels, processors *Processors) ([]*Processor, error) {
+	ctxS := "flow"
 	if flow.Disable && !all {
-		log.Warn("flow disabled", "name", flow.Name)
+		log.Warnc(ctxS, "flow disabled", "name", flow.Name)
 		return nil, nil
 	}
-	log.Info("flow starting...", "name", flow.Name)
+	log.Infoc(ctxS, "flow starting...", "name", flow.Name)
 	var in *Channel
 	var out *Channel
 	flowtxt := ""
@@ -97,7 +98,7 @@ func (flow *Flow) Start(ctx context.Context, all bool, ctl chan ControlEvent, ch
 		p := NewProcessor(step.Name, connector, channels)
 
 		if p == nil { // FIXME: cannot be nil : already checked when loading configuration
-			log.Error("Processor not found", "name", flow.Name+"/"+step.Name)
+			log.Errorc(ctxS, "Processor not found", "name", flow.Name+"/"+step.Name)
 			closest := (*processors)[0].Name
 			closest_d := tools.Levenshtein(step.Name, closest)
 			for _, p := range *processors {
@@ -106,7 +107,7 @@ func (flow *Flow) Start(ctx context.Context, all bool, ctl chan ControlEvent, ch
 					closest = p.Name
 				}
 			}
-			log.Error("Processor not found", "name", flow.Name+"/"+step.Name, "closest", closest)
+			log.Errorc(ctxS, "Processor not found", "name", flow.Name+"/"+step.Name, "closest", closest)
 			return nil, fmt.Errorf("Processor " + flow.Name + "/" + step.Name + " not found, maybe " + closest)
 		} else {
 			p2 := *p // FIXME: really? Clone Processor
@@ -127,7 +128,7 @@ func (flow *Flow) Start(ctx context.Context, all bool, ctl chan ControlEvent, ch
 					ConstLabels: prometheus.Labels{"producer": step.Name, "flow": flow.Name},
 				})
 			}
-			log.Info("flow", "name", flow.Name, "processorName", p.Name, "conf", fmt.Sprintf("%+v", p.Conf))
+			log.Infoc(ctxS, "flow", "name", flow.Name, "processorName", p.Name, "conf", fmt.Sprintf("%+v", p.Conf))
 			if step.ScaleOrdered > 0 {
 				ParallelOrdered(ctx, channelName+"-scale", step.ScaleOrdered, ctl, in.C, out.C, channels, p)
 			} else if step.ScaleUnordered > 0 {
@@ -135,7 +136,7 @@ func (flow *Flow) Start(ctx context.Context, all bool, ctl chan ControlEvent, ch
 			} else {
 				r, err := p.Conf.Start(ctx, p, ctl, in.GetC(), out.GetC())
 				if err != nil {
-					log.Fatal("flow failed to start", "name", flow.Name+"/"+step.Name, "err", err)
+					log.Fatalc(ctxS, "flow failed to start", "name", flow.Name+"/"+step.Name, "err", err)
 					os.Exit(1)
 				}
 				p.Runtime = r
@@ -146,6 +147,6 @@ func (flow *Flow) Start(ctx context.Context, all bool, ctl chan ControlEvent, ch
 		}
 		in = out
 	}
-	log.Info("flow", "name", flow.Name, "desc", flowtxt)
+	log.Infoc(ctxS, "flow", "name", flow.Name, "desc", flowtxt)
 	return runtimeProcessor, nil
 }

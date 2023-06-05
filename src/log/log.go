@@ -1,11 +1,11 @@
 package log
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 )
@@ -76,13 +76,16 @@ func (l *Logger) _params(sb *strings.Builder, kv ...interface{}) {
 	}
 }
 
-func (l *Logger) _log(lvl LogLevel, msg string, kv ...interface{}) {
+var logLock sync.Mutex
+
+func (l *Logger) _logw(lvl LogLevel, msg string, kv ...interface{}) {
 	if len(kv)%2 != 0 {
 		panic("wrong number of arguments")
 	}
 	if lvl.code < level.code {
 		return
 	}
+	logLock.Lock()
 	sb.Reset()
 	sb.Grow(1000)
 	if !l.SkipTime {
@@ -100,75 +103,77 @@ func (l *Logger) _log(lvl LogLevel, msg string, kv ...interface{}) {
 	} else {
 		os.Stdout.WriteString(sb.String())
 	}
+	logLock.Unlock()
 }
 
 func (l *Logger) Trace(msg string, kv ...interface{}) {
-	l._log(TraceLevel, msg, kv...)
+	l._logw(TraceLevel, msg, kv...)
 }
 
 func (l *Logger) Debug(msg string, kv ...interface{}) {
-	l._log(DebugLevel, msg, kv...)
+	l._logw(DebugLevel, msg, kv...)
 }
 
 func (l *Logger) Info(msg string, kv ...interface{}) {
-	l._log(InfoLevel, msg, kv...)
+	l._logw(InfoLevel, msg, kv...)
 }
 
 func (l *Logger) Warn(msg string, kv ...interface{}) {
-	l._log(WarnLevel, msg, kv...)
+	l._logw(WarnLevel, msg, kv...)
 }
 
 func (l *Logger) Error(msg string, kv ...interface{}) {
-	l._log(ErrorLevel, msg, kv...)
+	l._logw(ErrorLevel, msg, kv...)
 }
 
-func Trace(msg string, kv ...interface{}) {
-	root._log(TraceLevel, msg, kv...)
-}
+/*
+	func Trace(msg string, kv ...interface{}) {
+		root._logw(TraceLevel, msg, kv...)
+	}
 
-func Debug(msg string, kv ...interface{}) {
-	root._log(DebugLevel, msg, kv...)
-}
+	func Debug(msg string, kv ...interface{}) {
+		root._logw(DebugLevel, msg, kv...)
+	}
 
-func Info(msg string, kv ...interface{}) {
-	root._log(InfoLevel, msg, kv...)
-}
+	func Info(msg string, kv ...interface{}) {
+		root._logw(InfoLevel, msg, kv...)
+	}
 
-func Warn(msg string, kv ...interface{}) {
-	root._log(WarnLevel, msg, kv...)
-}
+	func Warn(msg string, kv ...interface{}) {
+		root._logw(WarnLevel, msg, kv...)
+	}
 
-func Error(msg string, kv ...interface{}) {
-	root._log(ErrorLevel, msg, kv...)
-}
+	func Error(msg string, kv ...interface{}) {
+		root._logw(ErrorLevel, msg, kv...)
+	}
 
-func Fatal(msg string, kv ...interface{}) {
-	root._log(FatalLevel, msg, kv...)
-	os.Exit(1)
-}
-
+	func Fatal(msg string, kv ...interface{}) {
+		root._logw(FatalLevel, msg, kv...)
+		os.Exit(1)
+	}
+*/
 func Tracec(ctx, msg string, kv ...interface{}) {
-	root._log(TraceLevel, ctx+" "+msg, kv...)
+	root._logw(TraceLevel, ctx+" "+msg, kv...)
 }
 
 func Debugc(ctx, msg string, kv ...interface{}) {
-	root._log(DebugLevel, ctx+" "+msg, kv...)
+	root._logw(DebugLevel, ctx+" "+msg, kv...)
 }
 
 func Infoc(ctx, msg string, kv ...interface{}) {
-	root._log(InfoLevel, ctx+" "+msg, kv...)
+	root._logw(InfoLevel, ctx+" "+msg, kv...)
 }
 
 func Warnc(ctx, msg string, kv ...interface{}) {
-	root._log(WarnLevel, ctx+" "+msg, kv...)
+	root._logw(WarnLevel, ctx+" "+msg, kv...)
 }
 
 func Errorc(ctx, msg string, kv ...interface{}) {
-	root._log(ErrorLevel, ctx+" "+msg, kv...)
+	root._logw(ErrorLevel, ctx+" "+msg, kv...)
 }
 
 func Fatalc(ctx, msg string, kv ...interface{}) {
-	root._log(FatalLevel, ctx+" "+msg, kv...)
+	root._logw(FatalLevel, ctx+" "+msg, kv...)
 	os.Exit(1)
 }
 
@@ -225,9 +230,9 @@ func writeValue(w *strings.Builder, val interface{}) error {
 			}
 			return writeKey(w, rkey.Elem().Interface())
 		}*/
-		var b []byte
-		b, err = json.Marshal(val)
-		err = writeStringValue(w, string(b), true)
+		//var b []byte
+		//b, err = json.Marshal(val)
+		err = writeStringValue(w, "@"+fmt.Sprint(val)+"@", true)
 	}
 	return err
 }

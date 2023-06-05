@@ -56,6 +56,7 @@ type RouterState struct {
 var ui embed.FS
 
 func main() {
+	ctxS := "main"
 	locallog.InitLog()
 
 	/*log.SetFormatter(&log.TextFormatter{
@@ -102,7 +103,7 @@ func main() {
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
-			log.Fatal(err.Error())
+			log.Fatalc(ctxS, "err", err)
 		}
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
@@ -145,28 +146,28 @@ func main() {
 		}
 	}
 
-	log.Info("[MAIN]", "Version", Version, " Build", Build, " Date", Date)
+	log.Infoc(ctxS, "info", "Version", Version, " Build", Build, " Date", Date)
 
 	config.Print()
 
-	conf, err := processor.ParseConfigFile(configFile)
+	conf, err := processor.ParseConfigFile(ctxS, configFile)
 	if err != nil {
-		log.Fatal("Cannot open config file", "err", fmt.Sprint(err))
+		log.Fatalc(ctxS, "Cannot open config file", "err", fmt.Sprint(err))
 	}
 	if len(conf.Streams) == 0 {
-		log.Fatal("Not configured flows")
+		log.Fatalc(ctxS, "Not configured flows")
 	}
-	log.Info("config [internal]", "streams", conf.Streams)
+	log.Infoc(ctxS, "config [internal]", "streams", conf.Streams)
 	b, _ := yaml.Marshal(conf)
 
-	log.Info("config [yaml]:", "marshall", b)
+	log.Infoc(ctxS, "config [yaml]:", "marshall", b)
 
 	// Verify that CLone is properly implemented
 	for _, p := range connectors.All() {
 		c1 := p.Conf
 		c2 := p.Conf.Clone()
 		if c1 == c2 {
-			log.Fatal("Internal error: Badly Implemented Clone()", p.Name)
+			log.Fatalc(ctxS, "Internal error: Badly Implemented Clone()", p.Name)
 		}
 	}
 
@@ -177,9 +178,9 @@ func main() {
 	ctl := make(chan processor.ControlEvent, 100)
 	errors := 0
 	if verbose {
-		go processor.ControlEventLogAll(ctx, ctl)
+		go processor.ControlEventLogAll(ctxS, ctx, ctl)
 	} else {
-		go processor.ControlEventDiscardAll(ctx, ctl)
+		go processor.ControlEventDiscardAll(ctxS, ctx, ctl)
 	}
 	channels := processor.NewChannels()
 
@@ -196,7 +197,7 @@ func main() {
 	}
 
 	if errors > 0 {
-		log.Fatal("error configuring flows")
+		log.Fatalc(ctxS, "error configuring flows")
 		os.Exit(1)
 	}
 
@@ -215,15 +216,15 @@ func main() {
 		fmt.Fprintf(w, "Welcome to qlt-router!")
 	})*/
 
-	log.Info("[HTTP] Setting up /metrics (prometheus)...")
+	log.Infoc(ctxS, "[HTTP] Setting up /metrics (prometheus)...")
 	http.Handle("/metrics", promhttp.Handler())
 
-	log.Info("[HTTP] Setting up /api...")
+	log.Infoc(ctxS, "[HTTP] Setting up /api...")
 	http.HandleFunc("/api/state", func(w http.ResponseWriter, r *http.Request) {
 		channels.Update()
 		b, err := json.Marshal(state)
 		if err != nil {
-			log.Error("Error Marshalling state", "err", err)
+			log.Errorc(ctxS, "Error Marshalling state", "err", err)
 			w.Write([]byte("Error Marshalling state"))
 			w.WriteHeader(400)
 			return
@@ -231,7 +232,7 @@ func main() {
 		w.Write(b)
 	})
 
-	log.Info("[HTTP] Setting up / (static)...")
+	log.Infoc(ctxS, "[HTTP] Setting up / (static)...")
 	live := true
 	if live {
 		fs := http.FileServer(http.Dir("./src/main/ui"))
@@ -242,29 +243,29 @@ func main() {
 		http.Handle("/", fs)
 	}
 
-	log.Info("[HTTP] Listening on localhost:" + port)
+	log.Infoc(ctxS, "[HTTP] Listening on localhost:"+port)
 	go http.ListenAndServe("localhost:"+port, nil)
 
 	time.Sleep(1 * time.Second)
-	channels.Display()
+	channels.Display(ctxS)
 
 	hup := make(chan os.Signal, 2)
 	signal.Notify(hup, syscall.SIGHUP)
 	go func() {
 		for range hup {
-			log.Info("Got A HUP Signal! Now Reloading Conf....")
-			channels.Display()
+			log.Infoc(ctxS, "Got A HUP Signal! Now Reloading Conf....")
+			channels.Display(ctxS)
 		}
 	}()
 
 	c := make(chan os.Signal, 2)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
-	log.Info("terminate")
+	log.Infoc(ctxS, "terminate")
 	if *memprofile != "" {
 		f, err := os.Create(*memprofile)
 		if err != nil {
-			log.Fatal(err.Error())
+			log.Fatalc(ctxS, err.Error())
 		}
 		pprof.WriteHeapProfile(f)
 		f.Close()

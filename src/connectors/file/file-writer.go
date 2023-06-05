@@ -131,7 +131,7 @@ func (q *FileStoreRawWriter) IsAckAsync() bool {
 }
 
 func (q *FileStoreRawWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {
-	log.Fatal("Not supported")
+	log.Fatalc(q.CtxS, "Not supported")
 }
 
 func (q *FileStoreRawWriter) Close() error {

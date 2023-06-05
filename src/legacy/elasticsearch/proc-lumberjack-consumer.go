@@ -11,9 +11,10 @@ import (
 	"strings"
 	"time"
 
+	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
+
 	v2 "github.com/elastic/go-lumber/client/v2"
-	log "github.com/sirupsen/logrus"
 )
 
 func (q *LumberjackConsumer) tlsDial(addr string, caFilename string, certFilename string, keyFilename string) (net.Conn, error) {

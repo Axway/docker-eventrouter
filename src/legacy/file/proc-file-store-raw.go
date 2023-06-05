@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
+	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
-	log "github.com/sirupsen/logrus"
 )
 
 type FileStoreRawConsumerConfig struct {

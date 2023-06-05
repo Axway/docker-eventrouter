@@ -9,7 +9,7 @@ import (
 	"axway.com/qlt-router/src/processor"
 )
 
-func testMemReader(n int) {
+func testMemReader(ctxS string, n int) {
 	msgs := make([]string, n)
 	for i := 0; i < n; i++ {
 		msgs[i] = fmt.Sprint("msg", i)
@@ -22,7 +22,7 @@ func testMemReader(n int) {
 	cInc := MemReaderConf{msgs}
 	pIn := processor.NewProcessor("test-reader", &cInc, channels)
 
-	go processor.ControlEventLogAll(context.Background(), ctl)
+	go processor.ControlEventLogAll(ctxS, context.Background(), ctl)
 	pIn.Start(context.Background(), ctl, nil, cIn)
 	defer pIn.Close()
 
@@ -35,6 +35,7 @@ func testMemReader(n int) {
 }
 
 func TestMemReader(t *testing.T) {
+	ctxS := "test-" + t.Name()
 	n := 10
 	msgs := make([]string, n)
 	for i := 0; i < n; i++ {
@@ -48,7 +49,7 @@ func TestMemReader(t *testing.T) {
 	cInc := MemReaderConf{msgs}
 	pIn := processor.NewProcessor("test-reader", &cInc, channels)
 
-	go processor.ControlEventLogAll(context.Background(), ctl)
+	go processor.ControlEventLogAll(ctxS, context.Background(), ctl)
 
 	pIn.Start(context.Background(), ctl, nil, cIn)
 	defer pIn.Close()
