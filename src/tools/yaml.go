@@ -9,12 +9,18 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var (
+	ErrFieldNotFound      = errors.New("field not found")
+	ErrUnexpectedYamlNode = errors.New("unexpected yaml node")
+)
+
+// Ensure that the yaml obj only contains obj struct members
 func YamlParseVerify(name string, obj interface{}, y *yaml.Node) error {
 	if y.Kind == 0 {
 		return nil
 	}
 	if y.Kind != yaml.MappingNode {
-		return errors.New("yaml: unexpected non map '" + name + "' ")
+		return fmt.Errorf("%w : %s", ErrUnexpectedYamlNode, "expecting map node for '"+name+"' ")
 	}
 
 	for c := 0; c < len(y.Content); c += 2 {
@@ -22,25 +28,31 @@ func YamlParseVerify(name string, obj interface{}, y *yaml.Node) error {
 		found := false
 		typ := reflect.TypeOf(obj).Elem()
 		var fields []string
+		// fmt.Println(name, "typ", typ)
 		for i := 0; i < typ.NumField(); i++ {
-			up := v.Value // strings.ToUpper(string(v.Value[0])) + v.Value[1:]
+			up := v.Value
 			tag := typ.Field(i).Tag.Get("yaml")
 			name := typ.Field(i).Name
 			name = strings.ToLower(string(name[0])) + name[1:] // Ack to ensure first letter as lowercase by default
-			fmt.Println(name, tag, v.Value, up)
-			key := tag
-			if key == "" {
-				key = name
-			}
-			if key == up {
+			// fmt.Println(name, tag, v.Value, up)
+			if tag == up {
 				found = true
-				v.Value = strings.ToLower(name)
 				break
+			} else if tag == "" && name == up {
+				found = true
+				v.Value = strings.ToLower(name) // No tag yaml.v3 only find lowercase names !!!
+				break
+			}
+
+			// For error case only
+			key := tag
+			if tag == "" && name == up {
+				key = name
 			}
 			fields = append(fields, key)
 		}
 		if !found {
-			return errors.New("unknown field '" + v.Value + "' for " + name + " expecting: " + strings.Join(fields, ","))
+			return fmt.Errorf("%w : %s", ErrFieldNotFound, "'"+v.Value+"' for "+name+" expecting: "+strings.Join(fields, ","))
 		}
 	}
 	err := y.Decode(obj)

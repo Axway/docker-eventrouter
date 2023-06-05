@@ -31,13 +31,6 @@ type FlowStep struct {
 }
 
 func (f *FlowStep) UnmarshalYAML(n *yaml.Node) error {
-	/*type S FlowStep
-	type T struct {
-		*S   `yaml:",inline"`
-		Conf yaml.Node `yaml:"Conf"`
-	}
-	obj := &{S: (*S)(f)}*/
-
 	type Obj struct {
 		Name           string    `yaml:"name"`
 		ScaleUnordered int       `yaml:"scaleUnordered"`
@@ -46,7 +39,7 @@ func (f *FlowStep) UnmarshalYAML(n *yaml.Node) error {
 	}
 	obj := &Obj{}
 
-	if err := n.Decode(obj); err != nil {
+	if err := tools.YamlParseVerify("connector", obj, n); err != nil {
 		return err
 	}
 
@@ -54,10 +47,6 @@ func (f *FlowStep) UnmarshalYAML(n *yaml.Node) error {
 
 	p := RegisteredProcessors.Get(obj.Name)
 	if p == nil {
-		/*processors := make([]string, 0)
-		for _, p := range RegisteredProcessors {
-			processors = append(processors, p.Name)
-		}*/
 		names := gogu.Map(RegisteredProcessors, func(p *Processor) string { return p.Name })
 		s := strings.Join(names, ",")
 		// log.Debug("yaml: unknown processor '" + obj.Name + "' " + s)
