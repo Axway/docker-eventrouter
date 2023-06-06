@@ -46,7 +46,7 @@ func YamlParseVerify(name string, obj interface{}, y *yaml.Node) error {
 
 			// For error case only
 			key := tag
-			if tag == "" && name == up {
+			if tag == "" {
 				key = name
 			}
 			fields = append(fields, key)
