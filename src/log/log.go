@@ -4,19 +4,55 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 	"unicode/utf8"
+
+	"github.com/esimov/gogu"
 )
 
 var (
-	TraceLevel = LogLevel{1, "TRC"}
-	DebugLevel = LogLevel{2, "DBG"}
-	InfoLevel  = LogLevel{3, "INF"}
-	WarnLevel  = LogLevel{4, "WRN"}
-	ErrorLevel = LogLevel{5, "ERR"}
-	FatalLevel = LogLevel{6, "FTL"}
+	Reset  = "\033[0m"
+	Red    = "\033[31m"
+	Green  = "\033[32m"
+	Yellow = "\033[33m"
+	Blue   = "\033[34m"
+	Purple = "\033[35m"
+	Cyan   = "\033[36m"
+	Gray   = "\033[90m"
+	White  = "\033[97m"
+
+	EffectBold      = "1"
+	EffectUnderline = "4"
+	EffectReset     = "21"
+)
+
+func colorEffect(color string, effect string) string {
+	return color[:len(color)-1] + ";" + effect + "m"
+}
+
+func colorEffectReset(color string) string {
+	return color[:len(color)-1] + ";22;24m"
+}
+
+const (
+	TRC_LEVEL = 0
+	DBG_LEVEL = 1
+	INF_LEVEL = 2
+	WRN_LEVEL = 3
+	ERR_LEVEL = 4
+	FTL_LEVEL = 5
+)
+
+var (
+	TraceLevel = LogLevel{TRC_LEVEL, "TRC"}
+	DebugLevel = LogLevel{DBG_LEVEL, "DBG"}
+	InfoLevel  = LogLevel{INF_LEVEL, "INF"}
+	WarnLevel  = LogLevel{WRN_LEVEL, "WRN"}
+	ErrorLevel = LogLevel{ERR_LEVEL, "ERR"}
+	FatalLevel = LogLevel{FTL_LEVEL, "FTL"}
 )
 
 type LogLevel struct {
@@ -50,7 +86,11 @@ func SetLevel(lvl LogLevel) {
 	level = lvl
 }
 
-var sb strings.Builder // FIXME: reuse
+var (
+	sb       strings.Builder // FIXME: reuse
+	logLock  sync.Mutex
+	UseColor = false
+)
 
 func (l *Logger) New(prefix string) *Logger {
 	l2 := Logger{}
@@ -64,19 +104,25 @@ func (l *Logger) Add(k string, v interface{}) {
 	l.context = append(l.context, k, v)
 }
 
-func (l *Logger) _params(sb *strings.Builder, kv ...interface{}) {
+func (l *Logger) _params(sb *strings.Builder, color string, kv ...interface{}) {
+	b := colorEffect(color, EffectBold)
+	ub := colorEffectReset(color)
 	for i := 0; i < len(kv); i += 2 {
 		sb.WriteString(" ")
 		sb.WriteString(kv[i].(string))
 		sb.WriteString("=")
+		if UseColor {
+			sb.WriteString(b)
+		}
 		writeValue(sb, kv[i+1])
+		if UseColor {
+			sb.WriteString(ub)
+		}
 	}
 	if l.parent != nil {
-		l.parent._params(sb, l.context...)
+		l.parent._params(sb, color, l.context...)
 	}
 }
-
-var logLock sync.Mutex
 
 func (l *Logger) _logw(lvl LogLevel, msg string, kv ...interface{}) {
 	if len(kv)%2 != 0 {
@@ -85,18 +131,50 @@ func (l *Logger) _logw(lvl LogLevel, msg string, kv ...interface{}) {
 	if lvl.code < level.code {
 		return
 	}
+
+	color := White
+	if lvl.code == ERR_LEVEL {
+		color = Red
+	} else if lvl.code == DBG_LEVEL {
+		color = Gray
+	} else if lvl.code == WRN_LEVEL {
+		color = Purple
+	}
+
+	b := colorEffect(color, EffectBold)
+	// u := colorEffect(color, EffectUnderline)
+	ub := colorEffectReset(color)
+
 	logLock.Lock()
 	sb.Reset()
 	sb.Grow(1000)
+	if UseColor {
+		sb.WriteString(color)
+	}
 	if !l.SkipTime {
-		sb.WriteString(time.Now().Format(time.RFC3339)) // 1 alloc
+		// sb.WriteString(time.Now().UTC().Format(time.RFC3339Nano)) // 1 alloc
+		sb.WriteString(time.Now().UTC().Format("2006-01-02_15:04:05.000000"))
 		sb.WriteString(" ")
 	}
 	sb.WriteString(lvl.str)
 	sb.WriteString(" ")
+	sb.WriteString("[")
 	sb.WriteString(l.prefix)
+	sb.WriteString("] ")
+	if UseColor {
+		sb.WriteString(b)
+	}
+
 	sb.WriteString(msg)
-	l._params(&sb, kv...)
+	if UseColor {
+		sb.WriteString(ub)
+	}
+
+	sb.WriteString(" --")
+	l._params(&sb, color, kv...)
+	if UseColor {
+		sb.WriteString(Reset)
+	}
 	sb.WriteString("\n")
 	if l.w != nil {
 		// l.w.Write([]byte(sb.String()))
@@ -177,6 +255,31 @@ func Fatalc(ctx, msg string, kv ...interface{}) {
 	os.Exit(1)
 }
 
+func TraceW(ctx *Logger, msg string, kv ...interface{}) {
+	ctx._logw(TraceLevel, msg, kv...)
+}
+
+func DebugW(ctx *Logger, msg string, kv ...interface{}) {
+	ctx._logw(DebugLevel, msg, kv...)
+}
+
+func InfoW(ctx *Logger, msg string, kv ...interface{}) {
+	ctx._logw(InfoLevel, msg, kv...)
+}
+
+func WarnW(ctx *Logger, msg string, kv ...interface{}) {
+	ctx._logw(WarnLevel, msg, kv...)
+}
+
+func ErrorW(ctx *Logger, msg string, kv ...interface{}) {
+	ctx._logw(ErrorLevel, msg, kv...)
+}
+
+func FatalW(ctx *Logger, msg string, kv ...interface{}) {
+	ctx._logw(FatalLevel, msg, kv...)
+	os.Exit(1)
+}
+
 func needsQuotedValueRune(r rune) bool {
 	return r <= ' ' || r == '=' || r == '"' || r == utf8.RuneError
 }
@@ -190,6 +293,8 @@ func writeValue(w *strings.Builder, val interface{}) error {
 		err = writeStringValue(w, v, true)
 	case int:
 		err = writeStringValue(w, fmt.Sprintf("%d", v), true)
+	case bool:
+		err = writeStringValue(w, fmt.Sprint(v), true)
 	case nil:
 		err = writeStringValue(w, "null", true)
 	case []string:
@@ -204,7 +309,9 @@ func writeValue(w *strings.Builder, val interface{}) error {
 	case map[string]string:
 		first := true
 		w.WriteString("{")
-		for k, item := range v {
+		keys := gogu.Keys(v)
+		sort.Strings(keys)
+		for _, k := range keys {
 			if !first {
 				w.WriteByte(',')
 			} else {
@@ -212,7 +319,7 @@ func writeValue(w *strings.Builder, val interface{}) error {
 			}
 			writeValue(w, k)
 			w.WriteString(":")
-			writeValue(w, item)
+			writeValue(w, v[k])
 		}
 		w.WriteString("}")
 	case error:
