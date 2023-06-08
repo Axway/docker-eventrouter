@@ -2,7 +2,6 @@ package awssqs
 
 import (
 	"context"
-	"fmt"
 
 	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
@@ -52,7 +51,7 @@ func (q *AwsSQSWriter) Init(p *processor.Processor) error {
 		Region: aws.String(q.Conf.Region),
 	})
 	if err != nil {
-		fmt.Println("Error creating session:", err)
+		log.Errorc(q.CtxS, "Error creating session:", "err", err)
 		return err
 	}
 
