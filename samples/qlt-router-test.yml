@@ -1,5 +1,5 @@
 streams:
-  - name: "flow-qlt-server-2-file-raw-writer"
+  - name: "qlt-to-file"
     upstream: "generator"
     disable: false
     description: ""
@@ -12,22 +12,22 @@ streams:
       - name: "file-writer"
         conf:
           filename: "./data/out/generator-raw.xml"
-  - name: "generator"
+  - name: "generator-to-qlt"
     disable: false
     description: ""
     flow:
       - name: "event-generator"
         conf:
-          minDelay: 10
-          avgDelay: 500
-          maxDelay: 2000
+          minDelay: 1000000
+          avgDelay: 5000000
+          maxDelay: 2000000
       #- name: "convert" #/*,scaleOrdered: 4*/
       #- name: "control"
       - name: "qlt-client-writer"
         conf:
           addresses: "localhost:4024"
           cnx: 1
-  - name: "flow-file-to-file"
+  - name: "file-to-file"
     upstream: "flow-qlt-server-2-file-raw-writer"
     disable: false
     description: ""
@@ -40,8 +40,8 @@ streams:
       - name: "file-writer"
         conf:
           filename: "./data/out/filename-file"
-  - name: "flow-file-rawssss-reader-2-qlt-client-writer"
-    disable: false
+  - name: "fileXml-to-qlt"
+    disable: true
     description: ""
     flow:
       - name: "file-reader"
@@ -54,7 +54,7 @@ streams:
         conf:
           addresses: "localhost:4024"
           cnx: 1
-  - name: "flow-kafka-write"
+  - name: "file-to-kafka"
     upstream: "flow-qlt-server-2-file-raw-writer"
     disable: true
     description: ""
@@ -65,23 +65,47 @@ streams:
       - name: "control"
       - name: "kafka-writer"
         conf:
-          servers: "localhost:9093"
+          servers: "localhost:9092"
           topic: "zouzou"
           group: "g1"
-  - name: "flow-kafka-read"
+  - name: "kafka2file"
     upstream: "flow-kafka-write"
     disable: true
     description: ""
     flow:
       - name: "kafka-reader"
         conf:
-          servers: "localhost:9093"
+          servers: "localhost:9092"
           topic: "zouzou"
           group: "g1"
       - name: "control"
       - name: "file-writer"
         conf:
           filename: "./data/out/filename-kafka"
+  - name: "file-to-postgres"
+    upstream: "qlt-to-file"
+    disable: false
+    flow:
+      - name: "file-reader"
+        conf:
+          filename: "./data/out/generator-raw.xml"
+      - name: "control"
+      - name: "pg-writer"
+        conf:
+          url: "postgresql://mypguser:mypgsecretpassword@localhost:5432/mypgdb"
+          initialize: true
+  - name: "postgres-to-file"
+    upstream: "file-to-postgres"
+    disable: false
+    flow:
+      - name: "pg-reader"
+        conf:
+          url: "postgresql://mypguser:mypgsecretpassword@localhost:5432/mypgdb"
+          readerName: "alltest"
+      - name: "control"
+      - name: "file-writer"
+        conf:
+          filename: "./data/out/filename-pg"
 #processors:
 #  file_csv_producer:
 #    filename: "./data/csvprodductcer"

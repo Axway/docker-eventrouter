@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"time"
 
 	"axway.com/qlt-router/src/config"
@@ -134,9 +135,9 @@ func (q *QLT) readData() error {
 
 	rsize, err := q.Conn.Read(q.buf[q.idx:])
 	if err != nil {
-		// if !errors.Is(err, os.ErrDeadlineExceeded) {
-		log.Errorc(q.CtxS, " Error reading closing...", "err", err.Error())
-		//}
+		if !errors.Is(err, os.ErrDeadlineExceeded) {
+			log.Errorc(q.CtxS, " Error reading closing...", "err", err.Error())
+		}
 		return err
 	}
 	// log.Println(q.ctx, "Read:", "idx=", q.idx, "rsize=", rsize, "size=", q.idx+rsize)

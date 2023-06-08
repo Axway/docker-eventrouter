@@ -8,6 +8,7 @@ import (
 )
 
 func TestYamlParseVerify(t *testing.T) {
+	t.Parallel()
 	type TestZou struct {
 		FieldR1 string
 		FieldR2 string `yaml:"fieldR2"`
@@ -81,5 +82,5 @@ FieldR3: z1
 	if !errors.Is(err, ErrFieldNotFound) {
 		t.Error("yamlParseVerify: expecting field not found error")
 	}
-	t.Error("=== SUCCESSFUL ===")
+	// t.Error("=== SUCCESSFUL ===")
 }

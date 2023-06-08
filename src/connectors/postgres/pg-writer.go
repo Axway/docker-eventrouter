@@ -22,14 +22,14 @@ func pgDBInit(ctx string, conn *sql.DB) error {
 	if err != nil {
 		log.Warnc(ctx, "[DB-PG] error fectching previous rows", "err", err)
 	} else {
-		log.Debugc(ctx, "[DB-PG]  rows", count)
+		log.Debugc(ctx, "[DB-PG] rows", "count", count)
 	}
 
 	rows, err := pgDBRead(conn, 10, 0)
 	if err != nil {
 		log.Warnc(ctx, "[DB-PG] error fectching previous rows", "err", err)
 	} else {
-		log.Debugc(ctx, "[DB-PG]  rows", len(rows), rows)
+		log.Debugc(ctx, "[DB-PG] rows", "count", len(rows), "rows", rows)
 	}
 
 	_, err = conn.Exec("DROP TABLE IF EXISTS " + QLTTABLE)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"sync/atomic"
 	"time"
 
@@ -31,7 +32,7 @@ type ControlEvent struct {
 }
 
 func (msg *ControlEvent) Log() {
-	log.Debugc(msg.From.Name+msg.From2.Ctx(), " (CTL-LOG)", "id", msg.Id, "msg", msg.Msg)
+	log.Debugc(msg.From.Name, " (CTL-LOG)", "id", msg.Id, "from", msg.From.Name, "ctx", msg.From2.Ctx(), "msg", msg.Msg)
 }
 
 func ControlEventDiscardAll(ctxS string, ctx context.Context, ctl chan ControlEvent) {
@@ -39,7 +40,25 @@ func ControlEventDiscardAll(ctxS string, ctx context.Context, ctl chan ControlEv
 	for {
 		select {
 		case <-ctl:
+
 		case <-ctx.Done():
+			log.Debugc(ctxS, "CTL-LOG Stopping")
+			return
+		}
+	}
+}
+
+func ControlEventLogSome(ctxS string, ctx context.Context, ctl chan ControlEvent) {
+	log.Infoc(ctxS, "CTL-LOG LogSome")
+	for {
+		select {
+		case msg := <-ctl:
+			if msg.Id != "PROCESSING" {
+				msg.Log()
+			}
+
+		case <-ctx.Done():
+			log.Debugc(ctxS, "CTL-LOG Stopping")
 			return
 		}
 	}
@@ -59,21 +78,20 @@ func ControlEventLogAll(ctxS string, ctx context.Context, ctl chan ControlEvent)
 }
 
 type ConnectorRuntimeWriter interface {
-	Ctx() string             // Context string mostly for logs
-	Init(p *Processor) error // Call before any run
-	// PrepareEvent(event *AckableEvent) (T, error)            // Transform Event before being consumed or queued
-	Write(event []AckableEvent) error                        // Flush Bachted Data to be consumed
-	IsAckAsync() bool                                        // Whether ack can be processes asynchonously
-	ProcessAcks(ctx context.Context, acks chan AckableEvent) //
-	Close() error                                            // Close EventConnector
+	Ctx() string                                             // Context string mostly for logs
+	Init(p *Processor) error                                 // Initialization before main runtime, when complet message are ready to be sent
+	Write(event []AckableEvent) error                        // Flush Batched Data to be consumed
+	IsAckAsync() bool                                        // Whether acks can be processed asynchronously
+	ProcessAcks(ctx context.Context, acks chan AckableEvent) // When write acks are asynchronous, acked event are sent through this channel
+	Close() error                                            // Close EventConnector (only when init is successful)
 }
 
 type ConnectorRuntimeReader interface {
-	Ctx() string             // Context string mostly for logs
-	Init(p *Processor) error // Call before any run
-	Read() ([]AckableEvent, error)
-	AckMsg(msgid EventAck) //
-	Close() error
+	Ctx() string                   // Context string mostly for logs
+	Init(p *Processor) error       // Initialization before main runtime, when complete message ready to be sent
+	Read() ([]AckableEvent, error) // ReadMessage
+	AckMsg(msgid EventAck)         // AckMessage
+	Close() error                  // Close Connector (only when init is successful)
 }
 
 type SourceProxy struct {
@@ -166,15 +184,27 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 		log.Infoc(ctxp, "*** Closed Acks...")
 	}()
 
+	// Trap reader cancellation in done variable
+	done := false
+	go func() {
+		<-ctxz.Done()
+		done = true
+		log.Debugc(ctxp, "done")
+	}()
+
 	log.Infoc(ctxp, "Starting Reader Main Loop...")
 	go func() {
 		ctl <- ControlEvent{p, p2, "RUNNING", ""}
 		lastAcked := -1
 		for {
+			timeout := false
 			// log.Debugln(ctxp, "Reading messages...")
 			events, err := p2.Read()
 			if err != nil {
-				if !errors.Is(err, io.EOF) {
+				if errors.Is(err, os.ErrDeadlineExceeded) {
+					timeout = true
+					// log.Debugc(ctxp, "IO Timeout")
+				} else if !errors.Is(err, io.EOF) {
 					log.Errorc(ctxp, "Error reading", "err", err)
 					ctl <- ControlEvent{p, p2, "ERROR", err.Error()}
 					return
@@ -193,17 +223,32 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 				}
 			}
 			lastAcked = acked
-			if len(events) == 0 {
+			if len(events) == 0 && !timeout {
 				// FIXME: should progressively increase from smaller value
-				time.Sleep(ReaderReadRetryDelay)
+				// time.Sleep(ReaderReadRetryDelay)
+				t := time.NewTimer(ReaderReadRetryDelay)
+				select {
+				case <-ctxz.Done():
+					done = true
+				case <-t.C:
+				}
+				t.Stop()
 			}
 			for _, e := range events {
+				// log.Debugc(ctxp, e.Msg.(string))
 				out <- AckableEvent{src, e.Msgid, e.Msg, &e}
 				sent++
 				// FIXME: is this required ?
 				atomic.AddInt64(&p.Out, 1)
 			}
+			if done {
+				log.Infoc(ctxp, "stopping reading event")
+				ctl <- ControlEvent{p, p2, "STOPPING", ""}
+				break
+			}
 		}
+		log.Infoc(ctxp, "stopped")
+		ctl <- ControlEvent{p, p2, "STOPPED", ""}
 	}()
 	return p2, nil
 }
@@ -267,7 +312,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 		flush := false
 		batchsize := WriterBatchSize
 		donef := false
-
+		log.Infoc(ctxp, "Running")
 		ctl <- ControlEvent{p, p2, "RUNNING", ""}
 		for !donef {
 			flush = false
@@ -294,7 +339,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 					events = append(events, event)
 					// toAckEvents = append(toAckEvents, event)
 				case <-ctx.Done():
-					log.Infoc(ctxp, "done")
+					log.Infoc(ctxp, "stppping")
 					ctl <- ControlEvent{p, p2, "STOPPING", ""}
 					donef = true
 				default:
@@ -333,6 +378,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 				events = nil
 			}
 		}
+		log.Infoc(ctxp, "Stopped")
 		ctl <- ControlEvent{p, p2, "STOPPED", ""}
 	}()
 

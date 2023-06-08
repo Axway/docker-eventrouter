@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
 )
 
@@ -90,6 +91,7 @@ func (m *MemReadersSource) Read() ([]processor.AckableEvent, error) {
 		return nil, io.EOF
 	}
 	msgs := []processor.AckableEvent{{m, int64(m.Current), m.Messages[m.Current], nil}}
+	log.Debugc(m.CtxS, "read 1 msg", "msg", m.Messages[m.Current])
 	// n := time.Duration(int32(rand.Float32() * 100))
 	// time.Sleep(n * time.Microsecond)
 	m.Current++

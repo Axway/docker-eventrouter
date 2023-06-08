@@ -12,3 +12,4 @@ licenses
 /src/main/ui/upkg
 *.prof
 *.mprof
+report.xml

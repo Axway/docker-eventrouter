@@ -90,9 +90,9 @@ func (m *MemGeneratorReader) Read() ([]processor.AckableEvent, error) {
 			m.CurrentDelay = m.Conf.MaxDelay
 		}
 		// log.Debugln(m.CtxS, "********** delay", m.CurrentDelay, m.Conf.AvgDelay, m.C)
-		time.Sleep(time.Duration(m.CurrentDelay) * time.Millisecond)
+		time.Sleep(time.Duration(m.CurrentDelay) * time.Microsecond)
 	}
-	msg := fmt.Sprint(qltSample, m.Current)
+	msg := fmt.Sprint(qltSample)
 	msgs := []processor.AckableEvent{{m, int64(m.Current), msg, nil}}
 	m.Current++
 	return msgs, nil

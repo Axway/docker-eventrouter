@@ -53,7 +53,7 @@ func (q *KafkaWriter) Init(p *processor.Processor) error {
 	log.Infoc(q.CtxS, "New Producer", "conf", fmt.Sprintf("%+v", conf))
 	k, err := kafka.NewProducer(&conf)
 	if err != nil {
-		log.Fatalc(q.CtxS, "err", err)
+		log.Errorc(q.CtxS, "err", err)
 	}
 	q.k = k
 	// q.delivery_chan = make(chan kafka.Event, kafkaWriteDeliveryQueueSize)
@@ -61,7 +61,8 @@ func (q *KafkaWriter) Init(p *processor.Processor) error {
 
 	meta, err := k.GetMetadata(nil, true, 1000)
 	if err != nil {
-		log.Fatalc(q.CtxS, "fetch metadata", "err", err)
+		log.Errorc(q.CtxS, "fetch metadata", "err", err)
+		return err
 	}
 	log.Infoc(q.CtxS, "metadata", "meta", meta)
 	return nil

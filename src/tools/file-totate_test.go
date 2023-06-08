@@ -10,6 +10,8 @@ import (
 )
 
 func TestFileRotate(t *testing.T) {
+	t.Parallel()
+
 	filename := "/tmp/testRotate.txt"
 	ctx := "test"
 	data := "testdata"

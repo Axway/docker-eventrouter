@@ -109,7 +109,7 @@ func (q *FileStoreRawWriter) Write(events []processor.AckableEvent) error {
 	// log.Debugln(q.CtxS, "writing", "count", len(datas))
 
 	buf := []byte(q.lf + strings.Join(datas, "\n"))
-	log.Debugc(q.CtxS, "write buffer", "buffer", string(buf))
+	// log.Debugc(q.CtxS, "write buffer", "bufferLength", len(string(buf)))
 
 	q.Size += int64(len(buf))
 	if q.Conf.MaxSize > 0 && q.Size > q.Conf.MaxSize {

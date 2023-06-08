@@ -72,7 +72,6 @@ func TestXmlFailure(t *testing.T) {
 func TestUnexpectedContent(t *testing.T) {
 	_, err := convert1("<data/>")
 	if err == nil {
-		// fmt.Println("error", err)
 		t.Fail()
 	}
 }
@@ -80,15 +79,13 @@ func TestUnexpectedContent(t *testing.T) {
 func TestConvertToMapISO8859(t *testing.T) {
 	_, err := convertToMap(dataISO8859)
 	if err != nil {
-		fmt.Println("error", err)
-		t.Fail()
+		t.Error(err)
 	}
 }
 
 func TestConvertToMapInvalidXML(t *testing.T) {
 	_, err := convertToMap(dataInvalidXML)
 	if err != nil {
-		fmt.Println("error", err)
-		t.Fail()
+		t.Error(err)
 	}
 }

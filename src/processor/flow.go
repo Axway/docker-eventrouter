@@ -65,7 +65,7 @@ func (f *FlowStep) UnmarshalYAML(n *yaml.Node) error {
 	return err
 }
 
-func (flow *Flow) Start(ctx context.Context, all bool, ctl chan ControlEvent, channels *Channels, processors *Processors) ([]*Processor, error) {
+func (flow *Flow) Start(ctx context.Context, readerContext context.Context, all bool, ctl chan ControlEvent, channels *Channels, processors *Processors) ([]*Processor, error) {
 	ctxS := "flow"
 	if flow.Disable && !all {
 		log.Warnc(ctxS, "flow disabled", "name", flow.Name)
@@ -79,17 +79,17 @@ func (flow *Flow) Start(ctx context.Context, all bool, ctl chan ControlEvent, ch
 	var runtimeProcessor []*Processor
 	for idx, step := range flow.Flow {
 		channelName := flow.Name + "-" + fmt.Sprint(idx)
-		// consumer := false
-		producer := false
+		// writer := false
+		reader := false
 		if idx == len(flow.Flow)-1 {
 			out = nil
-			// consumer = true
+			// reader = true
 		} else {
 			if idx == 0 {
-				channelName = flow.Name + "-producer"
-				producer = true
+				channelName = flow.Name + "-reader"
+				reader = true
 			} else if idx == len(flow.Flow)-2 {
-				channelName = flow.Name + "-consumer"
+				channelName = flow.Name + "-writer"
 			}
 			out = channels.Create(channelName, flowChannelSize)
 		}
@@ -110,22 +110,29 @@ func (flow *Flow) Start(ctx context.Context, all bool, ctl chan ControlEvent, ch
 			log.Errorc(ctxS, "Processor not found", "name", flow.Name+"/"+step.Name, "closest", closest)
 			return nil, fmt.Errorf("Processor " + flow.Name + "/" + step.Name + " not found, maybe " + closest)
 		} else {
+			ctx2 := ctx
+			if reader {
+				ctx2 = readerContext
+				log.Debugc(ctxS, "reader", "type", step.Name)
+			}
+
 			p2 := *p // FIXME: really? Clone Processor
 			p = &p2
 			p.Flow = flow
 			p.FlowStep = step
-			p.Context = ctx // FIXME: quesako
-			p.Ctl = ctl     // FIXME: quesako
-			p.Cin = in      // FIXME: quesako
-			p.Cout = out    // FIXME: quesako
 
-			// p.FlowStep = &step //FIXME: ???????
+			// For subprocessor
+			p.Context = ctx2
+			p.Ctl = ctl
+			p.Cin = in
+			p.Cout = out
+
 			runtimeProcessor = append(runtimeProcessor, p)
-			if producer {
+			if reader {
 				p.OutCounter = promauto.NewCounter(prometheus.CounterOpts{
 					Name:        "qlt_in_message_total",
 					Help:        "The total number of qlt messages for",
-					ConstLabels: prometheus.Labels{"producer": step.Name, "flow": flow.Name},
+					ConstLabels: prometheus.Labels{"reader": step.Name, "flow": flow.Name},
 				})
 			}
 			log.Infoc(ctxS, "flow", "name", flow.Name, "processorName", p.Name, "conf", fmt.Sprintf("%+v", p.Conf))
@@ -134,7 +141,7 @@ func (flow *Flow) Start(ctx context.Context, all bool, ctl chan ControlEvent, ch
 			} else if step.ScaleUnordered > 0 {
 				ParallelUnordered(ctx, channelName+"-scale", step.ScaleUnordered, ctl, in.C, out.C, channels, p)
 			} else {
-				r, err := p.Conf.Start(ctx, p, ctl, in.GetC(), out.GetC())
+				r, err := p.Conf.Start(ctx2, p, ctl, in.GetC(), out.GetC())
 				if err != nil {
 					log.Fatalc(ctxS, "flow failed to start", "name", flow.Name+"/"+step.Name, "err", err)
 					os.Exit(1)

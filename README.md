@@ -17,11 +17,21 @@ make
 
 ### test
 
+unit-test (short)
+```sh
+go test --short --timeout 5s ./src/...
+# or
+gotestsum --junitfile report.xml --format testname --raw-command go test --short --timeout 5s --json ./src/...
+```
+
+all test (short + !short)
 ```sh
 docker-compose -f docker-compose-external.yml
 make test
 # or
-go test -v -t 10 ./src/...
+go test -v --timeout 10s ./src/...
+# or
+gotestsum --junitfile report.xml --format testname --raw-command go test --timeout 10s --json ./src/...
 ```
 
 ### local ci
@@ -53,8 +63,24 @@ go get -t -u ./... # upgrade all dependencies at once (test dependencies as well
 go mod tidy
 ```
 
-#### CHeck for vulnarimbilities
+#### Check for vulnaribilities
 ```sh
 go install golang.org/x/vuln/cmd/govulncheck@latest
 govulncheck ./...
+```
+
+
+## Profiling
+
+```sh
+./qlt-router --cpuprofile qlt-router.prof
+go tool pprof ./qlt-router qlt-router.prof
+
+```
+
+## Other tips
+
+Remove colourful output
+```sh
+sed -e $'s/\x1b\[[0-9;]*m//g'
 ```

@@ -1,4 +1,4 @@
-package postgres
+package mongo
 
 import (
 	"context"
@@ -9,42 +9,29 @@ import (
 	"axway.com/qlt-router/src/processor"
 )
 
-func TestPGConnector(t *testing.T) {
+func TestMongoConnector(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 		return
 	}
 
 	processor.RegisteredProcessors.Register("mem-writer", &mem.MemWriterConf{})
-	processor.RegisteredProcessors.Register("mem-reader", &mem.MemReaderConf{[]string{"zouzou", "zaza"}})
-	processor.RegisteredProcessors.Register("pg-writer", &PGWriterConf{})
-	processor.RegisteredProcessors.Register("pg-reader", &PGReaderConf{})
+	processor.RegisteredProcessors.Register("mem-reader", &mem.MemReaderConf{[]string{"{\"field1\":\"value1\"}", "{\"field1\":\"value2\"}"}})
+	processor.RegisteredProcessors.Register("mongo-writer", &MongoWriterConf{})
+	// processor.RegisteredProcessors.Register("mongo-reader", &PGReaderConf{})
 
 	conf, err := processor.ParseConfigRawData([]byte(`
 streams:
-  - name: "fr-pg-write"
+  - name: "mem-to-mongo"
     disable: false
     description: ""
     flow:
       - name: "mem-reader"
+      - name: "mongo-writer"
         conf:
-          empty: true
-      - name: "pg-writer"
-        conf:
-          url: "postgresql://mypguser:mypgsecretpassword@localhost:5432/mypgdb"
-          initialize: true
-         
-  - name: "fr-pg-read"
-    disable: false
-    description: ""
-    flow:
-      - name: "pg-reader"
-        conf:
-          url: "postgresql://mypguser:mypgsecretpassword@localhost:5432/mypgdb"
-          readername: "Test1"
-      - name: "mem-writer"
-        conf:
-          empty: true
+          url: "mongodb://root:mymongosecret@localhost:27017"
+          db: "mymongodb"
+          collection: "buffer"
 `))
 	if err != nil {
 		t.Error("Error Parsing config:", err)
@@ -73,13 +60,21 @@ streams:
 			log.Printf("op %+v", op.From)
 			break
 		}
+		if op.Id == "ERROR" {
+			t.Error("Error", op.Id, op.From.Name, op.Msg)
+			return
+		}
 	}
 	for {
 		op := <-ctl
 		op.Log()
-		if op.From.Name == "pg-reader" && op.Id == "ACK_ALL_DONE" /* && rp.Out_ack == int64(all_count)*/ {
+		if op.From.Name == "men-reader" && op.Id == "ACK_ALL_DONE" /* && rp.Out_ack == int64(all_count)*/ {
 			log.Printf("op %+v", op.From)
 			break
+		}
+		if op.Id == "ERROR" {
+			t.Error("Error", op.Id, op.From.Name, op.Msg)
+			return
 		}
 	}
 	// FIXME: need to verify the message numebr and content and the different stages !!!!

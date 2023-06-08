@@ -10,6 +10,8 @@ import (
 )
 
 func TestParseConfigRaw(t *testing.T) {
+	t.Parallel()
+
 	c1 := `streams:
 - name: flow1
   description: "flow1 description"

@@ -11,6 +11,10 @@ import (
 )
 
 func TestKafkaConnector(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+		return
+	}
 	processor.RegisteredProcessors.Register("mem-writer", &mem.MemWriterConf{})
 	processor.RegisteredProcessors.Register("mem-reader", &mem.MemReaderConf{[]string{"zouzou", "zaza"}})
 	processor.RegisteredProcessors.Register("kafka-writer", &KafkaWriterConf{})
@@ -53,7 +57,7 @@ streams:
 	processors := &processor.RegisteredProcessors
 	channels := processor.NewChannels()
 	for _, flow := range conf.Streams {
-		_, err := flow.Start(context.Background(), false, ctl, channels, processors)
+		_, err := flow.Start(context.Background(), context.Background(), false, ctl, channels, processors)
 		if err != nil {
 			t.Error("Error start flow '"+flow.Name+"'", err)
 		}
@@ -63,7 +67,7 @@ streams:
 		op := <-ctl
 		op.Log()
 		if op.From.Name == "mem-reader" && op.Id == "ACK_ALL_DONE" /* && rp.Out_ack == int64(all_count)*/ {
-			log.Infoc("test", "op ", "from", fmt.Sprint("%+v", op.From))
+			log.Infoc("test", "op ", "from", fmt.Sprintf("%+v", op.From))
 			break
 		}
 	}
@@ -71,7 +75,7 @@ streams:
 		op := <-ctl
 		op.Log()
 		if op.From.Name == "kafka-reader" && op.Id == "ACK_ALL_DONE" /* && rp.Out_ack == int64(all_count)*/ {
-			log.Infoc("test", "op ", "from", fmt.Sprint("%+v", op.From))
+			log.Infoc("test", "op ", "from", fmt.Sprintf("%+v", op.From))
 			break
 		}
 	}

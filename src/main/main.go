@@ -22,6 +22,7 @@ import (
 	"axway.com/qlt-router/src/connectors/file"
 	"axway.com/qlt-router/src/connectors/kafka"
 	"axway.com/qlt-router/src/connectors/mem"
+	"axway.com/qlt-router/src/connectors/postgres"
 	"axway.com/qlt-router/src/connectors/qlt"
 	"axway.com/qlt-router/src/filters/qlt2json"
 	"axway.com/qlt-router/src/locallog"
@@ -85,13 +86,14 @@ func main() {
 	connectors.Register("control", &processor.ControlConf{})
 	connectors.Register("file-writer", &file.FileStoreRawWriterConfig{})
 	connectors.Register("file-reader", &file.FileStoreRawReaderConfig{})
+	// connectors.Register("mongo-writer", &mongo.MongoWriterConf{})
 	connectors.Register("mem-writer", &mem.MemWriterConf{})
 	connectors.Register("aws-sqs-writer", &awssqs.AwsSQSWriterConf{})
 	// processors.Register("file_json_consumer", &file.FileStoreJsonConsumerConfig{})
 	connectors.Register("qlt-client-writer", &qlt.QLTClientWriterConf{})
 	connectors.Register("qlt-server-reader", &qlt.QLTServerReaderConf{})
-	// processors.Register("pg_buffer_consumer", &postgres.PgDBConsumerConf{})
-	// processors.Register("pg_buffer_producer", &postgres.PgDBProducerConf{})
+	connectors.Register("pg-writer", &postgres.PGWriterConf{})
+	connectors.Register("pg-reader", &postgres.PGReaderConf{})
 	// processors.Register("es_json_consumer", &elasticsearch.EsConsumerConf{})
 	// processors.Register("mongo_json_consumer", &mongo.MongoConsumerConf{})
 	// processors.Register("lumberjack_json_consumer", &elasticsearch.LumberjackConsumerConf{})
@@ -160,7 +162,7 @@ func main() {
 	log.Infoc(ctxS, "config [internal]", "streams", conf.Streams)
 	b, _ := yaml.Marshal(conf)
 
-	log.Infoc(ctxS, "config [yaml]:", "marshall", b)
+	log.Infoc(ctxS, "config [yaml]:", "marshall", string(b))
 
 	// Verify that CLone is properly implemented
 	for _, p := range connectors.All() {
@@ -174,11 +176,12 @@ func main() {
 	// FIXME: comment
 	all := false
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	readerContext, readerCancel := context.WithCancel(context.Background())
 	ctl := make(chan processor.ControlEvent, 100)
 	errors := 0
 	if verbose {
-		go processor.ControlEventLogAll(ctxS, ctx, ctl)
+		go processor.ControlEventLogSome(ctxS, ctx, ctl)
 	} else {
 		go processor.ControlEventDiscardAll(ctxS, ctx, ctl)
 	}
@@ -188,7 +191,7 @@ func main() {
 
 	for _, flow := range conf.Streams {
 		if !flow.Disable {
-			r, err := flow.Start(ctx, all, ctl, channels, connectors)
+			r, err := flow.Start(ctx, readerContext, all, ctl, channels, connectors)
 			if err != nil {
 				errors++
 			}
@@ -262,6 +265,11 @@ func main() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
 	log.Infoc(ctxS, "terminate")
+	channels.Display(ctxS)
+	readerCancel()
+	time.Sleep(1 * time.Second)
+	cancel()
+	time.Sleep(1 * time.Second)
 	if *memprofile != "" {
 		f, err := os.Create(*memprofile)
 		if err != nil {

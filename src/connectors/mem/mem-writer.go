@@ -48,7 +48,7 @@ func (q *MemWriter) Write(events []processor.AckableEvent) error {
 		data, _ := q.PrepareEvent(&e)
 		datas[i] = data
 	}
-	if q.Conf.MaxSize > 0 {
+	if q.Conf.MaxSize != 0 {
 		q.Messages = append(q.Messages, datas...)
 		n := len(q.Messages)
 		if q.Conf.MaxSize > 0 && n > int(q.Conf.MaxSize) {
