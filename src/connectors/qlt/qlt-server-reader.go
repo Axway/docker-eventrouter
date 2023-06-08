@@ -2,7 +2,9 @@ package qlt
 
 import (
 	"context"
+	"errors"
 	"net"
+	"os"
 
 	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
@@ -113,8 +115,11 @@ func (m *QLTServerReaderConnection) Ctx() string {
 
 func (m *QLTServerReaderConnection) Read() ([]processor.AckableEvent, error) {
 	events := make([]processor.AckableEvent, 1)
-	msg, err := m.Qlt.ReadQLTPacket()
+	msg, err := m.Qlt.ReadQLTPacket(200)
 	if err != nil {
+		if errors.Is(err, os.ErrDeadlineExceeded) {
+			return nil, err
+		}
 		return nil, err
 	}
 	m.MsgId += 1

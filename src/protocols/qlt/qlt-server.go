@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"time"
 
 	"axway.com/qlt-router/src/config"
 	log "axway.com/qlt-router/src/log"
@@ -129,11 +130,13 @@ func (q *QLT) Close() error {
 }
 
 func (q *QLT) readData() error {
-	// FIXME: timeout needed
 	// log.Println(q.ctx, "Reading... idx=", q.idx)
+
 	rsize, err := q.Conn.Read(q.buf[q.idx:])
 	if err != nil {
+		// if !errors.Is(err, os.ErrDeadlineExceeded) {
 		log.Errorc(q.CtxS, " Error reading closing...", "err", err.Error())
+		//}
 		return err
 	}
 	// log.Println(q.ctx, "Read:", "idx=", q.idx, "rsize=", rsize, "size=", q.idx+rsize)
@@ -153,8 +156,21 @@ func (q *QLT) WriteQLTAck() error {
 	return nil
 }
 
-func (q *QLT) ReadQLTPacket() (string, error) {
+func (q *QLT) ReadQLTPacket(timeoutMS int) (string, error) {
 	var err error
+	if timeoutMS > 0 {
+		err := q.Conn.SetReadDeadline(time.Now().Add(time.Duration(timeoutMS * int(time.Millisecond))))
+		if err != nil {
+			log.Errorc(q.CtxS, " Error setting deadline closing...", "err", err.Error())
+			return "", err
+		}
+	} else {
+		err := q.Conn.SetReadDeadline(time.Time{})
+		if err != nil {
+			log.Errorc(q.CtxS, " Error setting deadline closing...", "err", err.Error())
+			return "", err
+		}
+	}
 	for {
 		if q.idx < 3 {
 			// log.Println(q.ctx, "Incomplete packet (<3), reading...", q.idx)

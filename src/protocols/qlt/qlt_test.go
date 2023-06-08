@@ -46,7 +46,7 @@ func TestQlt(t *testing.T) {
 	}
 	log.Infoc(ctxS, "qltserver wait count", "count", count)
 
-	msgReceived, err := qltServer.ReadQLTPacket()
+	msgReceived, err := qltServer.ReadQLTPacket(200)
 	if err != nil {
 		t.Error("error reading packet", err)
 		return
