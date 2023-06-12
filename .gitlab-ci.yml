@@ -49,19 +49,26 @@ build:
 
 unit-test:
   image: golang:buster
+  needs: []
   stage: test
   cache:
     paths:
       - .cache/
     key: GO
-  coverage: "/coverage: \\d+.\\d+% of statements/"
+  #coverage: "/coverage: \\d+.\\d+% of statements/"
+  coverage: "/\\(statements\\)(?:\\s+)?(\\d+(?:\\.\\d+)?%)/"
   script:
     - go install gotest.tools/gotestsum@latest
-    - gotestsum --junitfile report.xml --format testname --raw-command go test --cover --short --timeout 5s --json ./src/...
+    - go install github.com/nikolaydubina/go-cover-treemap@latest
+    - go get github.com/boumenot/gocover-cobertura
+    - make test-unit
   artifacts:
     when: always
     reports:
       junit: report.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
 
 rpm:
   image: rpmbuild/centos7

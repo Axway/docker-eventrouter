@@ -60,6 +60,13 @@ test:
 
 	go test -v -timeout=5s ./src/...
 
+test-unit:
+	# go test --cover --short --timeout 5s ./src/...
+	gotestsum --junitfile report.xml --format testname --raw-command go test --cover --short --timeout 5s --coverprofile=coverage.txt --covermode=count --json ./src/... 
+	go tool cover -func coverage.txt
+	go run github.com/boumenot/gocover-cobertura < coverage.txt > coverage.xml
+	go-cover-treemap -coverprofile coverage.txt  > coverage.svg
+
 test-specific:
 	go test -v $$(ls *.go | grep -v "_test.go") $(ARGS)
 
