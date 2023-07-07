@@ -10,6 +10,7 @@ streams:
       #- name: "convert" #/*,scaleOrdered: 4*/
       - name: "control"
       - name: "qlt2json"
+        scaleOrdered: 20
       - name: "mem-writer"
         conf:
           maxSize: 0

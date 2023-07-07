@@ -11,6 +11,7 @@ import (
 
 var (
 	ErrFieldNotFound      = errors.New("field not found")
+	ErrFieldRequired      = errors.New("required field")
 	ErrUnexpectedYamlNode = errors.New("unexpected yaml node")
 )
 
@@ -32,15 +33,21 @@ func YamlParseVerify(name string, obj interface{}, y *yaml.Node) error {
 		for i := 0; i < typ.NumField(); i++ {
 			up := v.Value
 			tag := typ.Field(i).Tag.Get("yaml")
+			required := typ.Field(i).Tag.Get("required") == "true"
 			name := typ.Field(i).Name
 			name = strings.ToLower(string(name[0])) + name[1:] // Ack to ensure first letter as lowercase by default
+			value := y.Content[c+1].Value
 			// fmt.Println(name, tag, v.Value, up)
 			if tag == up {
 				found = true
-				break
 			} else if tag == "" && name == up {
 				found = true
 				v.Value = strings.ToLower(name) // No tag yaml.v3 only find lowercase names !!!
+			}
+			if found == true {
+				if required && value == "" {
+					return fmt.Errorf("%w : '%s' (line=%d)", ErrFieldRequired, v.Value, v.Line)
+				}
 				break
 			}
 
@@ -51,8 +58,34 @@ func YamlParseVerify(name string, obj interface{}, y *yaml.Node) error {
 			}
 			fields = append(fields, key)
 		}
+
 		if !found {
-			return fmt.Errorf("%w : %s", ErrFieldNotFound, "'"+v.Value+"' for "+name+" expecting: "+strings.Join(fields, ","))
+			return fmt.Errorf("%w : '%s' (line=%d) %s", ErrFieldNotFound, v.Value, v.Line, " for "+name+" expecting: "+strings.Join(fields, ","))
+		}
+	}
+
+	// check required fields
+	{
+		typ := reflect.TypeOf(obj).Elem()
+		for i := 0; i < typ.NumField(); i++ {
+			required := typ.Field(i).Tag.Get("required") == "true"
+			if required {
+				found := false
+				name := typ.Field(i).Name
+				name = strings.ToLower(string(name[0])) + name[1:]
+				tag := typ.Field(i).Tag.Get("yaml")
+
+				for c := 0; c < len(y.Content); c += 2 {
+					up := strings.ToLower(y.Content[c].Value)
+					if tag == up || (tag == "" && strings.ToLower(name) == strings.ToLower(up)) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return fmt.Errorf("%w : '%s' (line=%d)", ErrFieldRequired, name, y.Line)
+				}
+			}
 		}
 	}
 	err := y.Decode(obj)

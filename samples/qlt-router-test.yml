@@ -12,7 +12,7 @@ streams:
       - name: "file-writer"
         conf:
           filename: "./data/out/generator-raw.xml"
-  - name: "generator-to-qlt"
+  - name: "generator"
     disable: false
     description: ""
     flow:
@@ -28,7 +28,7 @@ streams:
           addresses: "localhost:4024"
           cnx: 1
   - name: "file-to-file"
-    upstream: "flow-qlt-server-2-file-raw-writer"
+    upstream: "qlt-to-file"
     disable: false
     description: ""
     flow:
@@ -55,7 +55,7 @@ streams:
           addresses: "localhost:4024"
           cnx: 1
   - name: "file-to-kafka"
-    upstream: "flow-qlt-server-2-file-raw-writer"
+    upstream: "qlt-to-file"
     disable: true
     description: ""
     flow:
@@ -69,7 +69,7 @@ streams:
           topic: "zouzou"
           group: "g1"
   - name: "kafka2file"
-    upstream: "flow-kafka-write"
+    upstream: "file-to-kafka"
     disable: true
     description: ""
     flow:

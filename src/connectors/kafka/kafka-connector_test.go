@@ -24,15 +24,12 @@ func TestKafkaConnector(t *testing.T) {
 streams:
   - name: "fr-kafka-write"
     disable: false
-    description: ""
+    description: "3"
     flow:
       - name: "mem-reader"
-        conf:
-          filename: "./data/sample10.xml"
-          zou: ""
       - name: "kafka-writer"
         conf:
-          servers: "localhost:9093"
+          servers: "${KAFKA:-localhost:9094}"
           topic: "zouzou"
           group: "g1"
   - name: "fr-kafka-read"
@@ -41,12 +38,12 @@ streams:
     flow:
       - name: "kafka-reader"
         conf:
-          servers: "localhost:9093"
+          servers: "${KAFKA:-localhost:9094}"
           topic: "zouzou"
           group: "g1"
       - name: "mem-writer"
         conf:
-          filename: "./data/filename-kafka"
+          maxSize: -1
 `))
 	if err != nil {
 		t.Error("Error Parsing config:", err)

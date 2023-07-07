@@ -34,7 +34,7 @@ docker-external-up:
 	docker-compose -f docker-compose-external.yml up -d
 
 docker-external-down:
-	docker-compose -f docker-compose-external.yml down -v
+	docker-compose -f docker-compose-external.yml down --remove-orphans -v
 
 #dev: build
 #	find ./src -name "*.go" | entr ./qlt-router --config ./qlt-router.conf
@@ -54,11 +54,13 @@ docker-test-logs:
 clean:
 	rm -f $(NAME) $(NAME).tar.gz
 
-test:
-	# for dir in $$(find . -name "*_test.go" | grep -v ./vendor | xargs -n 1 dirname | sort -u -r); do echo "$$dir..."; go test -v $$dir || exit 1 ; done | tee output.txt
-	# cat output.txt | egrep -- "--- FAIL:|--- SKIP:" || true
-
-	go test -v -timeout=5s ./src/...
+test-integration:
+	# go test -v -timeout=5s ./src/...
+	# go test --cover --short --timeout 5s ./src/...
+	CGO_ENABLED=1 gotestsum --junitfile report.xml --format testname --raw-command go test --cover --timeout 5s --tags musl  --coverprofile=coverage.txt --covermode=count --json ./src/... 
+	go tool cover -func coverage.txt
+	go run github.com/boumenot/gocover-cobertura < coverage.txt > coverage.xml
+	go-cover-treemap -coverprofile coverage.txt  > coverage.svg
 
 test-unit:
 	# go test --cover --short --timeout 5s ./src/...

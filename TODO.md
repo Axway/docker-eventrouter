@@ -7,9 +7,19 @@
 
 # TODO
 
+- Reader close timeout
+  - mem-reader : mem [immediate]
+  - kafka-reader : read timeout [blocking] 
+  - mongo-reader : mongo+retry [immediate] 
+  - qlt-reader : socket timeout [blocking]
+  - file-reader : file+retry [immediate]
+  - db-reader : db+retry [immediate]
+
 - better logs
-- light ui
-- 
+- fix kafka
+- mongo to json
+- better stop, drain input (readers message, but have acks)
+- file-reader : support rotation ?
 
 - error management:
   - writer connector lost and retry
@@ -20,7 +30,7 @@
   - windows management
   
 - revisit yaml config file :
-  - unsupported fields
+  - [x] unsupported fields
   - support env variable subtitution
   - command line override
   - env override
@@ -31,13 +41,13 @@
 - connector : elasticsearch
 - connector : lumberjack
 - connector : mongodb
-- connector : kafka
-- connector : postgres
+- [x] connector : kafka
+- [x] connector : postgres
 - connector : multi-file / filebuffer
 - connector : (*)csv
 - connector : (new) websocket
 - connector : (new) qlt-client-pull/qlt-server-writer
-- connector : (*) mem-writer / mem-reader / generator()
+- [x] connector : (*) mem-writer / mem-reader / generator()
 - connector : SQS
 - connector : MQTT
 - filter : xml-json
@@ -50,12 +60,11 @@
 - simple ui
 - processor : initialization issue weirdness 
 
-
 - Revisit Terminology : 
   - Consumer/Producer, Reader/Writer, Sender/Receiver, Pull/Push
   - Server/Client
   - Flow / Stream / Microflow / uflow
-  - Processor : Runner / Filter / 
+  - Processor : Runner / Filter / Transformer
 
 - Tests :
   - Network condition : timeout / break / slowdown / io error/close

@@ -6,7 +6,7 @@
 set -eEuo pipefail
 shopt -s extdebug
 
-APPNAME=qlt-router
+APPNAME="flowmanager-agent"
 APPVERSION="0.0.0"
 APPCONF=".env"
 
@@ -202,7 +202,7 @@ fi
 
 profile="$HOME/.$APPNAME/profile"
 if [ -f "$profile" ]; then
-    $verb "LOAD PROFILE $profile $(cat "$profile")"
+    $verb "LOAD PROFILE $profile $(cat $profile)"
     . "$profile"
 fi
 
@@ -296,9 +296,9 @@ case "${1:-}" in
 esac
 
 check_pid() {
-  PID=$(cat "$RUNTIME/var/run/$APPNAME.pid" 2>/dev/null || echo "")
-  if [ -n "$PID" ]; then 
-    if ps -p "$PID" > /dev/null; then
+  PID=$(cat "$RUNTIME/var/run/flowmanager-agent.pid" 2>/dev/null || echo "")
+  if [ ! -z "$PID" ]; then 
+    if ps -p $PID > /dev/null; then
       #echo "running ($PID)"
       return 0
     else
@@ -312,19 +312,19 @@ check_pid() {
 }
 
 case "${1:-}" in
-    start) ## ## start __APPNAME__
+    start) ## ## start flowmanager-agent
       if ! check_pid; then
-        "$INSTALLDIR/usr/bin/${APPNAME}d" --config="$RUNTIME/etc/$APPNAME.conf" > "$RUNTIME/var/log/$APPNAME.log" 2>&1 </dev/null &
-        echo "$!" > "$RUNTIME/var/run/$APPNAME.pid"
+        "$INSTALLDIR/usr/bin/flowmanager-agentd" --config="$RUNTIME/etc/flowmanager-agent.conf" > "$RUNTIME/var/log/flowmanager-agent.log" 2>&1 </dev/null &
+        echo "$!" > "$RUNTIME/var/run/flowmanager-agent.pid"
       else
-        echo "$APPNAME is already started"
+        echo "flowmanager-agent is already started"
         exit 1
       fi
     ;;
 
-    stop) ## ## stop __APPNAME__
+    stop) ## ## stop flowmanager-agent
       if check_pid; then
-        PID=$(cat "$RUNTIME/var/run/$APPNAME.pid")
+        PID=$(cat "$RUNTIME/var/run/flowmanager-agent.pid")
         (sleep 1 && kill "$PID") & 
         waitpid "$PID"
       else
@@ -333,15 +333,15 @@ case "${1:-}" in
       fi
     ;;
 
-    logs) ## ## show __APPNAME__ logs
-      cat "$RUNTIME/var/log/$APPNAME.log"
+    logs) ## ## show flowmanager-agent logs
+      cat "$RUNTIME/var/log/flowmanager-agent.log"
     ;;
     
-    status) ## ## show the status of __APPNAME__
-      PID=$(cat "$RUNTIME/var/run/$APPNAME.pid" 2>/dev/null || echo "")
-      echo "$PID"
-      if [ -n "$PID" ]; then 
-        if ps -p "$PID" > /dev/null; then
+    status) ## ## show the status of flowmanager-agent
+      PID=$(cat "$RUNTIME/var/run/flowmanager-agent.pid" 2>/dev/null || echo "")
+      echo $PID
+      if [ ! -z "$PID" ]; then 
+        if ps -p $PID > /dev/null; then
           echo "running ($PID)"
           exit 0
         else
@@ -354,12 +354,12 @@ case "${1:-}" in
       fi
     ;;
 
-    health) ## ## show health of __APPNAME__
+    health) ## ## show health of flowmanager-agent
       # FIXME: check curl
       curl -s -v http://localhost:8080/health
     ;;
 
-    metrics) ## ## show metrics __APPNAME__
+    metrics) ## ## show metrics flowmanager-agent
       # FIXME: check curl
       curl -s http://localhost:8080/metrics
     ;;
@@ -370,14 +370,14 @@ case "${1:-}" in
     ;;
 
     gen-systemd-unit) ## ## Generate a template for systemd
-      echo "/etc/systemd/system/$APPNAME.service"
+      echo "/etc/systemd/system/flowmanager-agent.service"
 cat <<EOF
 [Unit]
 Description=Flowmanager Agent
 After=network.target
 
 [Service]
-ExecStart="$INSTALLDIR/usr/bin/${APPNAME}d" --config="$RUNTIME/etc/${APPNAME}.conf"
+ExecStart="$INSTALLDIR/usr/bin/flowmanager-agentd" --config="$RUNTIME/etc/flowmanager-agent.conf"
 WorkingDirectory="$RUNTIME"
 User=$USER
 Type=simple
@@ -392,7 +392,7 @@ EOF
 
         #[ -f "$LIBDIR/preinit.sh" ] && "$LIBDIR/preinit.sh"
 
-        runtime="$1"
+        runtime=$(realpath "$1")
         if [ -e "$runtime" ]; then
             error "$runtime already exists"
             exit 1
@@ -403,23 +403,25 @@ EOF
         mkdir -p "$runtime/var"
         mkdir -p "$runtime/var/lib"
         mkdir -p "$runtime/var/run"
+        mkdir -p "$runtime/var/run/states"
         mkdir -p "$runtime/var/log"
 
         #cp -rf "$LIBDIR/etc"/* "$runtime/etc"
 
-        cat >"$runtime/etc/${APPNAME}.conf" <<EOF 
-streams:
-  - name: "qlt-sink"
-    upstream: ""
-    disable: false
-    description: ""
-    flow:
-      - name: "qlt-server-reader"
-        conf:
-          port: 1305
-      - name: "mem-writer"
-        conf:
-          maxSize: 0
+        cat >"$runtime/etc/flowmanager-agent.conf" <<EOF 
+name=$HOSTNAME
+#server=flowmanager.DOMAIN:443
+#server-ca=
+accept-eula=false
+#whitelist=*
+dosa=$runtime/etc/dosa.json
+dosa-key=$runtime/etc/dosa.key
+#dosa-key-password=
+#dosa-key-password-file=$runtime/etc/dosa-key.pass
+#http-port=8080
+#sendlog=true
+#count=1
+#log-exclude=
 EOF
 
         ln -s "$0" "$runtime/usr/bin/$(basename "$0")"
@@ -443,28 +445,28 @@ EOF
     ;;
 
     support) ## ## generate a support report
-        A="$(pwd)/$APPNAME-support"
+        A="$(pwd)/flowmanager-support"
         if [ -d "$A" ]; then
           echo "folder $A already exists"
           exit 1
         fi
 
-        mkdir -p "$A"
-        ${APPNAME}d help >"$A/help.txt"  || true
+        mkdir -p $A
+        flowmanager-agentd help >$A/help.txt  || true
 
-        mkdir -p "$A/log"
-        cp "$RUNTIME/var/log/$APPNAME.log"* "$A/log"  || true
+        mkdir -p $A/log
+        cp $RUNTIME/var/log/flowmanager-agent.log* $A/log  || true
         
-        mkdir -p "$A/etc"
-        cp "$RUNTIME/etc/$APPNAME.conf" "$A/etc"  || true
+        mkdir -p $A/etc
+        cp $RUNTIME/etc/flowmanager-agent.conf $A/etc  || true
 
-        ps -ef >"$A/ps.txt"  || true 
-        find "$RUNTIME" -type f -exec ls -la '{}' \; > "$A/files.txt"
-        uname -a > "$A/uname.txt"
-        cat /etc/*-release /etc/*_version > "$A/lsb-release.txt" || true
-        env > "$A/env.txt"  || true
+        ps -ef >$A/ps.txt  || true 
+        find "$RUNTIME" -type f -exec ls -la '{}' \; > $A/files.txt
+        uname -a > $A/uname.txt
+        cat /etc/*-release /etc/*_version > $A/lsb-release.txt || true
+        env > $A/env.txt  || true
 
-        find "$A" > "$A/gen.txt"
+        find "$A" > $A/gen.txt
 
         tar cvfz "$A.tar.gz" "$A"
         echo "support report generated $A "

@@ -1,7 +1,8 @@
-package mongo
+package mongoConnector
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"axway.com/qlt-router/src/log"
@@ -88,7 +89,15 @@ func (q *MongoWriter) ProcessAcks(ctx context.Context, acks chan processor.Ackab
 func (q *MongoWriter) Write(events []processor.AckableEvent) error {
 	var docs []interface{}
 	for _, event := range events {
-		docs = append(docs, event.Msg)
+		var m interface{}
+		// FIXME: this is inefficient at best
+		s := event.Msg.(string)
+		err := json.Unmarshal([]byte(s), &m)
+		if err != nil {
+			return err
+		}
+		msg := map[string]interface{}{"msg": m}
+		docs = append(docs, msg)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

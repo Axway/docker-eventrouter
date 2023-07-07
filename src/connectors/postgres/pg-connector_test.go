@@ -27,11 +27,9 @@ streams:
     description: ""
     flow:
       - name: "mem-reader"
-        conf:
-          empty: true
       - name: "pg-writer"
         conf:
-          url: "postgresql://mypguser:mypgsecretpassword@localhost:5432/mypgdb"
+          url: "postgresql://mypguser:mypgsecretpassword@${POSTGRESQL:-localhost}:5432/mypgdb"
           initialize: true
          
   - name: "fr-pg-read"
@@ -40,11 +38,9 @@ streams:
     flow:
       - name: "pg-reader"
         conf:
-          url: "postgresql://mypguser:mypgsecretpassword@localhost:5432/mypgdb"
-          readername: "Test1"
+          url: "postgresql://mypguser:mypgsecretpassword@${POSTGRESQL:-localhost}:5432/mypgdb"
+          readerName: "Test1"
       - name: "mem-writer"
-        conf:
-          empty: true
 `))
 	if err != nil {
 		t.Error("Error Parsing config:", err)
