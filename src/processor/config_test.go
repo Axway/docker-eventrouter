@@ -16,19 +16,19 @@ func TestParseConfigRaw(t *testing.T) {
 - name: flow1
   description: "flow1 description"
   flow: 
-      - name: "file_raw_producer"
+      - name: "file_raw_reader"
         conf: 
            filename: "zoufile"
 - name: flow2
   flow:
-        - name: "file_raw_consumer"
+        - name: "file_raw_writer"
           conf:
             filename: "pathfile"
 - name: flow3
 `
 
-	processor.RegisteredProcessors.Register("file_raw_producer", &file.FileStoreRawWriterConfig{})
-	processor.RegisteredProcessors.Register("file_raw_consumer", &file.FileStoreRawReaderConfig{})
+	processor.RegisteredProcessors.Register("file_raw_writer", &file.FileStoreRawWriterConfig{})
+	processor.RegisteredProcessors.Register("file_raw_reader", &file.FileStoreRawReaderConfig{})
 
 	c := make(map[string]interface{})
 	yaml.Unmarshal([]byte(c1), &c)

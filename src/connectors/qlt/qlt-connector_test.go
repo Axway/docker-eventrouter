@@ -53,7 +53,7 @@ func testQltConnector(port string, disableQlt bool, minReaders, maxReaders, minM
 	// Consumer
 	{
 		// ch1 = make(chan processor.AckableEvent, 10)
-		ch1 = channels.Create("consumer", -1)
+		ch1 = channels.Create("reader", -1)
 		qltServerConf := QLTServerReaderConf{"localhost", port, "", "", ""}
 		w := mem.MemWriterConf{-1}
 		qs := processor.NewProcessor("qlt-server-reader", &qltServerConf, channels)
@@ -70,7 +70,7 @@ func testQltConnector(port string, disableQlt bool, minReaders, maxReaders, minM
 	// Producer
 	{
 		// ch2 := make(chan processor.AckableEvent, 10)
-		ch2 := channels.Create("producer", -1)
+		ch2 := channels.Create("writer", -1)
 		r := mem.MemReadersConf{readers}
 		qltClientConf := QLTClientWriterConf{"localhost:" + port, 1}
 		rp = processor.NewProcessor("mem-reader", &r, channels)

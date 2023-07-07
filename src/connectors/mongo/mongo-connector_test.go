@@ -1,4 +1,4 @@
-package mongo
+package mongoConnector
 
 import (
 	"context"
@@ -18,7 +18,7 @@ func TestMongoConnector(t *testing.T) {
 	processor.RegisteredProcessors.Register("mem-writer", &mem.MemWriterConf{})
 	processor.RegisteredProcessors.Register("mem-reader", &mem.MemReaderConf{[]string{"{\"field1\":\"value1\"}", "{\"field1\":\"value2\"}"}})
 	processor.RegisteredProcessors.Register("mongo-writer", &MongoWriterConf{})
-	// processor.RegisteredProcessors.Register("mongo-reader", &PGReaderConf{})
+	processor.RegisteredProcessors.Register("mongo-reader", &MongoReaderConf{})
 
 	conf, err := processor.ParseConfigRawData([]byte(`
 streams:
@@ -29,9 +29,21 @@ streams:
       - name: "mem-reader"
       - name: "mongo-writer"
         conf:
-          url: "mongodb://root:mymongosecret@localhost:27017"
+          url: "mongodb://root:mymongosecret@${MONGO:-localhost}:27017"
           db: "mymongodb"
           collection: "buffer"
+  - name: "mem-to-mongo"
+    disable: false
+    description: ""
+    flow:
+      - name: "mongo-reader"
+        conf:
+          url: "mongodb://root:mymongosecret@${MONGO:-localhost}:27017"
+          db: "mymongodb"
+          collection: "buffer"
+          readersCollection: "bufferReaders"
+          readerName: "test"
+      - name: "mem-writer"
 `))
 	if err != nil {
 		t.Error("Error Parsing config:", err)
@@ -47,7 +59,6 @@ streams:
 		if err != nil {
 			t.Error("Error start flow '"+flow.Name+"'", err)
 			errorCount++
-			return
 		}
 	}
 	if errorCount > 0 {
@@ -68,7 +79,7 @@ streams:
 	for {
 		op := <-ctl
 		op.Log()
-		if op.From.Name == "men-reader" && op.Id == "ACK_ALL_DONE" /* && rp.Out_ack == int64(all_count)*/ {
+		if op.From.Name == "mongo-reader" && op.Id == "ACK_ALL_DONE" /* && rp.Out_ack == int64(all_count)*/ {
 			log.Printf("op %+v", op.From)
 			break
 		}
@@ -77,6 +88,7 @@ streams:
 			return
 		}
 	}
+
 	// FIXME: need to verify the message numebr and content and the different stages !!!!
 	// t.Error("***Success***")
 }

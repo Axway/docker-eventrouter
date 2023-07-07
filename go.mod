@@ -16,6 +16,7 @@ require (
 )
 
 require (
+	github.com/boumenot/gocover-cobertura v1.2.0 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/godror/knownpb v0.1.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
@@ -23,9 +24,12 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/exp v0.0.0-20221126150942-6ab00d035af9 // indirect
+	golang.org/x/mod v0.8.0 // indirect
+	golang.org/x/tools v0.6.0 // indirect
 )
 
 require (
+	github.com/a8m/envsubst v1.4.2
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/esimov/gogu v1.0.3

@@ -173,6 +173,28 @@ func main() {
 		}
 	}
 
+	{ // Verify that all upstreams are defined
+		count := 0
+		for _, flow := range conf.Streams {
+			// if !flow.Disable {
+			if flow.Upstream != "" {
+				found := false
+				for _, flow2 := range conf.Streams {
+					if flow2.Name == flow.Upstream {
+						found = true
+					}
+				}
+				if !found {
+					count++
+					log.Errorc(ctxS, "Upstream flow not found", "flow", flow.Name, "upstream", flow.Upstream)
+				}
+			}
+			//}
+		}
+		if count != 0 {
+			os.Exit(1)
+		}
+	}
 	// FIXME: comment
 	all := false
 

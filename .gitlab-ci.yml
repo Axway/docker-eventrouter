@@ -70,6 +70,27 @@ unit-test:
         coverage_format: cobertura
         path: coverage.xml
 
+integration-test:
+  image: docker
+  needs:
+    - build
+  stage: test
+  cache:
+    paths:
+      - .cache/
+    key: GO
+  #coverage: "/coverage: \\d+.\\d+% of statements/"
+  coverage: "/\\(statements\\)(?:\\s+)?(\\d+(?:\\.\\d+)?%)/"
+  script:
+    - ./scripts/run-integration-test-local.sh
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
 rpm:
   image: rpmbuild/centos7
   needs:
@@ -84,14 +105,15 @@ rpm:
       - ./artefacts/$NAME*.rpm
     expire_in: 2 day
 
-rpm-tests:
+rpm-test:
   image: davinci1976/docker-ci:unstable
   needs:
     - version
     - rpm
   stage: test
   script:
-    - test -d /artefacts && ln -s /artefacts ./artefacts
+    #- test ! -e ./artefacts && ln -s /artefacts ./artefacts
+    - test ! -e ./artefacts && cp -rf /artefacts ./artefacts/
     - ./rpm/test-rpm.sh
 
 build-docker:

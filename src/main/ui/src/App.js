@@ -70,7 +70,7 @@ function DisplayStream({ x, processorsD, streamsD, channelsD, pref } = props) {
         const step = x.Flow[i]
         const processName = x.Name + "/" + step.Name
         const p = processorsD[processName]
-        if (i !== 0) {
+        if (p && i !== 0) {
             steps.push(<span className="channel" key={p.Cin?.Name + "-" + i}>
                 <span className="obj-type">Channel</span> {p?.Cin && p.Cin?.Name} {p?.Cin && "" + p.Cin?.Size}/{p?.Cin && "" + p.Cin?.Pos}
             </span>)

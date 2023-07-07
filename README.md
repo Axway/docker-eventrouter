@@ -26,7 +26,9 @@ gotestsum --junitfile report.xml --format testname --raw-command go test --short
 
 all test (short + !short)
 ```sh
-docker-compose -f docker-compose-external.yml
+./scripts/run-integration-test-local.sh
+# or
+docker-compose -f docker-compose.external.yml
 make test
 # or
 go test -v --timeout 10s ./src/...
@@ -42,9 +44,14 @@ export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
 ````
 
 ```sh
-gitlab-runner exec docker --docker-volumes "$PWD/artefacts:/artefacts" --docker-volumes "$PWD/cache:/cache" build
-gitlab-runner exec docker --docker-volumes "$PWD/artefacts:/artefacts" rpm
-./rpm/test-rpm.sh 
+./scripts/gitlab-runner.sh build
+./scripts/gitlab-runner.sh rpm
+./scripts/gitlab-runner.sh rpm-test
+
+gitlab-runner exec docker --docker-volumes "/var/run/docker.sock:/var/run/docker.sock" --docker-volumes "$PWD/artefacts:/artefacts" --docker-volumes "$PWD/cache:/cache" build
+gitlab-runner exec docker --docker-volumes "/var/run/docker.sock:/var/run/docker.sock" --docker-volumes "$PWD/artefacts:/artefacts" rpm
+gitlab-runner exec docker --docker-volumes "/var/run/docker.sock:/var/run/docker.sock" --docker-volumes "$PWD/artefacts:/artefacts" --docker-volumes "$PWD/cache:/cache" test-rpm
+gitlab-runner exec docker --docker-volumes "/var/run/docker.sock:/var/run/docker.sock" --docker-volumes "$PWD/artefacts:/artefacts" --docker-volumes "$PWD/cache:/cache" integration-test
 gitlab-runner exec docker build-docker
 ```
 

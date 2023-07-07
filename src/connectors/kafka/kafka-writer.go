@@ -49,7 +49,13 @@ func (q *KafkaWriter) Init(p *processor.Processor) error {
 	if err != nil {
 		log.Fatalc(q.CtxS, "err", err)
 	}
-	conf := kafka.ConfigMap{"bootstrap.servers": q.Conf.Servers, "client.id": hostname /*"group.id": q.conf.Group,*/, "acks": "all"}
+	conf := kafka.ConfigMap{
+		"bootstrap.servers": q.Conf.Servers,
+		"client.id":         hostname,
+		/*"group.id": q.conf.Group,*/
+		"acks":                  "all",
+		"broker.address.family": "v4",
+	}
 	log.Infoc(q.CtxS, "New Producer", "conf", fmt.Sprintf("%+v", conf))
 	k, err := kafka.NewProducer(&conf)
 	if err != nil {
@@ -116,7 +122,7 @@ func (q *KafkaWriter) Close() error {
 	n := q.k.Flush(int(kafkaCloseFlushTimeout.Milliseconds()))
 	q.k.Close()
 	if n != 0 {
-		log.Errorc(q.CtxS, "Failed to close consumer", "n", n)
+		log.Errorc(q.CtxS, "Failed to close writer", "n", n)
 		return errors.New("Unfinished work")
 	}
 	log.Infoc(q.CtxS, "Closed")

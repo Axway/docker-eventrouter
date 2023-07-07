@@ -1,13 +1,20 @@
 version: '2.2'
 services:
   kibana:
+    profiles:
+      - donotstart
     image: docker.elastic.co/kibana/kibana:7.2.0
-    volumes:
-      - ./config/kibana.yml:/usr/share/kibana/config/kibana.yml
     ports:
       - 5601:5601
+    volumes:
+      - ./config/kibana.yml:/usr/share/kibana/config/kibana.yml
+    networks:
+      #  - traefik_default
+      - default
 
   elasticsearch:
+    profiles:
+      - donotstart
     image: docker.elastic.co/elasticsearch/elasticsearch:7.2.0 #:6.6.0
     container_name: elasticsearch
     environment:
@@ -19,25 +26,36 @@ services:
       memlock:
         soft: -1
         hard: -1
-    #volumes:
-    #  - esdata1:/usr/share/elasticsearch/data
     ports:
       - 9200:9200
-    #networks:
-    #  - esnet
+    #volumes:
+    #  - esdata1:/usr/share/elasticsearch/data
+    networks:
+      #  - traefik_default
+      - default
 
   logstash:
+    profiles:
+      - donotstart
     image: docker.elastic.co/logstash/logstash:7.2.0
     volumes:
       - ./config/logstash-pipeline:/usr/share/logstash/pipeline
+    networks:
+      #  - traefik_default
+      - default
 
   prometheus:
+    profiles:
+      - donotstart
     image: prom/prometheus
     ports:
       - 9090:9090
-    volumes:
-      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
-      - /prometheus-data
+    #volumes: 
+    #  - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+    #  - /prometheus-data
+    networks:
+      #  - traefik_default
+      - default
 
   mongo:
     image: mongo
@@ -50,6 +68,9 @@ services:
       - 27017:27017
     volumes:
       - mongo_data:/data/db
+    networks:
+      #  - traefik_default
+      - default
 
   mongo-express:
     image: mongo-express
@@ -62,9 +83,14 @@ services:
       ME_CONFIG_MONGODB_URL: mongodb://root:mymongosecret@mongo:27017/
 
   grafana:
+    profiles:
+      - donotstart
     image: grafana/grafana
     ports:
       - 3000:3000
+    networks:
+      #  - traefik_default
+      - default
 
   postgres:
     image: postgres
@@ -78,13 +104,23 @@ services:
       - 5432:5432
     volumes:
       - "pg_data:/data"
+    networks:
+      #  - traefik_default
+      - default
 
   adminer:
+    profiles:
+      - donotstart
     image: adminer
     ports:
       - 8082:8080
+    networks:
+      #  - traefik_default
+      - default
 
   zookeeper:
+    profiles:
+      - donotstart
     image: 'bitnami/zookeeper:latest'
     ports:
       - '2181:2181'
@@ -93,25 +129,32 @@ services:
       #- ZOO_ENABLE_AUTH=yes
       #- ZOO_SERVER_USERS=kafka
       #- ZOO_SERVER_PASSWORDS=kafka_password
+    networks:
+      #  - traefik_default
+      - default
 
   kafka:
     image: 'bitnami/kafka:latest'
     ports:
       - '9092:9092'
-      - '9093:9093'
+      - '9094:9094'
     environment:
-      - KAFKA_BROKER_ID=1
-      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      #- KAFKA_BROKER_ID=1
+      #- KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
       - ALLOW_PLAINTEXT_LISTENER=yes
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
-      - KAFKA_CFG_LISTENERS=CLIENT://:9092,EXTERNAL://:9093
-      - KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT://kafka:9092,EXTERNAL://localhost:9093
-      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=CLIENT
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      #- KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      #- KAFKA_CFG_LISTENERS=CLIENT://:9092,EXTERNAL://:9093
+      #- KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT://kafka:9092,EXTERNAL://localhost:9093
+      #- KAFKA_CFG_INTER_BROKER_LISTENER_NAME=CLIENT
 
-    depends_on:
-      - zookeeper
     volumes:
       - kafka_data:/bitnami/kafka
+    networks:
+      #  - traefik_default
+      - default
 
 volumes:
   pg_data:
@@ -132,7 +175,7 @@ volumes:
 #    file: ./licenses/cft-license.txt
 
 networks:
-  traefik_default:
-    external: true
+  #traefik_default:
+  #  external: true
   default:
     driver: bridge

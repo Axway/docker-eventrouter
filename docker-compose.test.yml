@@ -1,0 +1,43 @@
+#version: "3"
+services:
+  sut:
+    build:
+      dockerfile: ./Dockerfile.test
+    command: sh -c "ls ; make test-integration"
+    environment:
+      KAFKA: kafka:9092 #9092
+      MONGO: mongo #27017
+      POSTGRESQL: postgres #5432
+    depends_on:
+      - kafka
+      - mongo
+      - postgres
+    volumes:
+      - go_build:/root/.cache/go-build
+
+  kafka:
+    extends:
+      file: docker-compose.external.yml
+      service: kafka
+  mongo:
+    extends:
+      file: docker-compose.external.yml
+      service: mongo
+  postgres:
+    extends:
+      file: docker-compose.external.yml
+      service: postgres
+
+networks:
+  traefik_default:
+    external: true
+
+volumes:
+  pg_data:
+    driver: "local"
+  kafka_data:
+    driver: "local"
+  mongo_data:
+    driver: "local"
+  go_build:
+    driver: "local"

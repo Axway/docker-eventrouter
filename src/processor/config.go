@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 
 	log "axway.com/qlt-router/src/log"
+	"github.com/a8m/envsubst"
 
 	"gopkg.in/yaml.v3"
 )
@@ -27,9 +28,14 @@ func ParseConfigFile(ctx string, filename string) (*Config, error) {
 func ParseConfigRawData(data []byte) (*Config, error) {
 	var config Config
 
-	r := yaml.NewDecoder(bytes.NewReader(data))
+	buf, err := envsubst.Bytes([]byte(data))
+	if err != nil {
+		return nil, err
+	}
+
+	r := yaml.NewDecoder(bytes.NewReader(buf))
 	r.KnownFields(true)
-	err := r.Decode(&config)
+	err = r.Decode(&config)
 	if err != nil {
 		return nil, err
 	}

@@ -35,7 +35,12 @@ func (c *KafkaReaderConf) Clone() processor.Connector {
 }
 
 func (q *KafkaReader) Init(p *processor.Processor) error {
-	k, err := kafka.NewConsumer(&kafka.ConfigMap{"bootstrap.servers": q.Conf.Servers, "group.id": q.Conf.Group, "auto.offset.reset": "earliest"})
+	k, err := kafka.NewConsumer(&kafka.ConfigMap{
+		"bootstrap.servers":     q.Conf.Servers,
+		"group.id":              q.Conf.Group,
+		"auto.offset.reset":     "earliest",
+		"broker.address.family": "v4",
+	})
 	if err != nil {
 		log.Errorc(q.CtxS, "error creation kafka consumer", "err", err)
 		return err
@@ -64,7 +69,7 @@ func (q *KafkaReader) Read() ([]processor.AckableEvent, error) {
 	msg, err := q.k.ReadMessage(-1)
 	if err != nil {
 		// The client will automatically try to recover from all errors.
-		log.Errorc(q.CtxS, "consumer error", "err", err, "msg", fmt.Sprintf("%+v", msg))
+		log.Errorc(q.CtxS, "reader error", "err", err, "msg", fmt.Sprintf("%+v", msg))
 		return nil, err
 	}
 	c := msg.TopicPartition
