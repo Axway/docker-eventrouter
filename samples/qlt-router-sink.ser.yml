@@ -1,0 +1,12 @@
+streams:
+  - name: "qlt-sink"
+    disable: false
+    description: ""
+    reader:
+      type: "qlt-server-reader"
+      conf:
+        port: 1305
+    writer:
+      type: "mem-writer"
+      conf:
+        maxSize: 10

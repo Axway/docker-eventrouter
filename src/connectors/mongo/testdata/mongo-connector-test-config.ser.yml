@@ -1,0 +1,25 @@
+streams:
+  - name: "mem-to-mongo"
+    disable: false
+    description: ""
+    reader:
+      type: "mem-reader"
+    writer:
+      type: "mongo-writer"
+      conf:
+        url: "mongodb://root:mymongosecret@${MONGO:-localhost}:27017"
+        db: "mymongodb"
+        collection: "buffer"
+  - name: "mem-to-mongo"
+    disable: false
+    description: ""
+    reader:
+      type: "mongo-reader"
+      conf:
+        url: "mongodb://root:mymongosecret@${MONGO:-localhost}:27017"
+        db: "mymongodb"
+        collection: "buffer"
+        readersCollection: "bufferReaders"
+        readerName: "test"
+    writer:
+      type: "mem-writer"

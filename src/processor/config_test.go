@@ -12,29 +12,10 @@ import (
 func TestParseConfigRaw(t *testing.T) {
 	t.Parallel()
 
-	c1 := `streams:
-- name: flow1
-  description: "flow1 description"
-  flow: 
-      - name: "file_raw_reader"
-        conf: 
-           filename: "zoufile"
-- name: flow2
-  flow:
-        - name: "file_raw_writer"
-          conf:
-            filename: "pathfile"
-- name: flow3
-`
-
 	processor.RegisteredProcessors.Register("file_raw_writer", &file.FileStoreRawWriterConfig{})
 	processor.RegisteredProcessors.Register("file_raw_reader", &file.FileStoreRawReaderConfig{})
 
-	c := make(map[string]interface{})
-	yaml.Unmarshal([]byte(c1), &c)
-	log.Printf("%+v", c)
-
-	conf, err := processor.ParseConfigRawData([]byte(c1))
+	conf, err := processor.ParseConfigFile("test", "testdata/config-test.ser.yml")
 	if err != nil {
 		t.Error("error parsing file", "err", err)
 		return

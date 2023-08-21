@@ -1,0 +1,57 @@
+---
+$schema: "http://json-schema.org/draft-07/schema#"
+
+title: "Axway qlt-router configuration"
+description: "Axway qlt-router configuration"
+
+type: "object"
+required: ["streams"]
+additionalProperties: false
+properties:
+    streams:
+        type: array
+        items:
+            type: object
+            required: ["name", "reader", "writer"]
+            additionalProperties: false
+            properties:
+                name:
+                    type: string
+                disable:
+                    type: boolean
+                description:
+                    type: string
+                upstream:
+                    type: string
+                    # const: { $data: "/streams/#" }
+                reader:
+                    type: object
+                    required: ["type"]
+                    additionalProperties: false
+                    properties:
+                        type:
+                            type: string
+                        conf:
+                            type: object
+                transforms:
+                    type: array
+                    items:
+                        type: object
+                        required: ["type"]
+                        additionalProperties: false
+                        properties:
+                            type:
+                                type: string
+                            scale:
+                                type: number
+                            conf:
+                                type: object
+                writer:
+                    type: object
+                    required: ["type"]
+                    additionalProperties: false
+                    properties:
+                        type:
+                            type: string
+                        conf:
+                            type: object

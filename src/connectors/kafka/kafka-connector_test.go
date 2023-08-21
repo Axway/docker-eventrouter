@@ -20,31 +20,7 @@ func TestKafkaConnector(t *testing.T) {
 	processor.RegisteredProcessors.Register("kafka-writer", &KafkaWriterConf{})
 	processor.RegisteredProcessors.Register("kafka-reader", &KafkaReaderConf{})
 
-	conf, err := processor.ParseConfigRawData([]byte(`
-streams:
-  - name: "fr-kafka-write"
-    disable: false
-    description: "3"
-    flow:
-      - name: "mem-reader"
-      - name: "kafka-writer"
-        conf:
-          servers: "${KAFKA:-localhost:9094}"
-          topic: "zouzou"
-          group: "g1"
-  - name: "fr-kafka-read"
-    disable: false
-    description: ""
-    flow:
-      - name: "kafka-reader"
-        conf:
-          servers: "${KAFKA:-localhost:9094}"
-          topic: "zouzou"
-          group: "g1"
-      - name: "mem-writer"
-        conf:
-          maxSize: -1
-`))
+	conf, err := processor.ParseConfigFile("test", "testdata/kafka-connector_test.ser.yml")
 	if err != nil {
 		t.Error("Error Parsing config:", err)
 		return

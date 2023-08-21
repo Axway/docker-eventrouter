@@ -19,29 +19,7 @@ func TestPGConnector(t *testing.T) {
 	processor.RegisteredProcessors.Register("mem-reader", &mem.MemReaderConf{[]string{"zouzou", "zaza"}})
 	processor.RegisteredProcessors.Register("pg-writer", &PGWriterConf{})
 	processor.RegisteredProcessors.Register("pg-reader", &PGReaderConf{})
-
-	conf, err := processor.ParseConfigRawData([]byte(`
-streams:
-  - name: "fr-pg-write"
-    disable: false
-    description: ""
-    flow:
-      - name: "mem-reader"
-      - name: "pg-writer"
-        conf:
-          url: "postgresql://mypguser:mypgsecretpassword@${POSTGRESQL:-localhost}:5432/mypgdb"
-          initialize: true
-         
-  - name: "fr-pg-read"
-    disable: false
-    description: ""
-    flow:
-      - name: "pg-reader"
-        conf:
-          url: "postgresql://mypguser:mypgsecretpassword@${POSTGRESQL:-localhost}:5432/mypgdb"
-          readerName: "Test1"
-      - name: "mem-writer"
-`))
+	conf, err := processor.ParseConfigFile("test", "testdata/pg-connector-test-config.ser.yml")
 	if err != nil {
 		t.Error("Error Parsing config:", err)
 		return

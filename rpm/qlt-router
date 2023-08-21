@@ -413,13 +413,14 @@ streams:
     upstream: ""
     disable: false
     description: ""
-    flow:
-      - name: "qlt-server-reader"
-        conf:
-          port: 1305
-      - name: "mem-writer"
-        conf:
-          maxSize: 0
+    reader:
+      type: "qlt-server-reader"
+      conf:
+        port: 1305
+    writer:
+      type: "mem-writer"
+      conf:
+        maxSize: 0
 EOF
 
         ln -s "$0" "$runtime/usr/bin/$(basename "$0")"

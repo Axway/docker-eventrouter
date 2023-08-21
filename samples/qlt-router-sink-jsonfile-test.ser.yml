@@ -1,0 +1,32 @@
+streams:
+  - name: "qlt-json"
+    disable: false
+    description: ""
+    reader:
+      type: "qlt-server-reader"
+      conf:
+        port: 1305
+    transforms:
+      - type: "qlt2json"
+    writer:
+      type: "file-writer"
+      conf:
+        maxSize: 10000000
+        maxFile: 5
+        filename: "./data/qlt2json.json"
+  - name: "qlt-generator"
+    disable: false
+    description: ""
+    reader:
+      type: "event-generator"
+      conf:
+        minDelay: 0
+        avgDelay: -1
+        maxDelay: 0
+      #- name: "convert" #/*,scaleOrdered: 4*/
+      #- name: "control"
+    writer:
+      type: "qlt-client-writer"
+      conf:
+        addresses: "localhost:1305"
+        cnx: 2

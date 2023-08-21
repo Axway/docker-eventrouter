@@ -3,7 +3,6 @@ output.txt
 /qlt-router
 *.tar.*
 licenses
-.vscode
 /data
 .DS_Store
 /customer

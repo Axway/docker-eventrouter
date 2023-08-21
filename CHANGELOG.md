@@ -1,4 +1,10 @@
 
+
+# 0.2.0 (dev)
+- BREAKING-CHANGE : refactor streams to add `reader`, `transforms`, `writer` section
+- BREAKING-CHANGE : connector now are identified through `type` key instead of `name`
+- use extension `.ser.yml` to enable schema validation from `qlt-router-schema.yml` (under `vscode`)
+
 # 0.0.1sink
 - connector: `file`, add `MaxFile`, `MaxSize` for automatic file rotation and jsonfile sample
 - add `list-connectors` `list-config` commands (in addition to `help`, `version`)

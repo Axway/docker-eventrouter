@@ -1,0 +1,127 @@
+streams:
+  - name: "qlt-to-file"
+    upstream: "generator"
+    disable: false
+    description: ""
+    reader:
+      type: "qlt-server-reader"
+      conf:
+        port: 4024
+    #transforms:
+    #- name: "convert" #/*,scaleOrdered: 4*/
+    #- name: "control"
+    writer:
+      type: "file-writer"
+      conf:
+        filename: "./data/out/generator-raw.xml"
+  - name: "generator"
+    disable: false
+    description: ""
+    reader:
+      type: "event-generator"
+      conf:
+        minDelay: 1000000
+        avgDelay: 5000000
+        maxDelay: 2000000
+    #transforms:
+    #- name: "convert" #/*,scaleOrdered: 4*/
+    #- name: "control"
+    writer:
+      type: "qlt-client-writer"
+      conf:
+        addresses: "localhost:4024"
+        cnx: 1
+  - name: "file-to-file"
+    upstream: "qlt-to-file"
+    disable: false
+    description: ""
+    reader:
+      type: "file-reader"
+      conf:
+        filename: "./data/out/generator-raw.xml"
+    transforms:
+      - type: "control"
+      - type: "qlt2json"
+    writer:
+      type: "file-writer"
+      conf:
+        filename: "./data/out/filename-file"
+  - name: "fileXml-to-qlt"
+    disable: true
+    description: ""
+    reader:
+      type: "file-reader"
+      conf:
+        filename: "./data/in/sample1.xml"
+    transforms:
+      #- name: "convert" #/*,scaleOrdered: 4*/
+      #- name: "control"
+      - type: "qlt2json"
+    writer:
+      type: "qlt-client-writer"
+      conf:
+        addresses: "localhost:4024"
+        cnx: 1
+  - name: "file-to-kafka"
+    upstream: "qlt-to-file"
+    disable: true
+    description: ""
+    reader:
+      type: "file-reader"
+      conf:
+        filename: "./data/out/generator-raw.xml"
+    transforms:
+      - type: "control"
+    writer:
+      type: "kafka-writer"
+      conf:
+        servers: "localhost:9092"
+        topic: "zouzou"
+        group: "g1"
+  - name: "kafka2file"
+    upstream: "file-to-kafka"
+    disable: true
+    description: ""
+    reader:
+      type: "kafka-reader"
+      conf:
+        servers: "localhost:9092"
+        topic: "zouzou"
+        group: "g1"
+    transforms:
+      - type: "control"
+    writer:
+      type: "file-writer"
+      conf:
+        filename: "./data/out/filename-kafka"
+  - name: "file-to-postgres"
+    upstream: "qlt-to-file"
+    disable: false
+    reader:
+      type: "file-reader"
+      conf:
+        filename: "./data/out/generator-raw.xml"
+    transforms:
+      - type: "control"
+    writer:
+      type: "pg-writer"
+      conf:
+        url: "postgresql://mypguser:mypgsecretpassword@localhost:5432/mypgdb"
+        initialize: true
+  - name: "postgres-to-file"
+    upstream: "file-to-postgres"
+    disable: false
+    reader:
+      type: "pg-reader"
+      conf:
+        url: "postgresql://mypguser:mypgsecretpassword@localhost:5432/mypgdb"
+        readerName: "alltest"
+    transforms:
+      - type: "control"
+    writer:
+      type: "file-writer"
+      conf:
+        filename: "./data/out/filename-pg"
+#processors:
+#  file_csv_producer:
+#    filename: "./data/csvprodductcer"

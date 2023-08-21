@@ -20,22 +20,23 @@ type Flow struct {
 	Upstream    string      `yaml:"upstream"`
 	Description string      `yaml:"description"`
 	Disable     bool        `yaml:"disable"`
-	Flow        []*FlowStep `yaml:"flow"`
+	Reader      *FlowStep   `yaml:"reader"`
+	Transforms  []*FlowStep `yaml:"transforms"`
+	Writer      *FlowStep   `yaml:"writer"`
 }
 
 type FlowStep struct {
-	Name           string    `yaml:"name"`
-	ScaleUnordered int       `yaml:"scaleUnordered"`
-	ScaleOrdered   int       `yaml:"scaleOrdered"`
-	Conf           Connector `yaml:"conf,omitempty"`
+	Type string `yaml:"type"`
+	// ScaleUnordered int       `yaml:"scaleUnordered"`
+	Scale int       `yaml:"scale"`
+	Conf  Connector `yaml:"conf,omitempty"`
 }
 
 func (f *FlowStep) UnmarshalYAML(n *yaml.Node) error {
 	type Obj struct {
-		Name           string    `yaml:"name"`
-		ScaleUnordered int       `yaml:"scaleUnordered"`
-		ScaleOrdered   int       `yaml:"scaleOrdered"`
-		Conf           yaml.Node `yaml:"conf"`
+		Type  string    `yaml:"type"`
+		Scale int       `yaml:"scale"`
+		Conf  yaml.Node `yaml:"conf"`
 	}
 	obj := &Obj{}
 
@@ -45,23 +46,22 @@ func (f *FlowStep) UnmarshalYAML(n *yaml.Node) error {
 	ctx := "Flowstep"
 	log.Debugc(ctx, "unmarshal", "obj", fmt.Sprintf("%+v", *obj))
 
-	p := RegisteredProcessors.Get(obj.Name)
+	p := RegisteredProcessors.Get(obj.Type)
 	if p == nil {
 		names := gogu.Map(RegisteredProcessors, func(p *Processor) string { return p.Name })
 		s := strings.Join(names, ",")
 		// log.Debug("yaml: unknown processor '" + obj.Name + "' " + s)
-		return errors.New("yaml: unknown processor '" + obj.Name + "' " + s)
+		return errors.New("yaml: unknown processor '" + obj.Type + "' " + s)
 	}
 	// log.Debug("Unmarshall yaml: FlowStep default", "name", obj.Name, "v", fmt.Sprintf("%+v", p.Conf), "v2", fmt.Sprintf("%+v", obj.Conf.Content[0]))
 	f.Conf = p.Conf.Clone()
-	f.Name = obj.Name
-	f.ScaleOrdered = obj.ScaleOrdered
-	f.ScaleUnordered = obj.ScaleUnordered
+	f.Type = obj.Type
+	f.Scale = obj.Scale
 
-	err := tools.YamlParseVerify(obj.Name, f.Conf, &obj.Conf)
+	err := tools.YamlParseVerify(obj.Type, f.Conf, &obj.Conf)
 	// err := obj.Conf.Decode(f.Conf)
 
-	log.Debugc(ctx, "Unmarshal yaml: values", "name", obj.Name, "v", fmt.Sprintf("%+v", f.Conf))
+	log.Debugc(ctx, "Unmarshal yaml: values", "name", obj.Type, "v", fmt.Sprintf("%+v", f.Conf))
 	return err
 }
 
@@ -76,44 +76,49 @@ func (flow *Flow) Start(ctx context.Context, readerContext context.Context, all 
 	var out *Channel
 	flowtxt := ""
 
+	steps := []*FlowStep{}
+	steps = append(steps, flow.Reader)
+	steps = append(steps, flow.Transforms...)
+	steps = append(steps, flow.Writer)
+
 	var runtimeProcessor []*Processor
-	for idx, step := range flow.Flow {
+	for idx, step := range steps {
 		channelName := flow.Name + "-" + fmt.Sprint(idx)
 		// writer := false
 		reader := false
-		if idx == len(flow.Flow)-1 {
+		if idx == len(steps)-1 {
 			out = nil
 			// reader = true
 		} else {
 			if idx == 0 {
 				channelName = flow.Name + "-reader"
 				reader = true
-			} else if idx == len(flow.Flow)-2 {
+			} else if idx == len(steps)-2 {
 				channelName = flow.Name + "-writer"
 			}
 			out = channels.Create(channelName, flowChannelSize)
 		}
-		flowtxt += fmt.Sprint(step.Name)
+		flowtxt += fmt.Sprint(step.Type)
 		connector := step.Conf
-		p := NewProcessor(step.Name, connector, channels)
+		p := NewProcessor(step.Type, connector, channels)
 
 		if p == nil { // FIXME: cannot be nil : already checked when loading configuration
-			log.Errorc(ctxS, "Processor not found", "name", flow.Name+"/"+step.Name)
+			log.Errorc(ctxS, "Processor not found", "name", flow.Name+"/"+step.Type)
 			closest := (*processors)[0].Name
-			closest_d := tools.Levenshtein(step.Name, closest)
+			closest_d := tools.Levenshtein(step.Type, closest)
 			for _, p := range *processors {
-				d := tools.Levenshtein(step.Name, p.Name)
+				d := tools.Levenshtein(step.Type, p.Name)
 				if d < closest_d {
 					closest = p.Name
 				}
 			}
-			log.Errorc(ctxS, "Processor not found", "name", flow.Name+"/"+step.Name, "closest", closest)
-			return nil, fmt.Errorf("Processor " + flow.Name + "/" + step.Name + " not found, maybe " + closest)
+			log.Errorc(ctxS, "Processor not found", "name", flow.Name+"/"+step.Type, "closest", closest)
+			return nil, fmt.Errorf("Processor " + flow.Name + "/" + step.Type + " not found, maybe " + closest)
 		} else {
 			ctx2 := ctx
 			if reader {
 				ctx2 = readerContext
-				log.Debugc(ctxS, "reader", "type", step.Name)
+				log.Debugc(ctxS, "reader", "type", step.Type)
 			}
 
 			p2 := *p // FIXME: really? Clone Processor
@@ -132,18 +137,19 @@ func (flow *Flow) Start(ctx context.Context, readerContext context.Context, all 
 				p.OutCounter = promauto.NewCounter(prometheus.CounterOpts{
 					Name:        "qlt_in_message_total",
 					Help:        "The total number of qlt messages for",
-					ConstLabels: prometheus.Labels{"reader": step.Name, "flow": flow.Name},
+					ConstLabels: prometheus.Labels{"reader": step.Type, "flow": flow.Name},
 				})
 			}
 			log.Infoc(ctxS, "flow", "name", flow.Name, "processorName", p.Name, "conf", fmt.Sprintf("%+v", p.Conf))
-			if step.ScaleOrdered > 0 {
-				ParallelOrdered(ctx, channelName+"-scale", step.ScaleOrdered, ctl, in.C, out.C, channels, p)
-			} else if step.ScaleUnordered > 0 {
+			if step.Scale > 0 {
+				ParallelOrdered(ctx, channelName+"-scale", step.Scale, ctl, in.C, out.C, channels, p)
+				/*} else if step.ScaleUnordered > 0 {
 				ParallelUnordered(ctx, channelName+"-scale", step.ScaleUnordered, ctl, in.C, out.C, channels, p)
+				*/
 			} else {
 				r, err := p.Conf.Start(ctx2, p, ctl, in.GetC(), out.GetC())
 				if err != nil {
-					log.Fatalc(ctxS, "flow failed to start", "name", flow.Name+"/"+step.Name, "err", err)
+					log.Fatalc(ctxS, "flow failed to start", "name", flow.Name+"/"+step.Type, "err", err)
 					os.Exit(1)
 				}
 				p.Runtime = r

@@ -1,0 +1,7 @@
+{
+    "yaml.schemas": {
+        "./qlt-router-schema.yml": [
+            "/*.ser.yml"
+        ]
+    },
+}

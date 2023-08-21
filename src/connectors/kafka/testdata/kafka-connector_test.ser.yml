@@ -1,0 +1,25 @@
+streams:
+  - name: "fr-kafka-write"
+    disable: false
+    description: "3"
+    reader:
+      type: "mem-reader"
+    writer:
+      type: "kafka-writer"
+      conf:
+        servers: "${KAFKA:-localhost:9094}"
+        topic: "zouzou"
+        group: "g1"
+  - name: "fr-kafka-read"
+    disable: false
+    description: ""
+    reader:
+      type: "kafka-reader"
+      conf:
+        servers: "${KAFKA:-localhost:9094}"
+        topic: "zouzou"
+        group: "g1"
+    writer:
+      type: "mem-writer"
+      conf:
+        maxSize: -1

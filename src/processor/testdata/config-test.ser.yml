@@ -1,0 +1,11 @@
+streams:
+  - name: flow1
+    description: "flow1 description"
+    reader:
+      type: "file_raw_reader"
+      conf:
+        filename: "zoufile"
+    writer:
+      type: "file_raw_writer"
+      conf:
+        filename: "pathfile"

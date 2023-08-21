@@ -20,31 +20,7 @@ func TestMongoConnector(t *testing.T) {
 	processor.RegisteredProcessors.Register("mongo-writer", &MongoWriterConf{})
 	processor.RegisteredProcessors.Register("mongo-reader", &MongoReaderConf{})
 
-	conf, err := processor.ParseConfigRawData([]byte(`
-streams:
-  - name: "mem-to-mongo"
-    disable: false
-    description: ""
-    flow:
-      - name: "mem-reader"
-      - name: "mongo-writer"
-        conf:
-          url: "mongodb://root:mymongosecret@${MONGO:-localhost}:27017"
-          db: "mymongodb"
-          collection: "buffer"
-  - name: "mem-to-mongo"
-    disable: false
-    description: ""
-    flow:
-      - name: "mongo-reader"
-        conf:
-          url: "mongodb://root:mymongosecret@${MONGO:-localhost}:27017"
-          db: "mymongodb"
-          collection: "buffer"
-          readersCollection: "bufferReaders"
-          readerName: "test"
-      - name: "mem-writer"
-`))
+	conf, err := processor.ParseConfigFile("test", "testdata/mongo-connector-test-config.ser.yml")
 	if err != nil {
 		t.Error("Error Parsing config:", err)
 		return
