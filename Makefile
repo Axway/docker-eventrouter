@@ -43,10 +43,11 @@ dev:
 	ls -d ./qlt-router.conf src/* | entr -r sh -c "make && ./$(NAME) --config ./$(NAME).conf "
 
 docker-test:
-	docker-compose -f docker-compose.test.yml down
-	docker-compose -f docker-compose.test.yml build
-	docker-compose -f docker-compose.test.yml run sut  || (docker-compose -f docker-compose.test.yml logs -t | sort -k 3 ; docker-compose -f docker-compose.test.yml down ; exit 1)
-	docker-compose -f docker-compose.test.yml down
+	./scripts/run-integration-test-local.sh
+	# docker-compose -f docker-compose.test.yml down
+	# docker-compose -f docker-compose.test.yml build
+	# docker-compose -f docker-compose.test.yml run sut  || (docker-compose -f docker-compose.test.yml logs -t | sort -k 3 ; docker-compose -f docker-compose.test.yml down ; exit 1)
+	# docker-compose -f docker-compose.test.yml down
 
 docker-test-logs:
 	docker-compose -f docker-compose.test.yml logs
