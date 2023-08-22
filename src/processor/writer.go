@@ -106,7 +106,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 					events = append(events, event)
 					// toAckEvents = append(toAckEvents, event)
 				case <-ctx.Done():
-					log.Infoc(ctxp, "stppping")
+					log.Infoc(ctxp, "stopping")
 					ctl <- ControlEvent{p, p2, "STOPPING", ""}
 					donef = true
 				default:

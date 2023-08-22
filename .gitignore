@@ -13,5 +13,6 @@ licenses
 *.mprof
 report.xml
 /coverage.*
+*.sublime*
 /*.out
 /*.test
