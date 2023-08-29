@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"testing"
 
 	"axway.com/qlt-router/src/config"
@@ -14,17 +13,22 @@ import (
 	"axway.com/qlt-router/src/processor"
 )
 
-// GetFreePort asks the kernel for a free open port that is ready to use.
-func GetFreePort() (port int, err error) {
-	var a *net.TCPAddr
-	if a, err = net.ResolveTCPAddr("tcp", "localhost:0"); err == nil {
-		var l *net.TCPListener
-		if l, err = net.ListenTCP("tcp", a); err == nil {
-			defer l.Close()
-			return l.Addr().(*net.TCPAddr).Port, nil
-		}
-	}
-	return
+func TestQltConnectorPush(t *testing.T) {
+	porti, _ := memtest.GetFreePort()
+	port := fmt.Sprint(porti)
+
+	writer := &QLTClientWriterConf{"localhost:" + port, 1}
+	reader := &QLTServerReaderConf{"localhost", port, "", "", ""}
+	memtest.TestConnector(t, writer, reader)
+}
+
+func TestQltConnectorPull(t *testing.T) {
+	porti, _ := memtest.GetFreePort()
+	port := fmt.Sprint(porti)
+
+	writer := &QLTServerWriterConf{"Q1", "localhost", port, "", "", ""}
+	reader := &QLTClientReaderConf{"Q1", "localhost:" + port, 1}
+	memtest.TestConnector(t, writer, reader)
 }
 
 func testQltConnector(port string, disableQlt bool, minReaders, maxReaders, minMessages, maxMessages, minMsgSize, maxMsgSize int) ([][]string, *mem.MemWriter, *processor.Processor, string, error) {
@@ -37,7 +41,7 @@ func testQltConnector(port string, disableQlt bool, minReaders, maxReaders, minM
 	// var coroutines []int
 	// defer log.Println("test: defer coroutine", coroutines)
 	if port == "" {
-		porti, _ := GetFreePort()
+		porti, _ := memtest.GetFreePort()
 		port = fmt.Sprint(porti)
 	}
 	readers, all_count := memtest.MessageGenerator(minReaders, maxReaders, minMessages, maxMessages, minMsgSize, maxMsgSize)

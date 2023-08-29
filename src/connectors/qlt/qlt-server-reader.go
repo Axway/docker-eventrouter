@@ -12,6 +12,12 @@ import (
 	"axway.com/qlt-router/src/tools"
 )
 
+var (
+	_ processor.Connector              = &QLTServerReaderConf{}
+	_ processor.ConnectorRuntime       = &QLTServerReader{}
+	_ processor.ConnectorRuntimeReader = &QLTServerReaderConnection{}
+)
+
 type QLTServerReader struct {
 	Conf     *QLTServerReaderConf
 	ctx      string
@@ -47,7 +53,7 @@ type QLTServerReaderConf struct {
 
 type QLTServerReaderConnection struct {
 	CtxS   string
-	Qlt    *qlt.QLT
+	Qlt    *qlt.QltServerReader
 	MsgId  int64
 	AckPos int64
 	ack    chan int64
@@ -57,7 +63,7 @@ type QLTServerReaderConnection struct {
 func (conf *QLTServerReaderConf) Start(ctx context.Context, p *processor.Processor, ctl chan processor.ControlEvent, in chan processor.AckableEvent, out chan processor.AckableEvent) (processor.ConnectorRuntime, error) {
 	qltHandle := func(conn net.Conn, ctx2 string) {
 		// qltHandleRequest(ctx, conn, ctx2+p.Flow.Name, p, ctl, out)
-		qlt := qlt.NewQltServer(ctx2, conn)
+		qlt := qlt.NewQltServerReader(ctx2, conn)
 
 		src := &QLTServerReaderConnection{CtxS: ctx2 + ".conn", Qlt: qlt, ack: make(chan int64), From: conn.RemoteAddr().String()}
 		p.AddReader(src)
@@ -99,7 +105,7 @@ func (m *QLTServerReaderConnection) AckMsg(ack processor.EventAck) {
 	if m.AckPos+1 != msgid {
 		panic("oups : already received or wrong")
 	}
-	err := m.Qlt.WriteQLTAck()
+	err := m.Qlt.WriteAck()
 	if err != nil {
 		log.Errorc(m.CtxS, "error writing ack", "err", err)
 		m.Close()
@@ -115,7 +121,7 @@ func (m *QLTServerReaderConnection) Ctx() string {
 
 func (m *QLTServerReaderConnection) Read() ([]processor.AckableEvent, error) {
 	events := make([]processor.AckableEvent, 1)
-	msg, err := m.Qlt.ReadQLTPacket(200)
+	msg, err := m.Qlt.Read(qltReaderBlockTimeout)
 	if err != nil {
 		if errors.Is(err, os.ErrDeadlineExceeded) {
 			return nil, err

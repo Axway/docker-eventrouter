@@ -1,0 +1,64 @@
+package qlt
+
+import (
+	"net"
+	"time"
+
+	log "axway.com/qlt-router/src/log"
+)
+
+type QltClientReader struct {
+	CtxS      string
+	Addr      string
+	QueueName string
+	qlt       *QLT
+}
+
+func NewQltClientReader(ctx string, addr string, queueName string) *QltClientReader {
+	var c QltClientReader
+	c.Addr = addr
+	c.CtxS = ctx
+	c.QueueName = queueName
+
+	return &c
+}
+
+func (c *QltClientReader) Connect(timeout time.Duration) error {
+	log.Infoc(c.CtxS, " connecting... ", "addr", c.Addr)
+	// FIXME: timeout needed
+	conn, err := net.DialTimeout("tcp", c.Addr, timeout)
+	if err != nil {
+		log.Errorc(c.CtxS, " dial failed", "addr", c.Addr, "queue", c.QueueName, "err", err)
+		return err
+	}
+	c.qlt = newQltConnection(c.CtxS, conn)
+
+	log.Infoc(c.CtxS, " connected", "addr", c.Addr)
+	err = c.qlt.Send(QLTPacketTypeConnRequest, c.QueueName)
+	if err != nil {
+		log.Errorc(c.CtxS, " initialization failed (sending pull request)", "addr", c.Addr, "queue", c.QueueName, "err", err)
+		return err
+	}
+	// FIXME: '5' connection rejected can be sent as well
+	err = c.qlt.WaitAck(timeout)
+	if err != nil {
+		log.Errorc(c.CtxS, " initialization failed (waiting ack pull request)", "addr", c.Addr, "queue", c.QueueName, "err", err)
+		return err
+	}
+	return nil
+}
+
+func (c *QltClientReader) Close() error {
+	err := c.qlt.Close()
+	log.Infoc(c.CtxS, " close", "err", err)
+	return err
+}
+
+func (c *QltClientReader) WriteAck() error {
+	return c.qlt.WriteQLTAck()
+}
+
+func (c *QltClientReader) Read(timeout time.Duration) (string, error) {
+	msg, err := c.qlt.ReadQLTPacket(timeout)
+	return msg, err
+}

@@ -114,7 +114,7 @@ type QLT struct {
 	CtxS   string
 }
 
-func NewQltServer(ctx string, conn net.Conn) *QLT {
+func newQltConnection(ctx string, conn net.Conn) *QLT {
 	qlt := QLT{}
 	qlt.Conn = conn
 	qlt.buf = make([]byte, RecvBufferSize)
@@ -157,19 +157,48 @@ func (q *QLT) WriteQLTAck() error {
 	return nil
 }
 
-func (q *QLT) ReadQLTPacket(timeoutMS int) (string, error) {
+func (q *QLT) WaitAck(timeout time.Duration) error {
+	_, typ, err := q.ReadQLTPacketRaw(timeout)
+	if err != nil {
+		return err
+	}
+	if typ != QLTPacketTypeAck {
+		log.Errorc(q.CtxS, " Received unexpected message code (Closing...)", "code", typ)
+		code := fmt.Sprintf("%c (0x%x)", q.buf[2], q.buf[2])
+		return errors.New("Unexpected QLT code : " + code)
+	}
+	return nil
+}
+
+func (q *QLT) ReadQLTPacket(timeout time.Duration) (string, error) {
+	msg, typ, err := q.ReadQLTPacketRaw(timeout)
+	if err != nil {
+		return "", err
+	}
+	if typ != QLTPacketTypeData {
+		log.Errorc(q.CtxS, " Received unexpected message code (Closing...)", "code", typ)
+		code := fmt.Sprintf("%c (0x%x)", q.buf[2], q.buf[2])
+		return "", errors.New("Unexpected QLT code : " + code)
+	}
+
+	return msg, nil
+}
+
+func (q *QLT) ReadQLTPacketRaw(timeout time.Duration) (string, byte, error) {
 	var err error
-	if timeoutMS > 0 {
-		err := q.Conn.SetReadDeadline(time.Now().Add(time.Duration(timeoutMS * int(time.Millisecond))))
+
+	log.Tracec(q.CtxS, "ReadQLTPacketRaw", "timeout", timeout)
+	if timeout > 0 {
+		err := q.Conn.SetReadDeadline(time.Now().Add(timeout))
 		if err != nil {
 			log.Errorc(q.CtxS, " Error setting deadline closing...", "err", err.Error())
-			return "", err
+			return "", 0xFF, err
 		}
 	} else {
 		err := q.Conn.SetReadDeadline(time.Time{})
 		if err != nil {
 			log.Errorc(q.CtxS, " Error setting deadline closing...", "err", err.Error())
-			return "", err
+			return "", 0xFF, err
 		}
 	}
 	for {
@@ -177,15 +206,16 @@ func (q *QLT) ReadQLTPacket(timeoutMS int) (string, error) {
 			// log.Println(q.ctx, "Incomplete packet (<3), reading...", q.idx)
 			err = q.readData()
 			if err != nil {
-				return "", err
+				return "", 0xFF, err
 			}
 			continue
 		}
-		if !qltIsPacketType(q.buf, QLTPacketTypeData) {
+		typ := q.buf[2]
+		/*if !qltIsPacketType(q.buf, QLTPacketTypeData) {
 			log.Errorc(q.CtxS, " Received unexpected message code (Closing...)", "code", q.buf[2])
 			code := fmt.Sprintf("%c (0x%x)", q.buf[2], q.buf[2])
-			return "", errors.New("Unexpected QLT code : " + code)
-		}
+			return "", q.buf[2], errors.New("Unexpected QLT code : " + code)
+		}*/
 
 		length := qltPacketSize(q.buf)
 
@@ -195,13 +225,33 @@ func (q *QLT) ReadQLTPacket(timeoutMS int) (string, error) {
 			q.idx = q.idx - length - 2
 			q.RCount++
 			q.RSize += length
-			return orig, nil
+			return orig, typ, nil
 		}
 
 		// log.Println(q.ctx, "Incomplete packet, reading...", q.idx, length+2)
 		err = q.readData()
 		if err != nil {
-			return "", err
+			return "", 0xFF, err
 		}
 	}
+}
+
+func (q *QLT) Send(typ byte, _msg string) error {
+	m := []byte(_msg)
+	l := len(m)
+	wbuf := make([]byte, l+3)
+	copy(wbuf[3:l+3], m[:])
+
+	wbuf[0] = (byte)((l + 1) / 256)
+	wbuf[1] = (byte)((l + 1) % 256)
+	wbuf[2] = typ
+	// FIXME: timeout needed
+	if _, err := q.Conn.Write(wbuf); err != nil {
+		log.Errorc(q.CtxS, "write error", "err", err)
+		return err
+	}
+	// q.WCount++
+	// q.WSize += l
+
+	return nil
 }
