@@ -14,9 +14,10 @@ import (
 )
 
 type FileStoreRawWriterConfig struct {
-	Filename string
-	MaxFile  int
-	MaxSize  int64
+	FilenamePrefix string
+	FilenameSuffix string
+	MaxFile        int
+	MaxSize        int64 /* MB */
 }
 
 type FileStoreRawWriter struct {
@@ -49,6 +50,10 @@ func (q *FileStoreRawWriter) Ctx() string {
 }
 
 func (q *FileStoreRawWriter) Init(p *processor.Processor) error {
+	/* Find file to use */
+	/* Looking for oldest file with prefix */
+	filename := tools.FileToUse(q.CtxS, q.Conf.FilenamePrefix, q.Conf.FilenameSuffix)
+	q.Filename = filename
 	return q.Open()
 }
 
@@ -57,14 +62,15 @@ func (q *FileStoreRawWriter) Open() error {
 		panic("multiple open")
 	}
 
-	q.Filename = q.Conf.Filename
-	log.Infoc(q.CtxS, "opening file...", "filename", q.Conf.Filename)
+	log.Infoc(q.CtxS, "opening file...", "filename", q.Filename)
 	f, err := os.OpenFile(q.Filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		log.Errorc(q.CtxS, "error opening file for appending", "filename", q.Filename, "err", err)
 		return err
 	}
 	q.file = f
+
+	/* go to current position */
 	offset, err := q.file.Seek(0, io.SeekCurrent)
 	if err != nil {
 		log.Errorc(q.CtxS, "error get position", "filename", q.Filename, "err", err)
@@ -79,16 +85,18 @@ func (q *FileStoreRawWriter) Open() error {
 	return nil
 }
 
-func (q *FileStoreRawWriter) Rotate() error {
-	err := tools.FileRotate(q.CtxS, q.Conf.Filename, q.Conf.MaxFile)
+func (q *FileStoreRawWriter) Switch() error {
+	newfilename, err := tools.FileSwitch(q.CtxS, q.Conf.FilenamePrefix, q.Conf.FilenameSuffix, q.Conf.MaxFile)
 	if err != nil {
 		return err
 	}
 
 	err = q.file.Close()
 	if err != nil {
-		log.Warnc(q.CtxS, "error while rotating : close error", "filename", q.Filename, "err", err)
+		log.Warnc(q.CtxS, "error while switching : close error", "filename", q.Filename, "err", err)
 	}
+	q.Filename = newfilename
+
 	q.file = nil
 	err = q.Open()
 	return err
@@ -107,14 +115,15 @@ func (q *FileStoreRawWriter) Write(events []processor.AckableEvent) error {
 	datas := processor.PrepareEvents(q, events)
 
 	// log.Debugln(q.CtxS, "writing", "count", len(datas))
-
 	buf := []byte(q.lf + strings.Join(datas, "\n"))
-	// log.Debugc(q.CtxS, "write buffer", "bufferLength", len(string(buf)))
 
 	q.Size += int64(len(buf))
-	if q.Conf.MaxSize > 0 && q.Size > q.Conf.MaxSize {
-		log.Infoc(q.CtxS, "rotating", "filename", q.Filename, "size", q.Size, "maxsize", q.Conf.MaxSize)
-		q.Rotate()
+	if q.Conf.MaxSize > 0 && q.Size > (q.Conf.MaxSize * 1048576) {
+		log.Debugc(q.CtxS, "switching", "filename", q.Filename, "size", q.Size, "maxsize", q.Conf.MaxSize * 1048576)
+		q.Switch()
+
+		buf = []byte(strings.Join(datas, "\n"))
+		q.Size = int64(len(buf))
 	}
 
 	if _, err := q.file.Write(buf); err != nil {

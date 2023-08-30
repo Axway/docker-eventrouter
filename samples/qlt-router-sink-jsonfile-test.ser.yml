@@ -13,7 +13,8 @@ streams:
       conf:
         maxSize: 10000000
         maxFile: 5
-        filename: "./data/qlt2json.json"
+        filenamePrefix: "./data/qlt2json"
+        filenameSuffix: "json"
   - name: "qlt-generator"
     disable: false
     description: ""

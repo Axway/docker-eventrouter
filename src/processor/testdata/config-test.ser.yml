@@ -4,8 +4,9 @@ streams:
     reader:
       type: "file_raw_reader"
       conf:
-        filename: "zoufile"
+        filenamePrefix: "zoufile"
+        readerFilename: "flow1-file_raw_reader"
     writer:
       type: "file_raw_writer"
       conf:
-        filename: "pathfile"
+        filenamePrefix: "pathfile"

@@ -3,15 +3,20 @@ package file
 import (
 	"context"
 	"os"
+	"io"
 	"strings"
+	"strconv"
 
 	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
+	"axway.com/qlt-router/src/tools"
 )
 
 type FileStoreRawReaderConfig struct {
-	Filename string
-	Size     int
+	FilenamePrefix string
+	FilenameSuffix string
+	Size           int
+	ReaderFilename string
 }
 
 type FileStoreRawReader struct {
@@ -19,6 +24,7 @@ type FileStoreRawReader struct {
 
 	CtxS     string
 	Filename string
+	AckFilename string
 	file     *os.File
 
 	b         []byte
@@ -49,7 +55,29 @@ func (q *FileStoreRawReader) Ctx() string {
 }
 
 func (q *FileStoreRawReader) Init(p *processor.Processor) error {
-	q.Filename = q.conf.Filename //+ "." + p.Flow.Name
+	/* Try to get filename + offset from conf file */
+	log.Infoc(q.CtxS, "Opening file", "filename", q.conf.ReaderFilename)
+	f2, err := os.OpenFile(q.conf.ReaderFilename, os.O_RDONLY, 0o644)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			log.Errorc(q.CtxS, "Error opening file for reading last position", "filename", q.conf.ReaderFilename, "err", err)
+		}
+		q.Filename, err = tools.NextFile(q.CtxS, q.conf.FilenamePrefix, q.conf.FilenameSuffix, q.conf.FilenamePrefix)
+		q.Offset = 0
+	} else {
+		/* Read info from file */
+		b := make([]byte, 3072)
+		n, err := f2.Read(b)
+		f2.Close()
+		s := string(b[0:n])
+		arr := strings.Split(s, "\n")
+		q.Offset, err = strconv.ParseInt(arr[0], 10, 64)
+		if err != nil {
+			q.Offset = 0
+		}
+		q.Filename = arr[1]
+	}
+
 	log.Infoc(q.CtxS, "Opening file", "filename", q.Filename)
 	f, err := os.OpenFile(q.Filename, os.O_RDONLY, 0o644)
 	if err != nil {
@@ -57,14 +85,44 @@ func (q *FileStoreRawReader) Init(p *processor.Processor) error {
 		return err
 	}
 	q.file = f
+	q.AckFilename = q.Filename
+
+	/* Go to correct offset */
+	//log.Infoc(q.CtxS, "Seeking position", "offset", strconv.FormatInt(q.Offset,10))
+	q.file.Seek(q.Offset, io.SeekStart)
+
 	return nil
 }
 
 func (q *FileStoreRawReader) Read() ([]processor.AckableEvent, error) {
 	n, err := q.file.Read(q.b[q.Pos:q.Size])
-	if err != nil {
+	if err != nil && err != io.EOF {
 		return nil, err
 	}
+
+	if n == 0 || err != nil {
+		filename, _ := tools.NextFile(q.CtxS, q.conf.FilenamePrefix, q.conf.FilenameSuffix, q.Filename)
+		if filename != q.Filename {
+			q.file.Close()
+			q.Filename = filename
+			q.Offset = 0
+			q.Pos = 0
+
+			f, err := os.OpenFile(q.Filename, os.O_RDONLY, 0o644)
+			if err != nil {
+				log.Errorc(q.CtxS, "Error opening file for reading", "filename", q.Filename, "err", err)
+				return nil, err
+			}
+			q.file = f
+			n, err = q.file.Read(q.b[q.Pos:q.Size])
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
+	}
+
 	q.Pos += n
 
 	// log.Debugln(q.ctx, "Buffer", "size", q.pos, "content", string(q.b[0:q.pos]))
@@ -101,10 +159,38 @@ func (q *FileStoreRawReader) Read() ([]processor.AckableEvent, error) {
 func (q *FileStoreRawReader) AckMsg(msgid processor.EventAck) {
 	// log.Debugln(q.CtxS, "Ackmsg", msgid)
 	offset, ok := msgid.(int64)
-	if !ok || offset <= q.AckOffset {
+	changingFile := 0
+	if offset < q.AckOffset {
+		f, err := os.OpenFile(q.AckFilename, os.O_RDONLY, 0o644)
+		/* Test err */
+		f.Seek(q.AckOffset, io.SeekStart)
+		b1 := make([]byte, 1)
+		_, err = f.Read(b1)
+
+		if err == io.EOF {
+			changingFile = 1
+		}
+		f.Close()
+	}
+
+	if !ok || (offset <= q.AckOffset && changingFile == 0) {
 		log.Fatalc(q.CtxS, "AckMsg", "offset", q.Offset, "msgid", msgid)
 	}
+	if changingFile == 1 {
+		q.AckFilename, _ = tools.NextFile(q.CtxS, q.conf.FilenamePrefix, q.conf.FilenameSuffix, q.AckFilename)
+		/* Test err */
+	}
 	q.AckOffset = offset
+
+	/* Write in file */
+	f2, err := os.OpenFile(q.conf.ReaderFilename, os.O_WRONLY|os.O_CREATE, 0o644)
+	if err != nil {
+		log.Errorc(q.CtxS, "Error opening file for writing last position", "filename", q.conf.ReaderFilename, "err", err)
+	} else {
+		defer f2.Close()
+		b := []byte(strconv.FormatInt(q.AckOffset,10) + "\n" + q.AckFilename)
+		_, err = f2.Write(b)
+	}
 }
 
 func (q *FileStoreRawReader) Close() error {

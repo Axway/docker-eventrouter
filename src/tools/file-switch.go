@@ -11,23 +11,20 @@ import (
 	"github.com/esimov/gogu"
 )
 
-func TimestampedFilename(ctx, filename string) (string) {
-	dir := path.Dir(filename)
-	basename := path.Base(filename)
-	extention := path.Ext(filename)
-
-	/* removing extension of filename */
-	basename = basename[:len(basename)-len(extention)]
+func TimestampedFilename(ctx, filenamePrefix string, filenameSuffix string) (string) {
 	postfix := time.Now().UTC().Format(time.RFC3339Nano)
-	timestampedFilename := basename + "-" + postfix + extention
+	timestampedFilename := filenamePrefix + "." + postfix
+	if len(filenameSuffix) > 0 {
+		timestampedFilename += "." + filenameSuffix
+	}
 
-	return path.Join(dir,timestampedFilename)
+	return timestampedFilename
 }
 
-func NextFile(ctx, filename string, lastfilename string) (string, error) {
+func NextFile(ctx, filenamePrefix string, filenameSuffix string, lastfilename string) (string, error) {
 	var nextfilename string
 
-	previousFiles, err := FileSwitchList(ctx, filename)
+	previousFiles, err := FileSwitchList(ctx, filenamePrefix, filenameSuffix)
 	if err != nil || len(previousFiles) == 0 {
 		return lastfilename, err
 	}
@@ -42,10 +39,10 @@ func NextFile(ctx, filename string, lastfilename string) (string, error) {
 	return nextfilename, nil
 }
 
-func FileToUse(ctx, filename string) (string) {
-	newfname := TimestampedFilename(ctx, filename)
+func FileToUse(ctx, filenamePrefix string, filenameSuffix string) (string) {
+	newfname := TimestampedFilename(ctx, filenamePrefix, filenameSuffix)
 
-	filesUsed, err := FileSwitchList(ctx, filename)
+	filesUsed, err := FileSwitchList(ctx, filenamePrefix, filenameSuffix)
 	if err != nil {
 		return newfname
 	}
@@ -55,23 +52,24 @@ func FileToUse(ctx, filename string) (string) {
 	return filesUsed[len(filesUsed)-1]
 }
 
-func FileSwitchList(ctx, filename string) ([]string, error) {
-	dir := path.Dir(filename)
-	basename := path.Base(filename)
-	extention := path.Ext(filename)
-
-	/* removing extension of filename */
-	basename = basename[:len(basename)-len(extention)]
+func FileSwitchList(ctx, filenamePrefix string, filenameSuffix string) ([]string, error) {
+	dir := path.Dir(filenamePrefix)
 
 	files, err := os.ReadDir(dir)
 	if err != nil {
-		log.Errorc(ctx, "error on ReadDir : readdir", "filename", filename, "err", err)
+		log.Errorc(ctx, "error on ReadDir : readdir", "filenamePrefix", filenamePrefix, "err", err)
 		return nil, err
 	}
 
 	// List file with basename prefix
 	previousFiles := gogu.Filter(files, func(file fs.DirEntry) bool {
-		return len(file.Name()) > len(basename) && file.Name()[:len(basename)] == basename
+		basename := path.Base(filenamePrefix)
+		lenBase := len(basename)
+		lenFile := len(file.Name())
+		lenSuf := len(filenameSuffix)
+
+		return lenFile > lenBase && file.Name()[:lenBase] == basename &&
+			   lenFile > lenSuf && file.Name()[lenFile-lenSuf:] == filenameSuffix
 	})
 
 	names := gogu.Map(previousFiles, func(f fs.DirEntry) string { return path.Join(dir, f.Name()) })
@@ -79,10 +77,10 @@ func FileSwitchList(ctx, filename string) ([]string, error) {
 	return names, nil
 }
 
-func FileSwitch(ctx string, filename string, maxfile int) (string, error) {
-	newfname := TimestampedFilename(ctx, filename)
+func FileSwitch(ctx string, filenamePrefix string, filenameSuffix string, maxfile int) (string, error) {
+	newfname := TimestampedFilename(ctx, filenamePrefix, filenameSuffix)
 
-	previousFiles, err := FileSwitchList(ctx, filename)
+	previousFiles, err := FileSwitchList(ctx, filenamePrefix, filenameSuffix)
 	if err != nil {
 		return newfname, err
 	}

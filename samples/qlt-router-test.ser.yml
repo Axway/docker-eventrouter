@@ -13,7 +13,8 @@ streams:
     writer:
       type: "file-writer"
       conf:
-        filename: "./data/out/generator-raw.xml"
+        filenamePrefix: "./data/out/generator-raw"
+        filenameSuffix: "xml"
   - name: "generator"
     disable: false
     description: ""
@@ -38,21 +39,25 @@ streams:
     reader:
       type: "file-reader"
       conf:
-        filename: "./data/out/generator-raw.xml"
+        filenamePrefix: "./data/out/generator-raw"
+        filenameSuffix: "xml"
+        readerFilename: "file-to-file-reader"
     transforms:
       - type: "control"
       - type: "qlt2json"
     writer:
       type: "file-writer"
       conf:
-        filename: "./data/out/filename-file"
+        filenamePrefix: "./data/out/filename-file"
   - name: "fileXml-to-qlt"
     disable: true
     description: ""
     reader:
       type: "file-reader"
       conf:
-        filename: "./data/in/sample1.xml"
+        filenamePrefix: "./data/in/sample1"
+        filenameSuffix: "xml"
+        readerFilename: "fileXml-to-qlt-reader"
     transforms:
       #- name: "convert" #/*,scaleOrdered: 4*/
       #- name: "control"
@@ -69,7 +74,9 @@ streams:
     reader:
       type: "file-reader"
       conf:
-        filename: "./data/out/generator-raw.xml"
+        filenamePrefix: "./data/out/generator-raw"
+        filenameSuffix: "xml"
+        readerFilename: "file-to-kafka-reader"
     transforms:
       - type: "control"
     writer:
@@ -93,14 +100,16 @@ streams:
     writer:
       type: "file-writer"
       conf:
-        filename: "./data/out/filename-kafka"
+        filenamePrefix: "./data/out/filename-kafka"
   - name: "file-to-postgres"
     upstream: "qlt-to-file"
     disable: false
     reader:
       type: "file-reader"
       conf:
-        filename: "./data/out/generator-raw.xml"
+        filenamePrefix: "./data/out/generator-raw"
+        filenameSuffix: "xml"
+        readerFilename: "file-to-postgres-reader"
     transforms:
       - type: "control"
     writer:
@@ -121,7 +130,7 @@ streams:
     writer:
       type: "file-writer"
       conf:
-        filename: "./data/out/filename-pg"
+        filenamePrefix: "./data/out/filename-pg"
 #processors:
 #  file_csv_producer:
 #    filename: "./data/csvprodductcer"
