@@ -89,6 +89,7 @@ func (q *PGReader) Read() ([]processor.AckableEvent, error) {
 	msgs := make([]processor.AckableEvent, len(rows))
 
 	for i, row := range rows {
+		log.Tracec(q.ctx, "Read", "row", row)
 		msgs[i] = processor.AckableEvent{q, row.id, row.text, nil}
 		q.offset = row.id // keep last
 	}

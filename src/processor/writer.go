@@ -2,9 +2,7 @@ package processor
 
 import (
 	"context"
-	"fmt"
 	"sync/atomic"
-	"time"
 
 	"axway.com/qlt-router/src/config"
 	log "axway.com/qlt-router/src/log"
@@ -54,26 +52,27 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 					acked++
 					atomic.AddInt64(&p.Out_ack, 1)
 					// ctl <- ControlEvent{p, p2, "ACK", "" + fmt.Sprint(acked, sent)}
-					if acked == sent {
+					// FIXME: not ALL_ALL_DONE on writer ?
+					/*if acked == sent {
 						ctl <- ControlEvent{p, p2, "ACK_DONE", ""}
 						// FIXME: is this required ?
 						if p.Out_ack == p.Out {
 							ctl <- ControlEvent{p, p2, "ACK_ALL_DONE", ""}
 						}
-					}
+					}*/
 				case <-ctx.Done():
 					return
 				}
 			}
 		}()
-		time.Sleep(1 * time.Second) // FIXME: beurk
+		// should not be required : time.Sleep(1 * time.Second)
 	} else {
 		log.Infoc(ctxp, "Not Starting Writer Proxy Ack Loop ! (sync writer)")
 	}
 
 	go func() {
 		defer p2.Close()
-		defer log.Infoc(ctxp, "Closing...")
+		defer log.Infoc(ctxp, "Closing...(auto)")
 
 		var events []AckableEvent
 		// var toAckEvents []AckableEvent
@@ -117,14 +116,14 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 
 			// Send batched events
 			if flush || len(events) > batchsize {
-				if acked == sent {
+				/*if acked == sent {
 					ctl <- ControlEvent{p, p2, "PROCESSING", fmt.Sprint(len(events), acked, acked+len(events))}
 					if p.Out == p.Out_ack {
 						// FIXME: is this required
 						ctl <- ControlEvent{p, p2, "ALL_PROCESSING", fmt.Sprint(len(events), p.Out_ack, p.Out_ack+int64(len(events)))}
 					}
-				}
-				// log.Debugln(ctxp, "Writing messages...", "batch", len(events))
+				}*/
+				log.Tracec(ctxp, "writer writing messages...", "batch", len(events))
 				err := p2.Write(events)
 				if err != nil {
 					log.Errorc(ctxp, "error writing messages...", "batch", len(events), "err", err)

@@ -4,16 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"axway.com/qlt-router/src/locallog"
 	"github.com/prometheus/client_golang/prometheus"
 
 	log "axway.com/qlt-router/src/log"
 )
-
-func init() {
-	// log.SetLevel(log.DebugLevel)
-	locallog.InitLog()
-}
 
 type EventAck interface{}
 

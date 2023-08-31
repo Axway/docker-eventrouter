@@ -1,57 +1,42 @@
 package kafka
 
 import (
-	"context"
-	"fmt"
 	"testing"
+	"time"
 
-	"axway.com/qlt-router/src/connectors/mem"
-	"axway.com/qlt-router/src/log"
-	"axway.com/qlt-router/src/processor"
+	"axway.com/qlt-router/src/connectors/memtest"
+	"github.com/a8m/envsubst"
 )
 
-func TestKafkaConnector(t *testing.T) {
+func TestKafkaConnectorGen(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("skipping indtegration test")
 		return
 	}
-	processor.RegisteredProcessors.Register("mem-writer", &mem.MemWriterConf{})
-	processor.RegisteredProcessors.Register("mem-reader", &mem.MemReaderConf{[]string{"zouzou", "zaza"}})
-	processor.RegisteredProcessors.Register("kafka-writer", &KafkaWriterConf{})
-	processor.RegisteredProcessors.Register("kafka-reader", &KafkaReaderConf{})
+	t.Parallel()
 
-	conf, err := processor.ParseConfigFile("test", "testdata/kafka-connector_test.ser.yml")
+	// FIXME: reusing the same topic name is not working... one message is always left!
+	tag := time.Now().Format("-2006-01-02T15.04.05")
+	// tag = "-a2"
+
+	url, _ := envsubst.String("${KAFKA:-localhost:9094}")
+
+	topic := "zouzou" + tag
+	err := KafkaCreateTopic(t.Name(), url, "zouzou"+tag)
 	if err != nil {
-		t.Error("Error Parsing config:", err)
+		t.Fatal("Error creating topic", err)
 		return
 	}
 
-	ctl := make(chan processor.ControlEvent, 100)
-	processors := &processor.RegisteredProcessors
-	channels := processor.NewChannels()
-	for _, flow := range conf.Streams {
-		_, err := flow.Start(context.Background(), context.Background(), false, ctl, channels, processors)
-		if err != nil {
-			t.Error("Error start flow '"+flow.Name+"'", err)
-		}
+	writer := &KafkaWriterConf{
+		Servers: url,
+		Topic:   topic,
+		Group:   "g5",
 	}
-
-	for {
-		op := <-ctl
-		op.Log()
-		if op.From.Name == "mem-reader" && op.Id == "ACK_ALL_DONE" /* && rp.Out_ack == int64(all_count)*/ {
-			log.Infoc("test", "op ", "from", fmt.Sprintf("%+v", op.From))
-			break
-		}
+	reader := &KafkaReaderConf{
+		Servers: url,
+		Topic:   topic,
+		Group:   "group" + tag,
 	}
-	for {
-		op := <-ctl
-		op.Log()
-		if op.From.Name == "kafka-reader" && op.Id == "ACK_ALL_DONE" /* && rp.Out_ack == int64(all_count)*/ {
-			log.Infoc("test", "op ", "from", fmt.Sprintf("%+v", op.From))
-			break
-		}
-	}
-	// FIXME: need to verify the message numebr and content and the different stages !!!!
-	// t.Error("***Success***")
+	memtest.TestConnector(t, writer, reader)
 }

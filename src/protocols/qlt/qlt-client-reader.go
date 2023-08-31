@@ -24,7 +24,7 @@ func NewQltClientReader(ctx string, addr string, queueName string) *QltClientRea
 }
 
 func (c *QltClientReader) Connect(timeout time.Duration) error {
-	log.Infoc(c.CtxS, " connecting... ", "addr", c.Addr)
+	log.Infoc(c.CtxS, "connecting... ", "addr", c.Addr, "queue", c.QueueName)
 	// FIXME: timeout needed
 	conn, err := net.DialTimeout("tcp", c.Addr, timeout)
 	if err != nil {
@@ -33,18 +33,20 @@ func (c *QltClientReader) Connect(timeout time.Duration) error {
 	}
 	c.qlt = newQltConnection(c.CtxS, conn)
 
-	log.Infoc(c.CtxS, " connected", "addr", c.Addr)
+	log.Infoc(c.CtxS, "connected", "addr", c.Addr, "queue", c.QueueName)
 	err = c.qlt.Send(QLTPacketTypeConnRequest, c.QueueName)
 	if err != nil {
 		log.Errorc(c.CtxS, " initialization failed (sending pull request)", "addr", c.Addr, "queue", c.QueueName, "err", err)
 		return err
 	}
+	log.Infoc(c.CtxS, "wait connection ack", "addr", c.Addr, "queue", c.QueueName)
 	// FIXME: '5' connection rejected can be sent as well
 	err = c.qlt.WaitAck(timeout)
 	if err != nil {
-		log.Errorc(c.CtxS, " initialization failed (waiting ack pull request)", "addr", c.Addr, "queue", c.QueueName, "err", err)
+		log.Errorc(c.CtxS, "initialization failed (waiting ack pull request)", "addr", c.Addr, "queue", c.QueueName, "err", err)
 		return err
 	}
+	log.Infoc(c.CtxS, "connected and ready", "addr", c.Addr, "queue", c.QueueName)
 	return nil
 }
 

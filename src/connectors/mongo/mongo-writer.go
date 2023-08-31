@@ -10,7 +10,32 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
+
+func mongoDBInitFromUrl(CtxS, url string) error {
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(url))
+	if err != nil {
+		log.Errorc(CtxS, "connect ", "url", url, "err", err)
+		return err
+	}
+
+	err = client.Ping(ctx, readpref.Primary())
+	if err != nil {
+		log.Errorc(CtxS, "ping ", "url", url, "err", err)
+		return err
+	}
+
+	databases, err := client.ListDatabaseNames(ctx, bson.M{})
+	if err != nil {
+		log.Errorc(CtxS, "listDatabases ", "url", url, "err", err)
+		return err
+	}
+	log.Infoc(CtxS, "available databases", "databases", databases)
+	return nil
+}
 
 type MongoWriterConf struct {
 	Url        string
@@ -37,24 +62,24 @@ func (c *MongoWriterConf) Clone() processor.Connector {
 }
 
 func (q *MongoWriter) Init(p *processor.Processor) error {
-	client, err := mongo.NewClient(options.Client().ApplyURI(q.Conf.Url))
-	if err != nil {
-		log.Errorc(q.CtxS, "create ", "url", q.Conf.Url, "err", err)
-		return err
-	}
-	q.client = client
+	ctx := context.Background()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	err = client.Connect(ctx)
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(q.Conf.Url))
 	if err != nil {
 		log.Errorc(q.CtxS, "connect ", "url", q.Conf.Url, "err", err)
 		return err
 	}
+	err = client.Ping(ctx, readpref.Primary())
+	if err != nil {
+		log.Errorc(q.CtxS, "ping ", "url", q.Conf.Url, "err", err)
+		return err
+	}
+	q.client = client
 
 	databases, err := client.ListDatabaseNames(ctx, bson.M{})
 	if err != nil {
 		log.Errorc(q.CtxS, "listDatabases ", "url", q.Conf.Url, "err", err)
+		return err
 	}
 	log.Infoc(q.CtxS, "available databases", "databases", databases)
 
@@ -96,6 +121,7 @@ func (q *MongoWriter) Write(events []processor.AckableEvent) error {
 		if err != nil {
 			return err
 		}
+		log.Tracec(q.CtxS, "Write", "msg", m)
 		msg := map[string]interface{}{"msg": m}
 		docs = append(docs, msg)
 	}

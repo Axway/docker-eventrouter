@@ -12,6 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 type MongoMessage struct {
@@ -64,24 +65,24 @@ func (c *MongoReaderConf) Clone() processor.Connector {
 }
 
 func (q *MongoReader) Init(p *processor.Processor) error {
-	client, err := mongo.NewClient(options.Client().ApplyURI(q.Conf.Url))
-	if err != nil {
-		log.Errorc(q.CtxS, "create ", "url", q.Conf.Url, "err", err)
-		return err
-	}
-	q.client = client
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	err = client.Connect(ctx)
+	ctx := context.Background()
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(q.Conf.Url))
 	if err != nil {
 		log.Errorc(q.CtxS, "connect ", "url", q.Conf.Url, "err", err)
 		return err
 	}
 
+	err = client.Ping(ctx, readpref.Primary())
+	if err != nil {
+		log.Errorc(q.CtxS, "ping ", "url", q.Conf.Url, "err", err)
+		return err
+	}
+
+	q.client = client
 	databases, err := client.ListDatabaseNames(ctx, bson.M{})
 	if err != nil {
 		log.Errorc(q.CtxS, "listDatabases ", "url", q.Conf.Url, "err", err)
+		return err
 	}
 	log.Infoc(q.CtxS, "available databases", "databases", databases)
 

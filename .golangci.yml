@@ -1,0 +1,207 @@
+linters-settings:
+  depguard:
+    list-type: blacklist
+    # packages:
+    #   # logging is allowed only by logutils.Log, logrus
+    #   # is allowed to use only in logutils package
+    #   - github.com/sirupsen/logrus
+    # packages-with-error-message:
+    #   - github.com/sirupsen/logrus: "logging is allowed only by logutils.Log"
+  dupl:
+    threshold: 100
+  funlen:
+    lines: 100
+    statements: 50
+  goconst:
+    min-len: 2
+    min-occurrences: 3
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - dupImport # https://github.com/go-critic/go-critic/issues/845
+      - ifElseChain
+      - octalLiteral
+      - whyNoLint
+      - wrapperFunc
+  gocyclo:
+    min-complexity: 15
+  goimports:
+    local-prefixes: github.com/golangci/golangci-lint
+  golint:
+    min-confidence: 0
+  gomnd:
+    settings:
+      mnd:
+        # don't include the "operation" and "assign"
+        checks:
+          - argument
+          - case
+          - condition
+          - return
+  govet:
+    check-shadowing: true
+    settings:
+      printf:
+        funcs:
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Infof
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Warnf
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Errorf
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
+  lll:
+    line-length: 150
+  maligned:
+    suggest-new: true
+  misspell:
+    locale: US
+  tagliatelle:
+    # Check the struck tag name case.
+    case:
+      # Use the struct field name to check the name of the struct tag.
+      # Default: false
+      use-field-name: true
+      rules:
+        # Any struct tag type can be used.
+        # Support string case: `camel`, `pascal`, `kebab`, `snake`, `goCamel`, `goPascal`, `goKebab`, `goSnake`, `upper`, `lower`
+        json: snake
+        yaml: camel
+        xml: camel
+
+linters:
+  # please, do not use `enable-all`: it's deprecated and will be removed soon.
+  # inverted configuration with `enable-all` and `disable` is not scalable during updates of golangci-lint
+  disable-all: true
+  enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - containedctx
+    - contextcheck
+    - cyclop
+    # Deprecated - deadcode
+    - decorder
+    # - depguard
+    - dogsled
+    - dupl
+    - dupword
+    - durationcheck
+    - errcheck
+    - errchkjson
+    - errname
+    - errorlint
+    - execinquery
+    - exhaustive
+    #- exhaustruct
+    - exportloopref
+    - forbidigo
+    - forcetypeassert
+    - funlen
+    - gci
+    - ginkgolinter
+    - gocheckcompilerdirectives
+    - gochecknoglobals
+    - gochecknoinits
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    - godot
+    #- godox
+    - goerr113
+    - gofmt
+    - gofumpt
+    - goheader
+    - goimports
+    #Deprecated - golint
+    #- gomnd
+    - gomoddirectives
+    - gomodguard
+    - goprintffuncname
+    - gosec
+    - gosmopolitan
+    - gosimple
+    - govet
+    - grouper
+    # Deprecated - ifshort
+    - importas
+    - ineffassign
+    - interfacebloat
+    # Deprecated- interfacer
+    - ireturn
+    - lll
+    - loggercheck
+    - maintidx
+    - makezero
+    # Deprecated - maligned
+    - mirror
+    - misspell
+    - nakedret
+    - nestif
+    - nilerr
+    - nilnil
+    #- nlreturn
+    - noctx
+    - nolintlint
+    #- nonamedreturns
+    # Deprecated - nosnakecase
+    - nosprintfhostport
+    #Later - paralleltest
+    - prealloc
+    - predeclared
+    - promlinter
+    - reassign
+    - revive
+    - rowserrcheck
+    # Deprecated - scopelint
+    - sqlclosecheck
+    # Deprecated - structcheck
+    - staticcheck
+    - stylecheck
+    - tagalign
+    #Later?- tagliatelle
+    - tenv
+    - testableexamples
+    - testpackage
+    - thelper
+    #Later - tparallel
+    - typecheck
+    - unconvert
+    - unparam
+    - usestdlibvars
+    - unused
+    # Deprecated - varcheck
+    #- varnamelen
+    - wastedassign
+    - whitespace
+    # - wrapcheck
+    #- wsl
+    - zerologlint
+
+  # don't enable:
+  # - gochecknoglobals
+  # - gocognit
+  # - godox
+  # - maligned
+  # - prealloc
+
+issues:
+  # Excluding configuration per-path, per-linter, per-text and per-source
+  exclude:
+    - "don't use underscores in Go names;"
+    - "don't use ALL_CAPS in Go names;"
+    - "ST1003:"
+    - "commentedOutCode:"
+    - "line is \\d+ characters"
+  exclude-rules:
+    - path: src/bridgelib/cli-docs.go
+      linters:
+        - forbidigo
+      text: "forbidden by pattern"
+    - linters:
+        - revive
+      text: "var-naming:"

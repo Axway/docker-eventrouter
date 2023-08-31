@@ -9,7 +9,7 @@ import (
 	"axway.com/qlt-router/src/config"
 	"axway.com/qlt-router/src/connectors/mem"
 	"axway.com/qlt-router/src/connectors/memtest"
-	"axway.com/qlt-router/src/locallog"
+	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
 )
 
@@ -129,9 +129,10 @@ func testQltConnector(port string, disableQlt bool, minReaders, maxReaders, minM
 }
 
 func TestQltConnectorSimple(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
 	config.Print()
 
-	readers, memWriter, rp, _, err := testQltConnector("", false, 1, 1, 1000, 1000, 100, 100)
+	readers, memWriter, rp, _, err := testQltConnector("", false, 1, 1, 100000, 100000, 100, 100)
 	if err != nil {
 		t.Error("error running the test" + err.Error())
 		return
@@ -149,6 +150,7 @@ func TestQltConnectorSimple(t *testing.T) {
 }
 
 func TestQltConnectorSimpleNoQlt(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
 	_, _, _, _, err := testQltConnector("", true, 1, 1, 10, 10, 100, 100)
 	if err != nil {
 		t.Error("error running the test:" + err.Error())
@@ -157,6 +159,7 @@ func TestQltConnectorSimpleNoQlt(t *testing.T) {
 }
 
 func TestQltConnector2Run(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
 	_, _, _, port, err := testQltConnector("", false, 1, 1, 10, 10, 100, 100)
 	if err != nil {
 		t.Error("error running the test:" + err.Error())
@@ -178,7 +181,7 @@ const (
 )
 
 func benchmarkQltConnector(b *testing.B, f int, msgSize int, qltDisable bool) {
-	locallog.InitLogSetLevelWarn()
+	// log.SetLevel(log.WarnLevel)
 	// run the Fib function b.N times
 	for n := 0; n < b.N; n++ {
 		_, _, _, _, err := testQltConnector(fmt.Sprint(portBase+n), qltDisable, f, f, benchSize/f, benchSize/f, msgSize, msgSize)

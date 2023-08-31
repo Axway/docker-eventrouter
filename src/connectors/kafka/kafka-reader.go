@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
@@ -35,11 +36,21 @@ func (c *KafkaReaderConf) Clone() processor.Connector {
 }
 
 func (q *KafkaReader) Init(p *processor.Processor) error {
+	q.CtxS = p.Name
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Fatalc(q.CtxS, "hostname", "err", err)
+	}
+
 	k, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers":     q.Conf.Servers,
+		"client.id":             hostname + "-reader",
 		"group.id":              q.Conf.Group,
 		"auto.offset.reset":     "earliest",
+		"enable.auto.commit":    false,
 		"broker.address.family": "v4",
+		//"session.timeout.ms":    "6000",
+		//"heartbeat.interval.ms": 100,
 	})
 	if err != nil {
 		log.Errorc(q.CtxS, "error creation kafka consumer", "err", err)
@@ -52,13 +63,19 @@ func (q *KafkaReader) Init(p *processor.Processor) error {
 		log.Errorc(q.CtxS, "error subscribing topics", "err", err)
 		return err
 	}
+	log.Infoc(q.CtxS, "connected to kafka servers as consumer", "servers", q.Conf.Servers, "topic", q.Conf.Topic)
 	return err
 }
 
 func (q *KafkaReader) AckMsg(ack processor.EventAck) {
 	ack2 := ack.(kafka.TopicPartition)
-	q.k.CommitOffsets([]kafka.TopicPartition{ack2})
-	return
+	log.Debugc(q.CtxS, "commiting offsets", "ack", ack2)
+	committed, err := q.k.CommitOffsets([]kafka.TopicPartition{ack2})
+	if err != nil {
+		log.Errorc(q.CtxS, "error commiting offsets", "err", err)
+	} else {
+		log.Tracec(q.CtxS, "committed offsets", "ack", ack2, "partitions", committed)
+	}
 }
 
 func (q *KafkaReader) Ctx() string {
@@ -73,7 +90,7 @@ func (q *KafkaReader) Read() ([]processor.AckableEvent, error) {
 		return nil, err
 	}
 	c := msg.TopicPartition
-	// log.Printf(q.Ctx+"Message on %s: %s\n", msg.TopicPartition, string(msg.Value))
+	log.Tracec(q.CtxS, "Message", "partition", msg.TopicPartition, "msg", string(msg.Value))
 	out := processor.AckableEvent{q, c, string(msg.Value), nil}
 	return []processor.AckableEvent{out}, nil
 }

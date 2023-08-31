@@ -1,8 +1,8 @@
 variables:
   NAME: qlt-router
 
-include:
-  - template: Code-Quality.gitlab-ci.yml
+#include:
+#  - template: Code-Quality.gitlab-ci.yml
 
 default:
   tags:
@@ -56,7 +56,7 @@ unit-test:
       - .cache/
     key: GO
   #coverage: "/coverage: \\d+.\\d+% of statements/"
-  coverage: "/\\(statements\\)(?:\\s+)?(\\d+(?:\\.\\d+)?%)/"
+  #coverage: "/\\(statements\\)(?:\\s+)?(\\d+(?:\\.\\d+)?%)/"
   script:
     - go install gotest.tools/gotestsum@latest
     - go install github.com/nikolaydubina/go-cover-treemap@latest
@@ -66,9 +66,30 @@ unit-test:
     when: always
     reports:
       junit: report.xml
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage.xml
+      #coverage_report:
+      #  coverage_format: cobertura
+      #  path: coverage.xml
+
+integration-test-reset:
+  image: docker
+  needs:
+    - build
+  when: manual
+  stage: test
+  cache:
+    paths:
+      - .cache/
+    key: GO
+  #coverage: "/\\(statements\\)(?:\\s+)?(\\d+(?:\\.\\d+)?%)/"
+  script:
+    - ./scripts/run-integration-test-local.sh reset
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
+      #coverage_report:
+      #  coverage_format: cobertura
+      #  path: coverage.xml
 
 integration-test:
   image: docker
@@ -79,12 +100,13 @@ integration-test:
     paths:
       - .cache/
     key: GO
-  #coverage: "/coverage: \\d+.\\d+% of statements/"
   coverage: "/\\(statements\\)(?:\\s+)?(\\d+(?:\\.\\d+)?%)/"
   script:
     - ./scripts/run-integration-test-local.sh
   artifacts:
     when: always
+    paths:
+      - coverage.svg
     reports:
       junit: report.xml
       coverage_report:

@@ -17,10 +17,21 @@ const (
 	QLTTABLECONSUMER = "QLTBufferConsumer"
 )
 
+func pgDBInitFromUrl(ctx, url string) error {
+	log.Infoc(ctx, "Opening database", "url", url)
+	conn, err := sql.Open("pgx", url)
+	if err != nil {
+		log.Errorc(ctx, "Error opening file for appending", "err", err)
+		return err
+	}
+	err = pgDBInit(ctx, conn)
+	return err
+}
+
 func pgDBInit(ctx string, conn *sql.DB) error {
 	count, err := pgDBCount(conn)
 	if err != nil {
-		log.Warnc(ctx, "[DB-PG] error fectching previous rows", "err", err)
+		log.Warnc(ctx, "[DB-PG] error fetching previous rows", "err", err)
 	} else {
 		log.Debugc(ctx, "[DB-PG] rows", "count", count)
 	}
@@ -32,29 +43,34 @@ func pgDBInit(ctx string, conn *sql.DB) error {
 		log.Debugc(ctx, "[DB-PG] rows", "count", len(rows), "rows", rows)
 	}
 
+	log.Infoc(ctx, "[DB-PG] dropping table", "table", QLTTABLE)
 	_, err = conn.Exec("DROP TABLE IF EXISTS " + QLTTABLE)
 	if err != nil {
 		log.Errorc(ctx, "[DB-PG] error dropping table", "err", err)
 		return err
 	}
 
+	log.Infoc(ctx, "[DB-PG] dropping table", "table", QLTTABLECONSUMER)
 	_, err = conn.Exec("DROP TABLE IF EXISTS " + QLTTABLECONSUMER)
 	if err != nil {
 		log.Errorc(ctx, "[DB-PG] error dropping table", "err", err)
 		return err
 	}
 
+	log.Infoc(ctx, "[DB-PG] create table", "table", QLTTABLE)
 	_, err = conn.Exec("CREATE TABLE IF NOT EXISTS " + QLTTABLE + " ( id BIGSERIAL PRIMARY KEY, name TEXT )")
 	if err != nil {
 		log.Errorc(ctx, "[DB-PG] error initializing table: ", "err", err)
 		return err
 	}
 
+	log.Infoc(ctx, "[DB-PG] create table", "table", QLTTABLECONSUMER)
 	_, err = conn.Exec("CREATE TABLE IF NOT EXISTS " + QLTTABLECONSUMER + " ( name TEXT PRIMARY KEY, position BIGINT )")
 	if err != nil {
 		log.Errorc(ctx, "[DB-PG] error initializing table: ", "err", err)
 		return err
 	}
+	log.Infoc(ctx, "[DB-PG] initalization done")
 	return nil
 }
 
@@ -127,6 +143,7 @@ func (q *PGWriter) Write(msgs []processor.AckableEvent) error {
 	valueStrings := make([]string, 0, len(msgs))
 	valueArgs := make([]interface{}, 0, len(msgs))
 	for i, msg := range msgs {
+		log.Tracec(q.ctx, "Write", "row", msg)
 		valueStrings = append(valueStrings, "($"+fmt.Sprint(i+1)+")")
 		valueArgs = append(valueArgs, msg.Msg)
 	}

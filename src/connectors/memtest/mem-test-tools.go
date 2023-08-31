@@ -108,7 +108,7 @@ func MemMessageCheck(t *testing.T, readers [][]string, ackPos []int64, wMessages
 			msg := readers[j][i]
 
 			for k < len(wMessages) && msg != wMessages[k] {
-				t.Logf("msg %d %d %s %s", j, i, msg, wMessages[k])
+				// t.Logf("msg %d %d %s %s", j, i, msg, wMessages[k])
 				k++
 			}
 			if len(wMessages) <= k || msg != wMessages[k] {

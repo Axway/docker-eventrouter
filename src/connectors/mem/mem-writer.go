@@ -44,8 +44,10 @@ func (q *MemWriter) PrepareEvent(event *processor.AckableEvent) (string, error) 
 
 func (q *MemWriter) Write(events []processor.AckableEvent) error {
 	datas := make([]string, len(events))
+	log.Tracec(q.CtxS, "write msg count", "n", len(events))
 	for i, e := range events {
 		data, _ := q.PrepareEvent(&e)
+		log.Tracec(q.CtxS, "write msg", "msg", data)
 		datas[i] = data
 	}
 	if q.Conf.MaxSize != 0 {

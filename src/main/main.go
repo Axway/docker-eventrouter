@@ -25,7 +25,6 @@ import (
 	"axway.com/qlt-router/src/connectors/postgres"
 	"axway.com/qlt-router/src/connectors/qlt"
 	"axway.com/qlt-router/src/filters/qlt2json"
-	"axway.com/qlt-router/src/locallog"
 	log "axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -58,7 +57,7 @@ var ui embed.FS
 
 func main() {
 	ctxS := "main"
-	locallog.InitLog()
+	log.SetLevel(log.InfoLevel)
 
 	/*log.SetFormatter(&log.TextFormatter{
 		//		DisableColors: true,
@@ -77,6 +76,11 @@ func main() {
 	// var confTcpChaos tools.TCPChaosConf
 	// processor.ParseConfig(&confTcpChaos, "chaos")
 	// tools.TcpChaosInit(&confTcpChaos)
+
+	flag.Parse()
+	if verbose {
+		log.SetLevel(log.DebugLevel)
+	}
 
 	connectors := &processor.RegisteredProcessors
 
@@ -99,8 +103,6 @@ func main() {
 	// processors.Register("lumberjack_json_consumer", &elasticsearch.LumberjackConsumerConf{})
 	connectors.Register("kafka-writer", &kafka.KafkaWriterConf{})
 	connectors.Register("kafka-reader", &kafka.KafkaReaderConf{})
-
-	flag.Parse()
 
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)

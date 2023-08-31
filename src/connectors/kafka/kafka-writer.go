@@ -44,28 +44,29 @@ func (c *KafkaWriterConf) Clone() processor.Connector {
 }
 
 func (q *KafkaWriter) Init(p *processor.Processor) error {
-	q.CtxS = "[KAFKA-WRITER] " + p.Flow.Name
+	q.CtxS = p.Name //"[KAFKA-WRITER] " //+ p.Flow.Name
 	hostname, err := os.Hostname()
 	if err != nil {
-		log.Fatalc(q.CtxS, "err", err)
+		log.Fatalc(q.CtxS, "hostname", "err", err)
 	}
 	conf := kafka.ConfigMap{
 		"bootstrap.servers": q.Conf.Servers,
-		"client.id":         hostname,
-		/*"group.id": q.conf.Group,*/
+		"client.id":         hostname + "-writer",
+		//"group.id":                           q.Conf.Group,
 		"acks":                  "all",
 		"broker.address.family": "v4",
+		//"topic.metadata.refresh.interval.ms": "100",
 	}
 	log.Infoc(q.CtxS, "New Producer", "conf", fmt.Sprintf("%+v", conf))
 	k, err := kafka.NewProducer(&conf)
 	if err != nil {
-		log.Errorc(q.CtxS, "err", err)
+		log.Errorc(q.CtxS, "kafka new producer error", "err", err)
 	}
 	q.k = k
 	// q.delivery_chan = make(chan kafka.Event, kafkaWriteDeliveryQueueSize)
 	q.acks = p.Chans.Create("kafka-acks", kafkaAckQueueSize)
 
-	meta, err := k.GetMetadata(nil, true, 1000)
+	meta, err := k.GetMetadata(nil, true, 100)
 	if err != nil {
 		log.Errorc(q.CtxS, "fetch metadata", "err", err)
 		return err
@@ -108,7 +109,7 @@ loop:
 					/*fmt.Printf("Delivered message to topic %s [%d] at offset %v\n",
 					*ev.TopicPartition.Topic, ev.TopicPartition.Partition, ev.TopicPartition.Offset)*/
 				}
-				// log.Debugln(q.CtxS, "Send Ack", event)
+				log.Debugc(q.CtxS, "Received Ack", "event", event)
 				acks <- event
 			}
 		case <-done:
@@ -160,11 +161,11 @@ func (q *KafkaWriter) Write(events []processor.AckableEvent) error {
 			log.Errorc(q.CtxS, "error writing event", "err", err)
 			return err
 		}
-		// log.Debugln(q.CtxS, "Wrote Event")
+		log.Tracec(q.CtxS, "Wrote Event", "topic", q.Conf.Topic, "msg", event.Msg.(string))
 		q.acks.C <- event
 	}
 	// log.Debugln(q.CtxS, "Flush")
-	q.k.Flush(1000)
-	// log.Debugln(q.CtxS, "Flush", count)
+	// count := q.k.Flush(500)
+	// log.Debugc(q.CtxS, "Flush", "count", len(events), "nonFlushed", count)
 	return nil
 }

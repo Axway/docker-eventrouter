@@ -79,10 +79,11 @@ type Logger struct {
 
 var (
 	root  = Logger{}
-	level = TraceLevel
+	level = DebugLevel
 )
 
 func SetLevel(lvl LogLevel) {
+	root.Info("Setting log level to", "level", lvl.str)
 	level = lvl
 }
 

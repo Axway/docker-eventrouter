@@ -7,7 +7,7 @@ streams:
     writer:
       type: "mongo-writer"
       conf:
-        url: "mongodb://root:mymongosecret@${MONGO:-localhost}:27017"
+        url: "mongodb://root:mymongosecret@${MONGO:-localhost}:27017/mymongodb"
         db: "mymongodb"
         collection: "buffer"
   - name: "mem-to-mongo"
@@ -16,7 +16,7 @@ streams:
     reader:
       type: "mongo-reader"
       conf:
-        url: "mongodb://root:mymongosecret@${MONGO:-localhost}:27017"
+        url: "mongodb://root:mymongosecret@${MONGO:-localhost}:27017/mymongodb"
         db: "mymongodb"
         collection: "buffer"
         readersCollection: "bufferReaders"

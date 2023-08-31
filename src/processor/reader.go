@@ -15,6 +15,7 @@ import (
 
 var (
 	ReaderAckSourceProxyChanSize = config.DeclareInt("processor.readerAckSourceProxyChanSize", 10, "Size of the reader ack channel")
+	ReaderAckAllNotify           = config.DeclareDuration("processor.readerAckSourceWait", "10ms", "Duration to wait before waiting ack message")
 	ReaderAckSourceWait          = config.DeclareDuration("processor.readerAckSourceWait", "1s", "Duration to wait before waiting ack message")
 	ReaderReadRetryDelay         = config.DeclareDuration("processor.readerReadRetryDelay", "200ms", "Duration to wait before retrying reading")
 )
@@ -64,24 +65,22 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 		defer p2.Close()
 		defer log.Infoc(ctxp, "Closing Acks...", "acked", acked, "sent", sent, "all_ack", p.Out_ack, "all_sent", p.Out)
 		done := false
-		for !done || acked != sent {
+		lastAcked := -1
+		nextWait := ReaderAckSourceWait
+		for !(done && acked == sent) {
 			// log.Infoln(ctxp, "Waiting Acks...")
-			t := time.NewTimer(time.Duration(ReaderAckSourceWait) * time.Second)
+			t := time.NewTimer(nextWait)
+			nextWait = ReaderAckSourceWait
 			select {
 			case msgid := <-src.ack:
 				// log.Infoln(ctxp, "Ack2...", "msgId", msgid, "acked", acked, "sent", sent, "all_ack", p.Out_ack, "all_sent", p.Out)
 				p2.AckMsg(msgid)
 				acked++
-				// FIXME: is this required
 				atomic.AddInt64(&p.Out_ack, 1)
 				// log.Infoln(ctxp, "Ack...", "msgId", msgid, "acked", acked, "sent", sent, "all_ack", p.Out_ack, "all_sent", p.Out)
 				// ctl <- ControlEvent{p, p2, "ACK", "" + fmt.Sprint(acked, sent)}
 				if acked == sent {
-					ctl <- ControlEvent{p, p2, "ACK_DONE", ""}
-					// FIXME: is this required
-					if p.Out_ack == p.Out {
-						ctl <- ControlEvent{p, p2, "ACK_ALL_DONE", ""}
-					}
+					nextWait = ReaderAckAllNotify
 				}
 			case <-ackDone:
 				log.Infoc(ctxp, "Closing Acks...", "acked", acked, "sent", sent)
@@ -89,6 +88,12 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 			case <-t.C:
 				if acked != sent {
 					log.Debugc(ctxp, "Waiting Ack Timeout...", "acked", acked, "sent", sent, "all_ack", p.Out_ack, "all_sent", p.Out)
+				} else if lastAcked != acked {
+					ctl <- ControlEvent{p, p2, "ACK_DONE", "" + fmt.Sprint(sent)}
+					if p.Out_ack == p.Out {
+						ctl <- ControlEvent{p, p2, "ACK_ALL_DONE", "" + fmt.Sprint(p.Out)}
+					}
+					lastAcked = acked
 				}
 			}
 			t.Stop()
@@ -118,13 +123,9 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 					// log.Debugc(ctxp, "IO Timeout")
 				} else if !errors.Is(err, io.EOF) {
 					log.Errorc(ctxp, "Error reading", "err", err)
-					ctl <- ControlEvent{p, p2, "ERROR", err.Error()}
-					return
+					ctl <- ControlEvent{p, p2, "WARN", err.Error()}
+					// return Retry on error
 				}
-
-				/*log.Infoln(ctxp, "Stopping Reader (EOF)...")
-				ctl <- ControlEvent{p, p2, "STOPPED", "EOF"}
-				return*/
 			}
 
 			if len(events) == 0 && !timeout {
@@ -139,7 +140,7 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 				t.Stop()
 			}
 			for _, e := range events {
-				// log.Debugc(ctxp, e.Msg.(string))
+				log.Tracec(ctxp, "reader read", "msg", e.Msg.(string))
 				out <- AckableEvent{src, e.Msgid, e.Msg, &e}
 				sent++
 				// FIXME: is this required ?

@@ -96,6 +96,7 @@ func (c *QLTServerWriterConnection) Clone() processor.Connector {
 }
 
 func (m *QLTServerWriterConnection) Init(p *processor.Processor) error {
+	log.Infoc(m.CtxS, "wait queue name", "queue", m.Conf.QueueName)
 	err := m.Qlt.WaitQueueName(qltWriterAckTimeout)
 	if err != nil {
 		return err
@@ -104,6 +105,7 @@ func (m *QLTServerWriterConnection) Init(p *processor.Processor) error {
 	if err != nil {
 		return err
 	}
+	log.Infoc(m.CtxS, "ready to send message", "queue", m.Conf.QueueName)
 	return nil
 }
 

@@ -33,15 +33,7 @@ func TestMemWriter(t *testing.T) {
 	for {
 		op := <-ctl
 		op.Log()
-		if op.From == wp && op.Id == "ALL_PROCESSING" {
-			break
-		}
-	}
-
-	for {
-		op := <-ctl
-		op.Log()
-		if op.From == rp && op.Id == "ACK_ALL_DONE" {
+		if op.From == rp && op.Id == "ACK_ALL_DONE" && rp.Out_ack == int64(n) {
 			break
 		}
 	}
@@ -97,13 +89,6 @@ func TestMemReaders(t *testing.T) {
 	defer wp.Close()
 	defer rp.Close()
 
-	for {
-		op := <-ctl
-		op.Log()
-		if op.From == wp && op.Id == "ALL_PROCESSING" {
-			break
-		}
-	}
 	for {
 		op := <-ctl
 		op.Log()

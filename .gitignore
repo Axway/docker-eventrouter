@@ -13,3 +13,5 @@ licenses
 *.mprof
 report.xml
 /coverage.*
+/*.out
+/*.test

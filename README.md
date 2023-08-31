@@ -47,12 +47,14 @@ export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
 ./scripts/gitlab-runner.sh build
 ./scripts/gitlab-runner.sh rpm
 ./scripts/gitlab-runner.sh rpm-test
+./scripts/gitlab-runner.sh unit-test
+./scripts/gitlab-runner.sh integration-test
 
 gitlab-runner exec docker --docker-volumes "/var/run/docker.sock:/var/run/docker.sock" --docker-volumes "$PWD/artefacts:/artefacts" --docker-volumes "$PWD/cache:/cache" build
-gitlab-runner exec docker --docker-volumes "/var/run/docker.sock:/var/run/docker.sock" --docker-volumes "$PWD/artefacts:/artefacts" rpm
+gitlab-runner exec docker --docker-volumes "/var/run/docker.sock:/var/run/docker.sock" --docker-volumes "$PWD/artefacts:/artefacts" --docker-volumes "$PWD/cache:/cache" rpm
 gitlab-runner exec docker --docker-volumes "/var/run/docker.sock:/var/run/docker.sock" --docker-volumes "$PWD/artefacts:/artefacts" --docker-volumes "$PWD/cache:/cache" test-rpm
 gitlab-runner exec docker --docker-volumes "/var/run/docker.sock:/var/run/docker.sock" --docker-volumes "$PWD/artefacts:/artefacts" --docker-volumes "$PWD/cache:/cache" integration-test
-gitlab-runner exec docker build-docker
+gitlab-runner exec docker --docker-volumes "/var/run/docker.sock:/var/run/docker.sock" --docker-volumes "$PWD/artefacts:/artefacts" --docker-volumes "$PWD/cache:/cache" build-docker
 ```
 
 ### add dev ui
@@ -91,3 +93,9 @@ Remove colourful output
 ```sh
 sed -e $'s/\x1b\[[0-9;]*m//g'
 ```
+
+## Current coverage
+
+[![Pipeline](https://git.ecd.axway.org/cft/qlt-router/badges/master/pipeline.svg)](https://git.ecd.axway.org/cft/qlt-router/)
+[![Coverage](https://git.ecd.axway.org/cft/qlt-router/badges/master/coverage.svg)](https://git.ecd.axway.org/cft/qlt-router/)
+[![Coverage](https://git.ecd.axway.org/api/v4/projects/7287/jobs/artifacts/master/raw/coverage.svg?job=integration-test)](https://git.ecd.axway.org/cft/qlt-router/)

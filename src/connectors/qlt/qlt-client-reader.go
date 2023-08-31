@@ -128,7 +128,7 @@ func (c *QLTClientReaderConnection) Read() ([]processor.AckableEvent, error) {
 		}
 	}
 	events := make([]processor.AckableEvent, 1)
-	msg, err := c.Qlt.Read(200)
+	msg, err := c.Qlt.Read(qltReaderBlockTimeout)
 	if err != nil {
 		if errors.Is(err, os.ErrDeadlineExceeded) {
 			return nil, err
