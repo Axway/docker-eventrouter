@@ -28,6 +28,7 @@ import (
 	log "axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v3"
 )
 
@@ -59,17 +60,16 @@ func main() {
 	ctxS := "main"
 	log.SetLevel(log.InfoLevel)
 
-	/*log.SetFormatter(&log.TextFormatter{
-		//		DisableColors: true,
-		FullTimestamp: true,
-	})*/
-	var configFile string
-	var verbose bool
-	var port string
-	// flag.String(flag.DefaultConfigFlagname, "", "path to config file")
-	flag.StringVar(&configFile, "config", "./qlt-router.yml", "path to config file")
-	flag.BoolVar(&verbose, "verbose", false, "be verbose")
-	flag.StringVar(&port, "port", "8080", "http port")
+	configFile := flag.String("config", "./qlt-router.yml", "path to config file")
+	port := flag.String("port", "8080", "http port")
+
+	logFname := flag.String("log-file", "", "log file name")
+	logMaxSize := flag.Int("log-max-size", 100, "log file max size (MB)")
+	logMaxBackup := flag.Int("log-max-backups", 3, "log file backups")
+	logMaxAge := flag.Int("log-max-age", 31, "log file max age (days)")
+	// logExclude := flag.String("log-exclude", "", "regex to exclude log messages from output")
+	logLocatime := flag.Bool("log-localtime", false, "log file max age (days)")
+	logLevelStr := flag.String("log-level", "debug", "log level (trace, debug, info, warn)")
 
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
 	memprofile := flag.String("memprofile", "", "write memory profile to this file")
@@ -78,8 +78,41 @@ func main() {
 	// tools.TcpChaosInit(&confTcpChaos)
 
 	flag.Parse()
-	if verbose {
-		log.SetLevel(log.DebugLevel)
+
+	logLevel, err := log.ParseLevel(*logLevelStr)
+	if err != nil {
+		log.Fatalc(ctxS, "Invalid log level", "err", err)
+	}
+
+	log.SetLevel(logLevel)
+
+	if *logLocatime {
+		log.SetUseLocalTime(true)
+	}
+
+	var l *lumberjack.Logger = nil
+	if *logFname != "" {
+		l = &lumberjack.Logger{
+			Filename:   *logFname,
+			MaxSize:    *logMaxSize, // megabytes
+			MaxBackups: *logMaxBackup,
+			MaxAge:     *logMaxAge, // days
+			Compress:   false,      // disabled by default
+		}
+		log.SetOutput(l)
+
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, syscall.SIGHUP)
+
+		go func() {
+			for {
+				<-c
+				err := l.Rotate()
+				if err != nil {
+					log.Errorc(ctxS, "Log rotation failed", "err", err)
+				}
+			}
+		}()
 	}
 
 	connectors := &processor.RegisteredProcessors
@@ -154,7 +187,7 @@ func main() {
 
 	config.Print()
 
-	conf, err := processor.ParseConfigFile(ctxS, configFile)
+	conf, err := processor.ParseConfigFile(ctxS, *configFile)
 	if err != nil {
 		log.Fatalc(ctxS, "Cannot open config file", "err", fmt.Sprint(err))
 	}
@@ -204,7 +237,8 @@ func main() {
 	readerContext, readerCancel := context.WithCancel(context.Background())
 	ctl := make(chan processor.ControlEvent, 100)
 	errors := 0
-	if verbose {
+
+	if log.Level(log.DebugLevel) {
 		go processor.ControlEventLogSome(ctxS, ctx, ctl)
 	} else {
 		go processor.ControlEventDiscardAll(ctxS, ctx, ctl)
@@ -270,8 +304,8 @@ func main() {
 		http.Handle("/", fs)
 	}
 
-	log.Infoc(ctxS, "[HTTP] Listening on localhost:"+port)
-	go http.ListenAndServe("localhost:"+port, nil)
+	log.Infoc(ctxS, "[HTTP] Listening on localhost:"+*port)
+	go http.ListenAndServe("localhost:"+*port, nil)
 
 	time.Sleep(1 * time.Second)
 	channels.Display(ctxS)

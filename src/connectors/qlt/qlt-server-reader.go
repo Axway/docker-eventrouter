@@ -75,7 +75,9 @@ func (conf *QLTServerReaderConf) Start(ctx context.Context, p *processor.Process
 	} else {
 		listener, err = tools.TcpServe(conf.Host+":"+conf.Port, qltHandle, "QLT-TCP")
 	}
+
 	q := &QLTServerReader{conf, p.Name, listener}
+	log.Debugc(q.ctx, "listening server started", "host", conf.Host, "port", conf.Port)
 	if err != nil {
 		log.Errorc(q.ctx, "error starting listening server", "err", err)
 	}

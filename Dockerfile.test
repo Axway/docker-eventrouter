@@ -13,7 +13,7 @@ COPY ./src/ ./src/
 
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    make build-docker
+    make build-musl
 RUN /app/src/qlt-router version
 
 

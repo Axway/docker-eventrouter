@@ -1,6 +1,7 @@
 package log
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -74,17 +75,48 @@ type Logger struct {
 	parent   *Logger
 	prefix   string
 	SkipTime bool // for testing purposes
-	w        io.Writer
 }
 
 var (
-	root  = Logger{}
-	level = DebugLevel
+	root                   = Logger{}
+	level                  = DebugLevel
+	useLocalTime           = false
+	output       io.Writer = nil
 )
 
+func ParseLevel(lvl string) (LogLevel, error) {
+	switch strings.ToLower(lvl) {
+	case "trace":
+		return TraceLevel, nil
+	case "debug":
+		return DebugLevel, nil
+	case "info":
+		return InfoLevel, nil
+	case "warn":
+		return WarnLevel, nil
+	case "error":
+		return ErrorLevel, nil
+	case "fatal":
+		return FatalLevel, nil
+	default:
+		return TraceLevel, errors.New("invalid log level")
+	}
+}
+
 func SetLevel(lvl LogLevel) {
-	root.Info("Setting log level to", "level", lvl.str)
 	level = lvl
+}
+
+func SetOutput(w io.Writer) {
+	output = w
+}
+
+func SetUseLocalTime(use bool) {
+	useLocalTime = use
+}
+
+func Level(lvl LogLevel) bool {
+	return (lvl.code < level.code)
 }
 
 var (
@@ -154,7 +186,12 @@ func (l *Logger) _logw(lvl LogLevel, msg string, kv ...interface{}) {
 	}
 	if !l.SkipTime {
 		// sb.WriteString(time.Now().UTC().Format(time.RFC3339Nano)) // 1 alloc
-		sb.WriteString(time.Now().UTC().Format("2006-01-02_15:04:05.000000"))
+
+		if useLocalTime {
+			sb.WriteString(time.Now().UTC().Format("2006-01-02_15:04:05.000000"))
+		} else {
+			sb.WriteString(time.Now().Format("2006-01-02T15:04:05.000000-07:00"))
+		}
 		sb.WriteString(" ")
 	}
 	sb.WriteString(lvl.str)
@@ -177,10 +214,11 @@ func (l *Logger) _logw(lvl LogLevel, msg string, kv ...interface{}) {
 		sb.WriteString(Reset)
 	}
 	sb.WriteString("\n")
-	if l.w != nil {
-		// l.w.Write([]byte(sb.String()))
+
+	if output == nil {
+		os.Stdout.Write([]byte(sb.String()))
 	} else {
-		os.Stdout.WriteString(sb.String())
+		output.Write([]byte(sb.String()))
 	}
 	logLock.Unlock()
 }

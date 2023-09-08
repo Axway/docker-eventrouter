@@ -3,8 +3,6 @@
 
 set -euo pipefail
 
-NAME=qlt-router
-
 # Reset
 ColorOff='\033[0m'       # Text Reset
 
@@ -124,58 +122,3 @@ echo_test() {
     echo -e "$Purple$(dt) $prefix DBG $* $ColorOff" >&2
 }
 
-cd /tmp
-
-export HOME=/tmp/user
-mkdir -p $HOME
-
-INSTALL=/tmp/user/$NAME-install
-rpm -ivh --dbpath $INSTALL/rpmdb --prefix $INSTALL /*rpm
-export PATH=$PATH:$INSTALL/usr/bin
-
-find $INSTALL
-RUNTIME=/tmp/user/$NAME-runtime
-
-check_ok $NAME help
-check_ok $NAME init "$RUNTIME"
-check_ok cat $RUNTIME/etc/$NAME.conf
-
-#cat >$RUNTIME/etc/$NAME.conf <<EOF
-#accept-eula=true
-#name=zouzou
-#dosa=/config/tests/env-axway/dosa.json
-#dosa-key=/config/tests/env-axway/dosa-key.pem
-#EOF
-
-check_ok cat $RUNTIME/etc/$NAME.conf
-
-check_ok $NAME --runtime "$RUNTIME" runtime
-check_ok $NAME --runtime "$RUNTIME" --version
-#$NAME --runtime "$RUNTIME" config
-
-check_ko $NAME --runtime "$RUNTIME" stop
-check_ok $NAME --runtime "$RUNTIME" start
-sleep 1
-find .
-cat $RUNTIME/var/log/$NAME.log
-check_ok $NAME --runtime "$RUNTIME" logs
-check_ok $NAME --runtime "$RUNTIME" health
-check_ok $NAME --runtime "$RUNTIME" metrics
-check_ok $NAME --runtime "$RUNTIME" status
-check_ko $NAME --runtime "$RUNTIME" start
-check_ok $NAME --runtime "$RUNTIME" logs
-check_ok $NAME --runtime "$RUNTIME" support
-check_ok $NAME --runtime "$RUNTIME" stop
-check_ok $NAME --runtime "$RUNTIME" logs
-check_ko $NAME --runtime "$RUNTIME" status
-check_ko $NAME --runtime "$RUNTIME" support
-rm -rf /tmp/$NAME-support
-check_ok $NAME --runtime "$RUNTIME" support
-check_ok tar tvfz /tmp/$NAME-support.tar.gz
-echo_test "Support file output"
-find /tmp/$NAME-support -type f | while read file; do
-    echo "====$file===="
-    cat "$file"
-    echo ""
-done
-check_ok $NAME --runtime "$RUNTIME" gen-systemd-unit

@@ -1,5 +1,9 @@
 # qlt-router
 
+- rpm snapshot: https://artifactory-ptx.ecd.axway.int/artifactory/sentineleventrouter-generic-snapshot-ptx/qlt-router/qlt-router-$BRANCH.rpm [https://artifactory-ptx.ecd.axway.int/artifactory/sentineleventrouter-generic-snapshot-ptx/qlt-router/qlt-router-master.rpm](qlt-router-master.rpm)
+- docker snapshot:  sentineleventrouter-docker-snapshot-ptx.artifactory-ptx.ecd.axway.int/qlt-router:$BRANCH
+
+
 ## Contribute
 
 ### Development Prerequisites
@@ -41,7 +45,7 @@ gotestsum --junitfile report.xml --format testname --raw-command go test --timeo
 - mac colima
 ```
 export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
-````
+```
 
 ```sh
 ./scripts/gitlab-runner.sh build
@@ -72,7 +76,7 @@ go get -t -u ./... # upgrade all dependencies at once (test dependencies as well
 go mod tidy
 ```
 
-#### Check for vulnaribilities
+#### Check for vulnerabilities
 ```sh
 go install golang.org/x/vuln/cmd/govulncheck@latest
 govulncheck ./...

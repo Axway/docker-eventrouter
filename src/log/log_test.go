@@ -86,7 +86,7 @@ func BenchmarkLog(b *testing.B) {
 
 func BenchmarkLogfmt(b *testing.B) {
 	null, _ := os.OpenFile(os.DevNull, os.O_WRONLY, 0o755)
-	root.w = null
+	SetOutput(null)
 	for i := 0; i < b.N; i++ {
 		Infoc("pr", "test sssszou2",
 			"key1", "val1",

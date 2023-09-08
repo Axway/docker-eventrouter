@@ -1,5 +1,9 @@
 variables:
   NAME: qlt-router
+  DOCKER_REPO: sentineleventrouter-docker-snapshot-ptx.artifactory-ptx.ecd.axway.int
+  RPM_REPO: https://artifactory-ptx.ecd.axway.int/artifactory/sentineleventrouter-generic-snapshot-ptx
+  CURL_IMAGE: "davinci1976/docker-ci:unstable"
+  CURL_AXWAY: "curl --cacert ./AxwayRootCA.cer"
 
 #include:
 #  - template: Code-Quality.gitlab-ci.yml
@@ -25,11 +29,20 @@ version:
     paths:
       - ./.env
 
-build:
+unit-test:
+  image: docker
+  needs: []
+  stage: prepare
+  #coverage: "/\\(statements\\)(?:\\s+)?(\\d+(?:\\.\\d+)?%)/"
+  script:
+    - ./scripts/run-unit-test-docker.sh
+
+.build:
   image: golang:buster
   stage: build
   needs:
     - version
+    - unit-test
   cache:
     paths:
       - .cache/
@@ -39,7 +52,7 @@ build:
     - ls -l .cache || true
     - mkdir -p .cache
     - export GOPATH="$CI_PROJECT_DIR/.cache"
-    - make build-rpm
+    - make build-glibc
     - ./$NAME version
     - cp $NAME ./artefacts/
   artifacts:
@@ -47,42 +60,39 @@ build:
       - ./artefacts/$NAME
     expire_in: 2 day
 
-unit-test:
-  image: golang:buster
-  needs: []
-  stage: test
-  cache:
-    paths:
-      - .cache/
-    key: GO
-  #coverage: "/coverage: \\d+.\\d+% of statements/"
-  #coverage: "/\\(statements\\)(?:\\s+)?(\\d+(?:\\.\\d+)?%)/"
+build-glibc:
+  image: docker
+  stage: build
+  needs:
+    - version
   script:
-    - go install gotest.tools/gotestsum@latest
-    - go install github.com/nikolaydubina/go-cover-treemap@latest
-    - go get github.com/boumenot/gocover-cobertura
-    - make test-unit
+    - (test -d /artefacts && ln -s /artefacts ./artefacts) || mkdir -p artefacts
+    - ./scripts/run-build-docker.sh
+    - chmod +x $NAME
+    - cp $NAME ./artefacts/
   artifacts:
-    when: always
-    reports:
-      junit: report.xml
-      #coverage_report:
-      #  coverage_format: cobertura
-      #  path: coverage.xml
+    paths:
+      - ./artefacts/$NAME
+
+build-docker:
+  image: davinci1976/docker-ci:unstable
+  stage: build
+  needs:
+    - version
+    - unit-test
+  script:
+    - DOCKER_IMAGE=$NAME:$CI_COMMIT_BRANCH
+    - docker build --pull -f ./Dockerfile -t $DOCKER_IMAGE .
+    - docker run --rm $DOCKER_IMAGE $NAME version
 
 integration-test-reset:
   image: docker
-  needs:
-    - build
+  needs: []
   when: manual
   stage: test
-  cache:
-    paths:
-      - .cache/
-    key: GO
   #coverage: "/\\(statements\\)(?:\\s+)?(\\d+(?:\\.\\d+)?%)/"
   script:
-    - ./scripts/run-integration-test-local.sh reset
+    - ./scripts/run-integration-test-docker.sh reset
   artifacts:
     when: always
     reports:
@@ -94,7 +104,7 @@ integration-test-reset:
 integration-test:
   image: docker
   needs:
-    - build
+    - build-docker
   stage: test
   cache:
     paths:
@@ -102,7 +112,7 @@ integration-test:
     key: GO
   coverage: "/\\(statements\\)(?:\\s+)?(\\d+(?:\\.\\d+)?%)/"
   script:
-    - ./scripts/run-integration-test-local.sh
+    - ./scripts/run-integration-test-docker.sh
   artifacts:
     when: always
     paths:
@@ -113,15 +123,16 @@ integration-test:
         coverage_format: cobertura
         path: coverage.xml
 
-rpm:
+rpm-build:
   image: rpmbuild/centos7
   needs:
     - version
-    - build
+    - build-glibc
   stage: pack
   script:
     - test -d /artefacts && ln -s /artefacts ./artefacts
-    - ./rpm/build-rpm.sh
+    - . ./.env
+    - ./rpm/rpm-build.sh $NAME $VERSION
   artifacts:
     paths:
       - ./artefacts/$NAME*.rpm
@@ -131,19 +142,35 @@ rpm-test:
   image: davinci1976/docker-ci:unstable
   needs:
     - version
-    - rpm
+    - rpm-build
   stage: test
   script:
     #- test ! -e ./artefacts && ln -s /artefacts ./artefacts
     - test ! -e ./artefacts && cp -rf /artefacts ./artefacts/
-    - ./rpm/test-rpm.sh
+    - ./rpm/rpm-test.sh $NAME
 
-build-docker:
-  image: davinci1976/docker-ci:unstable
-  stage: build
-  needs:
+rpm-snapshot:
+  image: $CURL_IMAGE
+  stage: deploy
+  dependencies:
     - version
+    - rpm-build
   script:
-    - docker build --pull -f ./Dockerfile -t $NAME:$CI_COMMIT_SHA .
-    - docker run --rm $NAME:$CI_COMMIT_SHA $NAME version
-    - docker rmi $NAME:$CI_COMMIT_SHA
+    - . ./.env
+    - CI_COMMIT_BRANCH=$(echo "$CI_COMMIT_BRANCH" | tr '[:upper:]' '[:lower:]')
+    - $CURL_AXWAY -k -v -u $ARTIFACTORY_USER:$ARTIFACTORY_TOKEN -T ./artefacts/$NAME*.rpm "$RPM_REPO/$NAME/$NAME-$CI_COMMIT_BRANCH.rpm"
+
+docker-snapshot:
+  image: docker
+  stage: deploy
+  dependencies:
+    - version
+  before_script:
+    - docker login -u $ARTIFACTORY_USER -p $ARTIFACTORY_TOKEN $DOCKER_REPO
+    - . ./.env
+  script:
+    - echo $VERSION
+    - CI_COMMIT_BRANCH=$(echo "$CI_COMMIT_BRANCH" | tr '[:upper:]' '[:lower:]')
+    - DOCKER_IMAGE=$DOCKER_REPO/$NAME:$CI_COMMIT_BRANCH
+    - docker build --pull -f ./Dockerfile -t $DOCKER_IMAGE .
+    - docker push $DOCKER_IMAGE

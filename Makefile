@@ -21,10 +21,10 @@ pack:
 build:
 	(cd src/main ; CGO_ENABLED=1 go build -o ../../$(NAME) $(LDFLAGS))
 
-build-docker:
+build-musl:
 	(cd src/main ; CGO_ENABLED=1 go build -o ../../$(NAME) -tags musl $(LDFLAGS))
 
-build-rpm:
+build-glibc:
 	(cd src/main ; CGO_ENABLED=1 go build -o ../../$(NAME) $(LDFLAGS))
 
 build-linux-x86:
@@ -58,7 +58,7 @@ clean:
 test-integration:
 	# go test -v -timeout=5s ./src/...
 	# go test --cover --short --timeout 5s ./src/...
-	CGO_ENABLED=1 gotestsum --junitfile report.xml --format testname --raw-command go test --cover --timeout 10s --tags musl  --coverprofile=coverage.txt --covermode=count --coverpkg "$(shell go list ./src/...  | tr '\n' ",")" --json ./src/... 
+	CGO_ENABLED=1 gotestsum --junitfile report.xml --format testname --raw-command go test --cover --timeout 10s --tags musl  --coverprofile=coverage.txt --covermode=atomic --coverpkg "$(shell go list ./src/...  | tr '\n' ",")" --json ./src/... 
 	go tool cover -func coverage.txt
 	go run github.com/boumenot/gocover-cobertura < coverage.txt > coverage.xml
 	go-cover-treemap -coverprofile coverage.txt  > coverage.svg
@@ -66,7 +66,7 @@ test-integration:
 test-unit:
 	# go test --cover --short --timeout 5s ./src/...
 	# -coverpkg $(go list ./src/...) 
-	gotestsum --junitfile report.xml --format testname --raw-command go test --cover --short --timeout 10s --coverprofile=coverage.txt --covermode=count --coverpkg "$(shell go list ./src/...  | tr '\n' ",")" --json ./src/... 
+	gotestsum --junitfile report.xml --format testname --raw-command go test --cover --short --timeout 10s --tags musl --coverprofile=coverage.txt --covermode=atomic --coverpkg "$(shell go list ./src/...  | tr '\n' ",")" --json ./src/... 
 	go tool cover -func coverage.txt
 	go run github.com/boumenot/gocover-cobertura < coverage.txt > coverage.xml
 	go-cover-treemap -coverprofile coverage.txt  > coverage.svg

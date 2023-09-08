@@ -25,9 +25,14 @@ mkdir -p $RPM_BUILD_ROOT/%{_bindir}
 cp %{name} $RPM_BUILD_ROOT/%{_bindir}
 cp %{name}d $RPM_BUILD_ROOT/%{_bindir}
 
+mkdir -p $RPM_BUILD_ROOT/usr/lib/%{name}
+cp -rf lib/* $RPM_BUILD_ROOT/usr/lib/%{name}
+
 %clean
 rm -rf $RPM_BUILD_ROOT
 
 %files
 %{_bindir}/%{name}
 %{_bindir}/%{name}d
+%dir /usr/lib/%{name}/
+/usr/lib/%{name}/*

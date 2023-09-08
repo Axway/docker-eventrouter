@@ -1,5 +1,4 @@
-FROM alpine:edge AS build
-RUN apk add --no-cache --update go gcc g++ make git
+FROM golang:buster AS build
 WORKDIR /app/src
 COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
@@ -13,11 +12,14 @@ COPY ./src/ ./src/
 
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    make build-musl
+    make build-glibc
 RUN /app/src/qlt-router version
 
-FROM alpine
-RUN apk add --no-cache ca-certificates
+FROM debian:buster-slim
+RUN apt update && \
+    apt install -y ca-certificates && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/src/qlt-router /usr/bin/qlt-router
 

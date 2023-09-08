@@ -189,13 +189,13 @@ func (q *QLT) ReadQLTPacketRaw(timeout time.Duration) (string, byte, error) {
 
 	log.Tracec(q.CtxS, "ReadQLTPacketRaw", "timeout", timeout)
 	if timeout > 0 {
-		err := q.Conn.SetReadDeadline(time.Now().Add(timeout))
+		err = q.Conn.SetReadDeadline(time.Now().Add(timeout))
 		if err != nil {
 			log.Errorc(q.CtxS, " Error setting deadline closing...", "err", err.Error())
 			return "", 0xFF, err
 		}
 	} else {
-		err := q.Conn.SetReadDeadline(time.Time{})
+		err = q.Conn.SetReadDeadline(time.Time{})
 		if err != nil {
 			log.Errorc(q.CtxS, " Error setting deadline closing...", "err", err.Error())
 			return "", 0xFF, err

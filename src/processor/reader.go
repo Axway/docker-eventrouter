@@ -43,8 +43,8 @@ func (c *SourceProxy) Ctx() string {
 
 func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p *Processor, ctl chan ControlEvent, in chan AckableEvent, out chan AckableEvent) (ConnectorRuntime, error) {
 	ctxp := p.Name + "-" + p2.Ctx()
-	sent := 0
-	acked := 0
+	var sent int64
+	var acked int64
 
 	log.Infoc(ctxp, "Initializing Reader...")
 	ctl <- ControlEvent{p, p2, "STARTING", ""}
@@ -65,7 +65,7 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 		defer p2.Close()
 		defer log.Infoc(ctxp, "Closing Acks...", "acked", acked, "sent", sent, "all_ack", p.Out_ack, "all_sent", p.Out)
 		done := false
-		lastAcked := -1
+		var lastAcked int64 = -1
 		nextWait := ReaderAckSourceWait
 		for !(done && acked == sent) {
 			// log.Infoln(ctxp, "Waiting Acks...")
@@ -75,7 +75,7 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 			case msgid := <-src.ack:
 				// log.Infoln(ctxp, "Ack2...", "msgId", msgid, "acked", acked, "sent", sent, "all_ack", p.Out_ack, "all_sent", p.Out)
 				p2.AckMsg(msgid)
-				acked++
+				atomic.AddInt64(&acked, 1)
 				atomic.AddInt64(&p.Out_ack, 1)
 				// log.Infoln(ctxp, "Ack...", "msgId", msgid, "acked", acked, "sent", sent, "all_ack", p.Out_ack, "all_sent", p.Out)
 				// ctl <- ControlEvent{p, p2, "ACK", "" + fmt.Sprint(acked, sent)}
@@ -112,7 +112,7 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 	log.Infoc(ctxp, "Starting Reader Main Loop...")
 	go func() {
 		ctl <- ControlEvent{p, p2, "RUNNING", ""}
-		lastAcked := -1
+		var lastAcked int64 = -1
 		for {
 			timeout := false
 			// log.Debugln(ctxp, "Reading messages...")
@@ -148,7 +148,7 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 			}
 			// log.Debugln(ctxp, "Sending messages...", "batch", len(events), "acked", acked, "sent", sent, "all_ack", p.Out_ack, "all_sent", p.Out)
 			if sent != 0 && lastAcked != acked && acked == sent {
-				ctl <- ControlEvent{p, p2, "PROCESSING", fmt.Sprint(len(events), acked, acked+len(events))}
+				ctl <- ControlEvent{p, p2, "PROCESSING", fmt.Sprint(len(events), acked, acked+int64(len(events)))}
 				if p.Out == p.Out_ack {
 					// FIXME: is this required ?
 					ctl <- ControlEvent{p, p2, "ALL_PROCESSING", fmt.Sprint(len(events), p.Out_ack, p.Out_ack+int64(len(events)))}

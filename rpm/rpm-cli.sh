@@ -6,7 +6,7 @@
 set -eEuo pipefail
 shopt -s extdebug
 
-APPNAME="flowmanager-agent"
+APPNAME=__APPNAME__
 APPVERSION="0.0.0"
 APPCONF=".env"
 
@@ -202,7 +202,7 @@ fi
 
 profile="$HOME/.$APPNAME/profile"
 if [ -f "$profile" ]; then
-    $verb "LOAD PROFILE $profile $(cat $profile)"
+    $verb "LOAD PROFILE $profile $(cat "$profile")"
     . "$profile"
 fi
 
@@ -296,9 +296,9 @@ case "${1:-}" in
 esac
 
 check_pid() {
-  PID=$(cat "$RUNTIME/var/run/flowmanager-agent.pid" 2>/dev/null || echo "")
-  if [ ! -z "$PID" ]; then 
-    if ps -p $PID > /dev/null; then
+  PID=$(cat "$RUNTIME/var/run/$APPNAME.pid" 2>/dev/null || echo "")
+  if [ -n "$PID" ]; then 
+    if ps -p "$PID" > /dev/null; then
       #echo "running ($PID)"
       return 0
     else
@@ -312,36 +312,51 @@ check_pid() {
 }
 
 case "${1:-}" in
-    start) ## ## start flowmanager-agent
+    start) ## ## start __APPNAME__
       if ! check_pid; then
-        "$INSTALLDIR/usr/bin/flowmanager-agentd" --config="$RUNTIME/etc/flowmanager-agent.conf" > "$RUNTIME/var/log/flowmanager-agent.log" 2>&1 </dev/null &
-        echo "$!" > "$RUNTIME/var/run/flowmanager-agent.pid"
+        cd "$RUNTIME"
+        "$INSTALLDIR/usr/bin/${APPNAME}d" --config="$RUNTIME/etc/$APPNAME.conf" > "$RUNTIME/var/log/$APPNAME.log" 2>&1 </dev/null &
+        echo "$!" > "$RUNTIME/var/run/$APPNAME.pid"
       else
-        echo "flowmanager-agent is already started"
+        echo "$APPNAME is already started"
         exit 1
       fi
     ;;
 
-    stop) ## ## stop flowmanager-agent
+    stop) ## ## stop __APPNAME__
       if check_pid; then
-        PID=$(cat "$RUNTIME/var/run/flowmanager-agent.pid")
+        PID=$(cat "$RUNTIME/var/run/$APPNAME.pid")
         (sleep 1 && kill "$PID") & 
         waitpid "$PID"
       else
-        echo "already stopped"
+        echo "$APPNAME already stopped"
         exit 1
       fi
     ;;
 
-    logs) ## ## show flowmanager-agent logs
-      cat "$RUNTIME/var/log/flowmanager-agent.log"
+    restart) ## ## restart __APPNAME__
+       cd "$RUNTIME"
+      if check_pid; then
+        PID=$(cat "$RUNTIME/var/run/$APPNAME.pid")
+        (sleep 1 && kill "$PID") & 
+        waitpid "$PID"
+      else
+        echo "$APPNAME is stopped"
+        exit 1
+      fi
+      "$INSTALLDIR/usr/bin/${APPNAME}d" --config="$RUNTIME/etc/$APPNAME.conf" --log-file "$RUNTIME/var/log/$APPNAME.log" >/dev/null 2>&1 </dev/null &
+      echo "$!" > "$RUNTIME/var/run/$APPNAME.pid"
+    ;;
+
+    logs) ## ## show __APPNAME__ logs
+      cat "$RUNTIME/var/log/$APPNAME.log"
     ;;
     
-    status) ## ## show the status of flowmanager-agent
-      PID=$(cat "$RUNTIME/var/run/flowmanager-agent.pid" 2>/dev/null || echo "")
-      echo $PID
-      if [ ! -z "$PID" ]; then 
-        if ps -p $PID > /dev/null; then
+    status) ## ## show the status of __APPNAME__
+      PID=$(cat "$RUNTIME/var/run/$APPNAME.pid" 2>/dev/null || echo "")
+      echo "$PID"
+      if [ -n "$PID" ]; then 
+        if ps -p "$PID" > /dev/null; then
           echo "running ($PID)"
           exit 0
         else
@@ -354,12 +369,12 @@ case "${1:-}" in
       fi
     ;;
 
-    health) ## ## show health of flowmanager-agent
+    health) ## ## show health of __APPNAME__
       # FIXME: check curl
       curl -s -v http://localhost:8080/health
     ;;
 
-    metrics) ## ## show metrics flowmanager-agent
+    metrics) ## ## show metrics __APPNAME__
       # FIXME: check curl
       curl -s http://localhost:8080/metrics
     ;;
@@ -370,14 +385,14 @@ case "${1:-}" in
     ;;
 
     gen-systemd-unit) ## ## Generate a template for systemd
-      echo "/etc/systemd/system/flowmanager-agent.service"
+      echo "/etc/systemd/system/$APPNAME.service"
 cat <<EOF
 [Unit]
 Description=Flowmanager Agent
 After=network.target
 
 [Service]
-ExecStart="$INSTALLDIR/usr/bin/flowmanager-agentd" --config="$RUNTIME/etc/flowmanager-agent.conf"
+ExecStart="$INSTALLDIR/usr/bin/${APPNAME}d" --config="$RUNTIME/etc/${APPNAME}.conf"
 WorkingDirectory="$RUNTIME"
 User=$USER
 Type=simple
@@ -403,26 +418,10 @@ EOF
         mkdir -p "$runtime/var"
         mkdir -p "$runtime/var/lib"
         mkdir -p "$runtime/var/run"
-        mkdir -p "$runtime/var/run/states"
         mkdir -p "$runtime/var/log"
 
         #cp -rf "$LIBDIR/etc"/* "$runtime/etc"
-
-        cat >"$runtime/etc/flowmanager-agent.conf" <<EOF 
-name=$HOSTNAME
-#server=flowmanager.DOMAIN:443
-#server-ca=
-accept-eula=false
-#whitelist=*
-dosa=$runtime/etc/dosa.json
-dosa-key=$runtime/etc/dosa.key
-#dosa-key-password=
-#dosa-key-password-file=$runtime/etc/dosa-key.pass
-#http-port=8080
-#sendlog=true
-#count=1
-#log-exclude=
-EOF
+        cp -rf "$INSTALLDIR/usr/lib/$APPNAME"/* "$runtime/etc"
 
         ln -s "$0" "$runtime/usr/bin/$(basename "$0")"
 
@@ -445,28 +444,28 @@ EOF
     ;;
 
     support) ## ## generate a support report
-        A="$(pwd)/flowmanager-support"
+        A="$(pwd)/$APPNAME-support"
         if [ -d "$A" ]; then
           echo "folder $A already exists"
           exit 1
         fi
 
-        mkdir -p $A
-        flowmanager-agentd help >$A/help.txt  || true
+        mkdir -p "$A"
+        ${APPNAME}d help >"$A/help.txt"  || true
 
-        mkdir -p $A/log
-        cp $RUNTIME/var/log/flowmanager-agent.log* $A/log  || true
+        mkdir -p "$A/log"
+        cp "$RUNTIME/var/log/$APPNAME.log"* "$A/log"  || true
         
-        mkdir -p $A/etc
-        cp $RUNTIME/etc/flowmanager-agent.conf $A/etc  || true
+        mkdir -p "$A/etc"
+        cp "$RUNTIME/etc/$APPNAME.conf" "$A/etc"  || true
 
-        ps -ef >$A/ps.txt  || true 
-        find "$RUNTIME" -type f -exec ls -la '{}' \; > $A/files.txt
-        uname -a > $A/uname.txt
-        cat /etc/*-release /etc/*_version > $A/lsb-release.txt || true
-        env > $A/env.txt  || true
+        ps -ef >"$A/ps.txt"  || true 
+        find "$RUNTIME" -type f -exec ls -la '{}' \; > "$A/files.txt"
+        uname -a > "$A/uname.txt"
+        cat /etc/*-release /etc/*_version > "$A/lsb-release.txt" || true
+        env > "$A/env.txt"  || true
 
-        find "$A" > $A/gen.txt
+        find "$A" > "$A/gen.txt"
 
         tar cvfz "$A.tar.gz" "$A"
         echo "support report generated $A "

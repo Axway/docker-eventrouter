@@ -14,9 +14,9 @@ type QltServerWriter struct {
 	qlt       *QLT
 }
 
-func NewQltServerWriter(ctx string, conn net.Conn, QueueName string) *QltServerWriter {
+func NewQltServerWriter(ctx string, conn net.Conn, queueName string) *QltServerWriter {
 	var c QltServerWriter
-	c.QueueName = QueueName
+	c.QueueName = queueName
 	c.qlt = newQltConnection(c.CtxS, conn)
 	return &c
 }

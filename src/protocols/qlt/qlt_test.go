@@ -1,7 +1,10 @@
 package qlt_test
 
 import (
+	"errors"
 	"net"
+	"os"
+	"syscall"
 	"testing"
 	"time"
 
@@ -13,9 +16,11 @@ import (
 func TestQltPush(t *testing.T) {
 	ctxS := "test-" + t.Name()
 	port := "9899"
-	var qltServer *qlt.QltServerReader
+
+	ch := make(chan *qlt.QltServerReader)
 	l, err := tools.TcpServe("localhost:"+port, func(conn net.Conn, ctx string) {
-		qltServer = qlt.NewQltServerReader(ctx+"-conn", conn)
+		qltServer := qlt.NewQltServerReader(ctx+"-conn", conn)
+		ch <- qltServer
 	}, "qlt-server-test")
 	if err != nil {
 		t.Error("error listening", err)
@@ -41,12 +46,8 @@ func TestQltPush(t *testing.T) {
 	}
 
 	log.Infoc(ctxS, "waiting qltserver...")
-	count := 0
-	for qltServer == nil {
-		time.Sleep(10 * time.Millisecond)
-		count++
-	}
-	log.Infoc(ctxS, "qltserver wait count", "count", count)
+	qltServer := <-ch
+	defer qltServer.Close()
 
 	msgReceived, err := qltServer.Read(200 * time.Millisecond)
 	if err != nil {
@@ -79,12 +80,24 @@ func TestQltPull(t *testing.T) {
 	port := "8399"
 	queueName := "myqueue"
 	timeout := 200 * time.Millisecond
-	var qltServer *qlt.QltServerWriter
 
+	ch := make(chan *qlt.QltServerWriter)
 	l, err := tools.TcpServe("localhost:"+port, func(conn net.Conn, ctx string) {
-		qltServer = qlt.NewQltServerWriter(ctx+"-conn", conn, queueName)
-		qltServer.WaitQueueName(timeout)
-		qltServer.AckQueueName()
+		q := qlt.NewQltServerWriter(ctx+"-conn", conn, queueName)
+		err := q.WaitQueueName(timeout)
+		if err != nil {
+			t.Error("error waiting queue name", err)
+			ch <- nil
+			return
+		}
+		err = q.AckQueueName()
+		if err != nil {
+			t.Error("error ack queue name", err)
+			ch <- nil
+			return
+		}
+
+		ch <- q
 	}, "qlt-server-test")
 	if err != nil {
 		t.Error("error listening", err)
@@ -102,13 +115,11 @@ func TestQltPull(t *testing.T) {
 	defer c.Close()
 
 	log.Infoc(ctxS, "waiting qltserver...")
-	count := 0
-	for qltServer == nil {
-		time.Sleep(10 * time.Millisecond)
-		count++
+	qltServer := <-ch
+	if qltServer == nil {
+		return
 	}
-
-	log.Infoc(ctxS, "qltserver wait count", "count", count)
+	defer qltServer.Close()
 
 	msgSent := "my message" + time.Now().String()
 	log.Infoc(ctxS, "send message", "msgSent", msgSent)
@@ -142,4 +153,32 @@ func TestQltPull(t *testing.T) {
 	}
 
 	// t.Error("==Success==")
+}
+
+func TestQltPullBadPort(t *testing.T) {
+	c := qlt.NewQltClientReader("[qlt-client-test]", "localhost:1", "any")
+	timeout := 1000 * time.Millisecond
+	err := c.Connect(timeout)
+	if err != nil {
+		if !errors.Is(err, syscall.ECONNREFUSED) {
+			t.Error("this test should fail with reject", err)
+		}
+		return
+	}
+	t.Error("this test should fail")
+	c.Close()
+}
+
+func TestQltPullConnectTimeout(t *testing.T) {
+	c := qlt.NewQltClientReader("[qlt-client-test]", "10.255.255.1:443", "any")
+	timeout := 100 * time.Millisecond
+	err := c.Connect(timeout)
+	if err != nil {
+		if !os.IsTimeout(err) {
+			t.Error("this test should fail with timeout", err)
+		}
+		return
+	}
+	t.Error("this test should fail")
+	c.Close()
 }

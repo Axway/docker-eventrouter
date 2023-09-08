@@ -28,7 +28,7 @@ func ParseConfigFile(ctx string, filename string) (*Config, error) {
 func ParseConfigRawData(data []byte) (*Config, error) {
 	var config Config
 
-	buf, err := envsubst.Bytes([]byte(data))
+	buf, err := envsubst.Bytes(data)
 	if err != nil {
 		return nil, err
 	}

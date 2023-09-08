@@ -1,5 +1,19 @@
 #version: "3"
 services:
+  build:
+    build:
+      dockerfile: ./Dockerfile.glibc
+    command: ls
+    volumes:
+      - go_build:/root/.cache/go-build
+  
+  sut-unit:
+    build:
+      dockerfile: ./Dockerfile.test
+    command: sh -c "ls ; make test-unit"
+    volumes:
+      - go_build:/root/.cache/go-build
+
   sut:
     build:
       dockerfile: ./Dockerfile.test
