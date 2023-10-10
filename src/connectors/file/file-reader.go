@@ -1,6 +1,7 @@
 package file
 
 import (
+	"errors"
 	"context"
 	"os"
 	"io"
@@ -24,7 +25,6 @@ type FileStoreRawReader struct {
 
 	CtxS     string
 	Filename string
-	AckFilename string
 	file     *os.File
 
 	b         []byte
@@ -77,6 +77,7 @@ func (q *FileStoreRawReader) Init(p *processor.Processor) error {
 		}
 		q.Filename = arr[1]
 	}
+	q.AckOffset = q.Offset
 
 	log.Infoc(q.CtxS, "Opening file", "filename", q.Filename)
 	f, err := os.OpenFile(q.Filename, os.O_RDONLY, 0o644)
@@ -85,7 +86,6 @@ func (q *FileStoreRawReader) Init(p *processor.Processor) error {
 		return err
 	}
 	q.file = f
-	q.AckFilename = q.Filename
 
 	/* Go to correct offset */
 	//log.Infoc(q.CtxS, "Seeking position", "offset", strconv.FormatInt(q.Offset,10))
@@ -96,15 +96,21 @@ func (q *FileStoreRawReader) Init(p *processor.Processor) error {
 
 func (q *FileStoreRawReader) Read() ([]processor.AckableEvent, error) {
 	n, err := q.file.Read(q.b[q.Pos:q.Size])
-	if err != nil && err != io.EOF {
+	if err != nil && !errors.Is(err, io.EOF) {
 		return nil, err
 	}
 
-	if n == 0 || err != nil {
+	if n == 0 || (err != nil && q.Pos == 0) {
+		/* Only oppening next file if all messages acked in current file */
+		if (errors.Is(err, io.EOF) && q.AckOffset < (q.Offset - 1)) {
+			return nil, err
+		}
+
 		filename, _ := tools.NextFile(q.CtxS, q.conf.FilenamePrefix, q.conf.FilenameSuffix, q.Filename)
 		if filename != q.Filename {
 			q.file.Close()
 			q.Filename = filename
+			q.AckOffset = 0
 			q.Offset = 0
 			q.Pos = 0
 
@@ -159,26 +165,8 @@ func (q *FileStoreRawReader) Read() ([]processor.AckableEvent, error) {
 func (q *FileStoreRawReader) AckMsg(msgid processor.EventAck) {
 	// log.Debugln(q.CtxS, "Ackmsg", msgid)
 	offset, ok := msgid.(int64)
-	changingFile := 0
-	if offset < q.AckOffset {
-		f, err := os.OpenFile(q.AckFilename, os.O_RDONLY, 0o644)
-		/* Test err */
-		f.Seek(q.AckOffset, io.SeekStart)
-		b1 := make([]byte, 1)
-		_, err = f.Read(b1)
-
-		if err == io.EOF {
-			changingFile = 1
-		}
-		f.Close()
-	}
-
-	if !ok || (offset <= q.AckOffset && changingFile == 0) {
+	if !ok || offset <= q.AckOffset {
 		log.Fatalc(q.CtxS, "AckMsg", "offset", q.Offset, "msgid", msgid)
-	}
-	if changingFile == 1 {
-		q.AckFilename, _ = tools.NextFile(q.CtxS, q.conf.FilenamePrefix, q.conf.FilenameSuffix, q.AckFilename)
-		/* Test err */
 	}
 	q.AckOffset = offset
 
@@ -188,7 +176,7 @@ func (q *FileStoreRawReader) AckMsg(msgid processor.EventAck) {
 		log.Errorc(q.CtxS, "Error opening file for writing last position", "filename", q.conf.ReaderFilename, "err", err)
 	} else {
 		defer f2.Close()
-		b := []byte(strconv.FormatInt(q.AckOffset,10) + "\n" + q.AckFilename)
+		b := []byte(strconv.FormatInt(q.AckOffset,10) + "\n" + q.Filename)
 		_, err = f2.Write(b)
 	}
 }

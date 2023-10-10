@@ -26,7 +26,6 @@ type FileStoreRawWriter struct {
 	CtxS     string
 	Filename string
 	file     *os.File
-	lf       string
 	Size     int64
 }
 
@@ -76,10 +75,6 @@ func (q *FileStoreRawWriter) Open() error {
 		log.Errorc(q.CtxS, "error get position", "filename", q.Filename, "err", err)
 		return err
 	}
-	q.lf = ""
-	if offset != 0 {
-		q.lf = "\n"
-	}
 	q.Size = offset
 
 	return nil
@@ -115,14 +110,14 @@ func (q *FileStoreRawWriter) Write(events []processor.AckableEvent) error {
 	datas := processor.PrepareEvents(q, events)
 
 	// log.Debugln(q.CtxS, "writing", "count", len(datas))
-	buf := []byte(q.lf + strings.Join(datas, "\n"))
+	buf := []byte(strings.Join(datas, "\n") + "\n")
 
 	q.Size += int64(len(buf))
 	if q.Conf.MaxSize > 0 && q.Size > (q.Conf.MaxSize * 1048576) {
 		log.Debugc(q.CtxS, "switching", "filename", q.Filename, "size", q.Size, "maxsize", q.Conf.MaxSize * 1048576)
 		q.Switch()
 
-		buf = []byte(strings.Join(datas, "\n"))
+		buf = []byte(strings.Join(datas, "\n") + "\n")
 		q.Size = int64(len(buf))
 	}
 
@@ -130,7 +125,6 @@ func (q *FileStoreRawWriter) Write(events []processor.AckableEvent) error {
 		log.Errorc(q.CtxS, "error write message in file", "filename", q.Filename, "err", err)
 		return err
 	}
-	q.lf = "\n"
 
 	return nil
 }

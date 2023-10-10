@@ -102,6 +102,10 @@ func Test1FileStoreRawWriterStart(t *testing.T) {
 	}
 	fmt.Println(string(b))
 	wMessages := strings.Split(string(b), "\n")
+	// remove empty lines from end of file
+	if len(wMessages[len(wMessages)-1]) == 0 {
+		wMessages = wMessages[:len(wMessages)-1]
+	}
 
 	ackPos := make([]int64, len(rp.Runtimes)-1)
 	for j := 0; j < len(rp.Runtimes)-1; j++ {
@@ -185,8 +189,12 @@ func Test2FileStoreMultipleFilesStart(t *testing.T) {
 			return
 		}
 
-		// concatenate all messages in one buffer
 		lines := strings.Split(string(b), "\n")
+		// remove empty lines from end of file
+		if len(lines[len(lines)-1]) == 0 {
+			lines = lines[:len(lines)-1]
+		}
+		// concatenate all messages in one buffer
 		wMessages = append(wMessages, lines...)
 	}
 
