@@ -127,8 +127,10 @@ func main() {
 	connectors.Register("mem-writer", &mem.MemWriterConf{})
 	connectors.Register("aws-sqs-writer", &awssqs.AwsSQSWriterConf{})
 	// processors.Register("file_json_consumer", &file.FileStoreJsonConsumerConfig{})
-	connectors.Register("qlt-client-writer", &qlt.QLTClientWriterConf{})
-	connectors.Register("qlt-server-reader", &qlt.QLTServerReaderConf{})
+	connectors.Register("qlt-client-writer", &qlt.QLTClientWriterConf{}) // Normal mode QLT
+	connectors.Register("qlt-server-reader", &qlt.QLTServerReaderConf{}) // Normal mode QLT
+	connectors.Register("qlt-client-reader", &qlt.QLTClientReaderConf{}) // Pull mode QLT
+	connectors.Register("qlt-server-writer", &qlt.QLTServerWriterConf{}) // Pull mode QLT
 	connectors.Register("pg-writer", &postgres.PGWriterConf{})
 	connectors.Register("pg-reader", &postgres.PGReaderConf{})
 	// processors.Register("es_json_consumer", &elasticsearch.EsConsumerConf{})

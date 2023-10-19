@@ -35,6 +35,7 @@ func (q *QLTClientWriter) Ctx() string {
 
 type QLTClientWriterConf struct {
 	Addresses string
+	Cert, CertKey, Ca string
 	Cnx       int
 }
 
@@ -50,7 +51,7 @@ func (c *QLTClientWriterConf) Start(context context.Context, p *processor.Proces
 			log.Debugc(q.CtxS, "connection", "addr", addr)
 			acks := p.Chans.Create(q.CtxS+"-AckEvent (Not Tracked)", qltAckQueueSize)
 			// TcpChaosInit(TCPChaosConf{Name: q.Ctx, Addr: addr})
-			c2 := &QLTClientWriterConnection{q.CtxS, addr, nil, acks.C}
+			c2 := &QLTClientWriterConnection{c, q.CtxS, addr, nil, acks.C}
 			log.Debugc(q.CtxS, "AddReader!!!!*************************")
 			p.AddReader(c2)
 		}
@@ -65,6 +66,7 @@ func (c *QLTClientWriterConf) Clone() processor.Connector {
 }
 
 type QLTClientWriterConnection struct {
+	Conf *QLTClientWriterConf
 	CtxS string
 	Addr string
 	Qlt  *qlt.QltClientWriter
@@ -104,7 +106,7 @@ func (q *QLTClientWriterConnection) Init(p *processor.Processor) error {
 func (q *QLTClientWriterConnection) Write(events []processor.AckableEvent) error {
 	if q.Qlt == nil {
 		log.Infoc(q.CtxS, "Connecting to ", "addr", q.Addr)
-		client := qlt.NewQltClientWriter(q.CtxS, q.Addr)
+		client := qlt.NewQltClientWriter(q.CtxS, q.Addr, q.Conf.Cert, q.Conf.CertKey, q.Conf.Ca)
 		err := client.Connect(qltClientConnectTimeout)
 		if err != nil {
 			log.Errorc(q.CtxS, "failed to connect", "addr", q.Addr, "err", err)

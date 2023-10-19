@@ -28,7 +28,7 @@ func TestQltPush(t *testing.T) {
 	}
 	defer l.Close()
 
-	c := qlt.NewQltClientWriter("[qlt-client-test]", "localhost:"+port)
+	c := qlt.NewQltClientWriter("[qlt-client-test]", "localhost:"+port, "", "", "")
 
 	err = c.Connect(200 * time.Millisecond)
 	if err != nil {
@@ -105,7 +105,7 @@ func TestQltPull(t *testing.T) {
 	}
 	defer l.Close()
 
-	c := qlt.NewQltClientReader("[qlt-client-test]", "localhost:"+port, queueName)
+	c := qlt.NewQltClientReader("[qlt-client-test]", "localhost:"+port, queueName ,"", "", "")
 
 	err = c.Connect(timeout)
 	if err != nil {
@@ -156,7 +156,7 @@ func TestQltPull(t *testing.T) {
 }
 
 func TestQltPullBadPort(t *testing.T) {
-	c := qlt.NewQltClientReader("[qlt-client-test]", "localhost:1", "any")
+	c := qlt.NewQltClientReader("[qlt-client-test]", "localhost:1", "any", "", "", "")
 	timeout := 1000 * time.Millisecond
 	err := c.Connect(timeout)
 	if err != nil {
@@ -170,7 +170,7 @@ func TestQltPullBadPort(t *testing.T) {
 }
 
 func TestQltPullConnectTimeout(t *testing.T) {
-	c := qlt.NewQltClientReader("[qlt-client-test]", "10.255.255.1:443", "any")
+	c := qlt.NewQltClientReader("[qlt-client-test]", "10.255.255.1:443", "any", "", "", "")
 	timeout := 100 * time.Millisecond
 	err := c.Connect(timeout)
 	if err != nil {

@@ -17,7 +17,7 @@ func TestQltConnectorPush(t *testing.T) {
 	porti, _ := memtest.GetFreePort()
 	port := fmt.Sprint(porti)
 
-	writer := &QLTClientWriterConf{"localhost:" + port, 1}
+	writer := &QLTClientWriterConf{"localhost:" + port, "", "", "", 1}
 	reader := &QLTServerReaderConf{"localhost", port, "", "", ""}
 	memtest.TestConnector(t, writer, reader)
 }
@@ -27,7 +27,7 @@ func TestQltConnectorPull(t *testing.T) {
 	port := fmt.Sprint(porti)
 
 	writer := &QLTServerWriterConf{"Q1", "localhost", port, "", "", ""}
-	reader := &QLTClientReaderConf{"Q1", "localhost:" + port, 1}
+	reader := &QLTClientReaderConf{"Q1", "localhost:" + port, "", "", "", 1}
 	memtest.TestConnector(t, writer, reader)
 }
 
@@ -76,7 +76,7 @@ func testQltConnector(port string, disableQlt bool, minReaders, maxReaders, minM
 		// ch2 := make(chan processor.AckableEvent, 10)
 		ch2 := channels.Create("writer", -1)
 		r := mem.MemReadersConf{readers}
-		qltClientConf := QLTClientWriterConf{"localhost:" + port, 1}
+		qltClientConf := QLTClientWriterConf{"localhost:" + port, "", "", "", 1}
 		rp = processor.NewProcessor("mem-reader", &r, channels)
 		qc := processor.NewProcessor("qlt-client-writer", &qltClientConf, channels)
 		if !disableQlt {

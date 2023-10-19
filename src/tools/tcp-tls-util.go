@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"time"
 	"strings"
 	"sync/atomic"
 
@@ -21,11 +22,18 @@ func getSessionId() string {
 	return fmt.Sprint(val)
 }
 
-func TcpConnect(addr string, prefix string) (net.Conn, string, error) {
+func TcpConnect(addr string, prefix string, timeout time.Duration) (net.Conn, string, error) {
 	ctx := fmt.Sprint("["+prefix+"-", getSessionId(), "]")
 
 	log.Infoc(prefix, "Dialing...", "addr", addr)
-	conn, err := net.Dial("tcp", addr)
+
+	var err error
+	var conn net.Conn
+	if timeout != 0 {
+		conn, err = net.DialTimeout("tcp", addr, timeout)
+	} else {
+		conn, err = net.Dial("tcp", addr)
+	}
 	if err != nil {
 		log.Errorc(prefix, "Dial failed :", "addr", addr, "err", err)
 		return nil, "", err
@@ -33,30 +41,71 @@ func TcpConnect(addr string, prefix string) (net.Conn, string, error) {
 	return conn, ctx, nil
 }
 
-func TlsConnect(addr string, caFilename string, certFilename string, keyFilename string, prefix string) (net.Conn, string, error) {
-	ctx := fmt.Sprint("["+prefix+"-", getSessionId(), "]")
-
-	// Load our TLS key pair to use for authentication
-	cert, err := tls.LoadX509KeyPair(certFilename, keyFilename)
-	if err != nil {
-		log.Fatalc(prefix, " Unable to load cert", "certFilename", certFilename, "keyFilename", keyFilename, "err", err)
+func tlsCAConfig(ctx, caFilenames string) (clientCertPool *x509.CertPool, insecureSkipVerify bool, err error) {
+	insecureSkipVerify = false
+	if caFilenames == "-" {
+		insecureSkipVerify = true
+	} else if caFilenames != "" {
+		clientCertPool = x509.NewCertPool()
+		for _, caFilename := range strings.Split(caFilenames, ",") {
+			clientCACert, err := ioutil.ReadFile(caFilename)
+			if err != nil {
+				log.Infoc(ctx, "Unable to open ca", caFilename, err)
+				return nil, false, err
+			}
+			if !clientCertPool.AppendCertsFromPEM(clientCACert) {
+				if err != nil {
+					err = fmt.Errorf("cannot append '%s' to certpool", caFilename)
+					return nil, false, err
+				}
+			}
+		}
 	}
 
-	// Load our CA certificate
-	clientCertPool := x509.NewCertPool()
-	insecureSkipVerify := true
-	if caFilename != "" {
-		clientCACert, err := ioutil.ReadFile(caFilename)
+	return clientCertPool, insecureSkipVerify, nil
+}
+
+func TlsConnect(
+	addr string,
+	caFilenames string,
+	certFilename string,
+	keyFilename string,
+	prefix string,
+) (net.Conn, string, error) {
+	ctx := fmt.Sprint("["+prefix+"-", getSessionId(), "]")
+
+	// Load our TLS key pair to use for mutual-authentication
+	var certs []tls.Certificate
+	if certFilename != "" {
+		cert, err := tls.LoadX509KeyPair(certFilename, keyFilename)
 		if err != nil {
-			log.Fatalc(prefix, "Unable to open ca", "caFilename", caFilename, "err", err)
+			log.Fatalc(prefix, " Unable to load cert", "certFilename", certFilename, "keyFilename", keyFilename, "err", err)
 		}
-		insecureSkipVerify = false
-		clientCertPool.AppendCertsFromPEM(clientCACert)
+		certs = append(certs, cert)
+	}
+
+	// Load server CA certificates
+	serverCertPool, insecureSkipVerify, err := tlsCAConfig(prefix, caFilenames)
+	if err != nil {
+		log.Fatalc(prefix, "Unable to open ca", caFilenames, err)
 	}
 
 	tlsConfig := &tls.Config{
-		Certificates:       []tls.Certificate{cert},
-		RootCAs:            clientCertPool,
+		MinVersion:        tls.VersionTLS12, // FIXME should we be able do force only 1.2 ? MaxVersion
+		// Need to test if when we allow 1.3, can we runcheck with someone that doesn't understand 1.3, like ER?
+		// when I allow 1.2, how do I runcheck with someone that uses 1.3? Will I only use 1.3?
+		CipherSuites: []uint16{
+			// TLS 1.2 cipher suites.
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_RSA_WITH_AES_128_CBC_SHA,
+			tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+			// TLS 1.3 cipher suites.
+			tls.TLS_AES_128_GCM_SHA256,
+			tls.TLS_AES_256_GCM_SHA384,
+		},
+		Certificates:       certs,
+		RootCAs:            serverCertPool,
 		InsecureSkipVerify: insecureSkipVerify,
 	}
 
@@ -126,7 +175,7 @@ func TcpServe(addr string, handleRequest func(net.Conn, string), prefix string) 
 }
 
 func TlsLogInfo(tlscon *tls.Conn, ctx string) {
-	log.Infoc(ctx, " TLS - Server: conn: Handshake completed")
+	log.Infoc(ctx, "TLS - Server: conn: Handshake completed")
 	state := tlscon.ConnectionState()
 
 	log.Infoc(ctx, "TLS - Server info",
@@ -143,8 +192,8 @@ func TlsLogInfo(tlscon *tls.Conn, ctx string) {
 		subject := cert.Subject
 		issuer := cert.Issuer
 
-		log.Infoc(ctx, fmt.Sprintf(" TLS - Server: %d s:/C=%s/ST=%v/L=%v/O=%v/OU=%v/CN=%s", i, strings.Join(subject.Country, ","), strings.Join(subject.Province, ","), strings.Join(subject.Locality, ","), strings.Join(subject.Organization, ","), strings.Join(subject.OrganizationalUnit, ","), subject.CommonName))
-		log.Infoc(ctx, fmt.Sprintf(" TLS - Server:   i:/C=%s/ST=%v/L=%v/O=%v/OU=%v/CN=%s", strings.Join(issuer.Country, ","), strings.Join(issuer.Province, ","), strings.Join(issuer.Locality, ","), strings.Join(issuer.Organization, ","), strings.Join(issuer.OrganizationalUnit, ","), issuer.CommonName))
+		log.Infoc(ctx, fmt.Sprintf("TLS - Server: %d s:/C=%s/ST=%v/L=%v/O=%v/OU=%v/CN=%s", i, strings.Join(subject.Country, ","), strings.Join(subject.Province, ","), strings.Join(subject.Locality, ","), strings.Join(subject.Organization, ","), strings.Join(subject.OrganizationalUnit, ","), subject.CommonName))
+		log.Infoc(ctx, fmt.Sprintf("TLS - Server:   i:/C=%s/ST=%v/L=%v/O=%v/OU=%v/CN=%s", strings.Join(issuer.Country, ","), strings.Join(issuer.Province, ","), strings.Join(issuer.Locality, ","), strings.Join(issuer.Organization, ","), strings.Join(issuer.OrganizationalUnit, ","), issuer.CommonName))
 
 		der, err := x509.MarshalPKIXPublicKey(cert.PublicKey)
 		if err != nil {
@@ -163,7 +212,7 @@ func TlsServe(
 	addr string,
 	certFilename string,
 	keyFilename string,
-	caFilename string,
+	caFilenames string,
 	handleRequest func(net.Conn, string),
 	requireClientAuth bool,
 	prefix string,
@@ -178,26 +227,28 @@ func TlsServe(
 
 	}
 
-	var certpool *x509.CertPool
+	// Load server CA certificates
+	certpool, _, err := tlsCAConfig(prefix, caFilenames)
+	if err != nil {
+		log.Fatalc(prefix, "Unable to open ca", caFilenames, err)
+	}
 	clientAuth := tls.RequireAnyClientCert
 	if !requireClientAuth {
 		clientAuth = tls.NoClientCert
 	}
-	if caFilename != "" {
-		clientAuth = tls.RequireAndVerifyClientCert
-		certpool = x509.NewCertPool()
-		pem, err := ioutil.ReadFile(caFilename)
-		if err != nil {
-			log.Errorc(ctxInit, " TLS - Error - Failed to read client certificate authority", "err", err)
-			return nil, err
-		}
-		if !certpool.AppendCertsFromPEM(pem) {
-			log.Errorc(ctxInit, " TLS - Error - Can't parse client certificate authority", "err", err)
-			return nil, err
-		}
-	}
 
 	config := tls.Config{
+		MinVersion: tls.VersionTLS12,
+		CipherSuites: []uint16{
+			// TLS 1.2 cipher suites.
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_RSA_WITH_AES_128_CBC_SHA,
+			tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+			// TLS 1.3 cipher suites.
+			tls.TLS_AES_128_GCM_SHA256,
+			tls.TLS_AES_256_GCM_SHA384,
+		},
 		Certificates: []tls.Certificate{cert},
 		// ClientAuth:   tls.RequireAndVerifyClientCert,
 		ClientAuth: clientAuth,

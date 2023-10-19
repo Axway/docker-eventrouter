@@ -3,6 +3,7 @@ package qlt
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"time"
@@ -135,7 +136,7 @@ func (q *QLT) readData() error {
 
 	rsize, err := q.Conn.Read(q.buf[q.idx:])
 	if err != nil {
-		if !errors.Is(err, os.ErrDeadlineExceeded) {
+		if !errors.Is(err, os.ErrDeadlineExceeded) && !errors.Is(err, io.EOF) {
 			log.Errorc(q.CtxS, " Error reading closing...", "err", err.Error())
 		}
 		return err

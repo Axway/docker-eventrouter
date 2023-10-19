@@ -4,6 +4,7 @@ import (
 	"net"
 	"time"
 
+	"axway.com/qlt-router/src/tools"
 	log "axway.com/qlt-router/src/log"
 )
 
@@ -11,24 +12,34 @@ type QltClientReader struct {
 	CtxS      string
 	Addr      string
 	QueueName string
+	Cert, CertKey, Ca string
 	qlt       *QLT
 }
 
-func NewQltClientReader(ctx string, addr string, queueName string) *QltClientReader {
+func NewQltClientReader(ctx string, addr string, queueName string, cert string, certKey string, ca string) *QltClientReader {
 	var c QltClientReader
 	c.Addr = addr
 	c.CtxS = ctx
 	c.QueueName = queueName
+	c.Cert = cert
+	c.CertKey = certKey
+	c.Ca = ca
 
 	return &c
 }
 
 func (c *QltClientReader) Connect(timeout time.Duration) error {
 	log.Infoc(c.CtxS, "connecting... ", "addr", c.Addr, "queue", c.QueueName)
+
+	var err error
+ 	var conn net.Conn
 	// FIXME: timeout needed
-	conn, err := net.DialTimeout("tcp", c.Addr, timeout)
+	if c.Ca != "" {
+		conn, _, err = tools.TlsConnect(c.Addr, c.Ca, c.Cert, c.CertKey, c.CtxS)
+	} else {
+		conn, _, err = tools.TcpConnect(c.Addr, c.CtxS, timeout)
+	}
 	if err != nil {
-		log.Errorc(c.CtxS, " dial failed", "addr", c.Addr, "queue", c.QueueName, "err", err)
 		return err
 	}
 	c.qlt = newQltConnection(c.CtxS, conn)
