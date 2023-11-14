@@ -120,6 +120,10 @@ func (q *PGWriter) IsAckAsync() bool {
 	return false
 }
 
+func (q *PGWriter) IsActive() bool {
+	return true
+}
+
 func (q *PGWriter) Init(p *processor.Processor) error {
 	log.Infoc(q.ctx, "Opening database", "url", q.conf.Url)
 	conn, err := sql.Open("pgx", q.conf.Url)
@@ -139,7 +143,7 @@ func (q *PGWriter) Init(p *processor.Processor) error {
 	return nil
 }
 
-func (q *PGWriter) Write(msgs []processor.AckableEvent) error {
+func (q *PGWriter) Write(msgs []processor.AckableEvent) (int, error) {
 	valueStrings := make([]string, 0, len(msgs))
 	valueArgs := make([]interface{}, 0, len(msgs))
 	for i, msg := range msgs {
@@ -156,10 +160,10 @@ func (q *PGWriter) Write(msgs []processor.AckableEvent) error {
 	_, err := q.conn.Exec(stmt, valueArgs...)
 	if err != nil {
 		log.Errorc(q.ctx, "INSERT failed ", "n", len(msgs), "err", err)
-		return err
+		return 0, err
 	}
 
-	return nil
+	return len(msgs), nil
 }
 
 func (q *PGWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {

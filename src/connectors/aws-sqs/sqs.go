@@ -60,7 +60,7 @@ func (q *AwsSQSWriter) Init(p *processor.Processor) error {
 	return nil
 }
 
-func (q *AwsSQSWriter) Write(events []processor.AckableEvent) error {
+func (q *AwsSQSWriter) Write(events []processor.AckableEvent) (int, error) {
 	entries := make([]*sqs.SendMessageBatchRequestEntry, len(events))
 	for i, e := range events {
 		msg, _ := e.Msg.(string)
@@ -77,14 +77,18 @@ func (q *AwsSQSWriter) Write(events []processor.AckableEvent) error {
 	_, err := q.Svc.SendMessageBatch(inputs)
 	if err != nil {
 		log.Errorc("Error sending messages:", "err", err)
-		return err
+		return 0, err
 	}
 
-	return nil
+	return len(events), nil
 }
 
 func (q *AwsSQSWriter) IsAckAsync() bool {
 	return false
+}
+
+func (q *AwsSQSWriter) IsActive() bool {
+	return true
 }
 
 func (q *AwsSQSWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {

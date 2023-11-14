@@ -34,9 +34,9 @@ func (q *QLTClientWriter) Ctx() string {
 }
 
 type QLTClientWriterConf struct {
-	Addresses string
+	Addresses         string
 	Cert, CertKey, Ca string
-	Cnx       int
+	Cnx               int
 }
 
 func (c *QLTClientWriterConf) Start(context context.Context, p *processor.Processor, ctl chan processor.ControlEvent, inc, out chan processor.AckableEvent) (processor.ConnectorRuntime, error) {
@@ -103,14 +103,15 @@ func (q *QLTClientWriterConnection) Init(p *processor.Processor) error {
 	return nil
 }
 
-func (q *QLTClientWriterConnection) Write(events []processor.AckableEvent) error {
+func (q *QLTClientWriterConnection) Write(events []processor.AckableEvent) (int, error) {
+	n := 0
 	if q.Qlt == nil {
 		log.Infoc(q.CtxS, "Connecting to ", "addr", q.Addr)
 		client := qlt.NewQltClientWriter(q.CtxS, q.Addr, q.Conf.Cert, q.Conf.CertKey, q.Conf.Ca)
 		err := client.Connect(qltClientConnectTimeout)
 		if err != nil {
 			log.Errorc(q.CtxS, "failed to connect", "addr", q.Addr, "err", err)
-			return err
+			return n, err
 		} else {
 			q.Qlt = client
 		}
@@ -119,38 +120,70 @@ func (q *QLTClientWriterConnection) Write(events []processor.AckableEvent) error
 	for _, event := range events {
 		str, _ := event.Msg.(string)
 		if err := q.Qlt.Send(str); err != nil {
+			//log.Debugc(q.CtxS, "close")
 			q.Close()
-			return err
+			return n, err
 		}
-		// log.Debugln(q.CtxS, "Wrote", str)
+		// log.Debugc(q.CtxS, "Wrote", "message", str)
 		q.acks <- event
+		n++
 	}
 
-	return nil
+	return n, nil
 }
 
 func (q *QLTClientWriterConnection) IsAckAsync() bool {
 	return true
 }
 
+func (q *QLTClientWriterConnection) IsActive() bool {
+	return q.Qlt != nil
+}
+
+func (q *QLTClientWriterConnection) DrainAcks() {
+	for i := len(q.acks); i > 0; i-- {
+		select {
+		case _, ok := <-q.acks:
+			if !ok {
+				log.Debugc(q.CtxS, "acks channel closed while draining")
+				return
+			}
+		default:
+			log.Debugc(q.CtxS, "no event in acks channel while draining")
+			return
+		}
+	}
+}
+
 func (q *QLTClientWriterConnection) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {
 	for {
-		// log.Debugln(q.CtxS, "waiting msg to ack")
-		event, ok := <-q.acks
-		if !ok {
+		select {
+		case <-ctx.Done():
 			log.Infoc(q.CtxS, "close ack loop")
 			return
-		}
-		// log.Debugln(q.CtxS, "waiting ack from qlt", "msgId", event.Msgid)
+		default:
+			event, ok := <-q.acks
+			if !ok {
+				log.Infoc(q.CtxS, "close ack loop")
+				return
+			}
 
-		err := q.Qlt.WaitAck()
-		if err != nil {
-			log.Errorc(q.CtxS, "error waiting ack: close ack loop", "err", err)
-			q.Close()
-			return
+			if q.Qlt == nil {
+				log.Warnc(q.CtxS, "close warn not opened: sleeping")
+				q.DrainAcks()
+				continue
+			}
+
+			err := q.Qlt.WaitAck()
+			if err != nil {
+				log.Infoc(q.CtxS, "error waiting ack: sleeping", "err", err)
+				q.DrainAcks()
+				q.Close()
+				continue
+			}
+
+			acks <- event
 		}
-		// log.Debugln(q.CtxS, "ack received", "msgId", event.Msgid)
-		acks <- event
 	}
 }
 

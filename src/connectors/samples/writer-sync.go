@@ -37,18 +37,22 @@ func (q *SampleWriterSync) Init(p *processor.Processor) error {
 	return nil
 }
 
-func (q *SampleWriterSync) Write(events []processor.AckableEvent) error {
+func (q *SampleWriterSync) Write(events []processor.AckableEvent) (int, error) {
 	datas := make([]string, len(events))
 	for i, e := range events {
 		str, _ := e.Msg.(string)
 		datas[i] = str
 	}
 	q.Messages = append(q.Messages, datas...)
-	return nil
+	return len(events), nil
 }
 
 func (q *SampleWriterSync) IsAckAsync() bool {
 	return false
+}
+
+func (q *SampleWriterSync) IsActive() bool {
+	return true
 }
 
 func (q *SampleWriterSync) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {

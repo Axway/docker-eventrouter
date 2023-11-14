@@ -42,7 +42,7 @@ func (q *MemWriter) PrepareEvent(event *processor.AckableEvent) (string, error) 
 	return str, nil
 }
 
-func (q *MemWriter) Write(events []processor.AckableEvent) error {
+func (q *MemWriter) Write(events []processor.AckableEvent) (int, error) {
 	datas := make([]string, len(events))
 	log.Tracec(q.CtxS, "write msg count", "n", len(events))
 	for i, e := range events {
@@ -58,11 +58,15 @@ func (q *MemWriter) Write(events []processor.AckableEvent) error {
 		}
 	}
 	// log.Debugln(q.ctx, q.Messages)
-	return nil
+	return len(events), nil
 }
 
 func (q *MemWriter) IsAckAsync() bool {
 	return false
+}
+
+func (q *MemWriter) IsActive() bool {
+	return true
 }
 
 func (q *MemWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {

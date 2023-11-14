@@ -3,6 +3,7 @@ package processor
 import (
 	"context"
 	"sync/atomic"
+	"time"
 
 	"axway.com/qlt-router/src/config"
 	log "axway.com/qlt-router/src/log"
@@ -13,10 +14,28 @@ var WriterBatchSize = config.DeclareInt("processor.writerBatchSize", 10, "Size o
 type ConnectorRuntimeWriter interface {
 	Ctx() string                                             // Context string mostly for logs
 	Init(p *Processor) error                                 // Initialization before main runtime, when complet message are ready to be sent
-	Write(event []AckableEvent) error                        // Flush Batched Data to be consumed
+	Write(event []AckableEvent) (int, error)                 // Flush Batched Data to be consumed
 	IsAckAsync() bool                                        // Whether acks can be processed asynchronously
+	IsActive() bool                                          // Whether the connector is in an active state
 	ProcessAcks(ctx context.Context, acks chan AckableEvent) // When write acks are asynchronous, acked event are sent through this channel
 	Close() error                                            // Close EventConnector (only when init is successful)
+}
+
+func removeAckableFromList(l []AckableEvent, e AckableEvent) []AckableEvent {
+	/* Remove element from the waiting for Ack list */
+	for i := 0; i < len(l); i++ {
+		if e.Msgid == l[i].Msgid {
+			if i == len(l)-1 {
+				l = l[:i]
+			} else if i == 0 {
+				l = l[i+1:]
+			} else {
+				l = append(l[:i], l[i+1:]...)
+			}
+			break
+		}
+	}
+	return l
 }
 
 // GenProcessorHelper
@@ -25,6 +44,9 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 	p.Name = ctxp
 	sent := 0
 	acked := 0
+	var ackPendingEvents []AckableEvent
+
+	acksReceived := p.Chans.Create(ctxp+"WriterAcks", 1000)
 
 	log.Infoc(ctxp, "Initializing Writer...")
 	ctl <- ControlEvent{p, p2, "STARTING", "Writer"}
@@ -46,8 +68,8 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 			for {
 				select {
 				case event := <-acks.C:
-
 					// log.Debugln(ctxp, "Ack Event:", event)
+					acksReceived.C <- event
 					event.Src.AckMsg(event.Msgid)
 					acked++
 					atomic.AddInt64(&p.Out_ack, 1)
@@ -61,6 +83,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 						}
 					}*/
 				case <-ctx.Done():
+					log.Infoc(ctxp, "Done")
 					return
 				}
 			}
@@ -79,18 +102,29 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 		flush := false
 		batchsize := WriterBatchSize
 		donef := false
+		retryFactor := 1
 		log.Infoc(ctxp, "Running")
 		ctl <- ControlEvent{p, p2, "RUNNING", ""}
 		for !donef {
 			flush = false
+
+			// If not active and ackPendingEvents something went wrong
+			// try to resend ackPendingEvents
+			if len(ackPendingEvents) > 0 && !p2.IsActive() {
+				log.Debugc(ctxp, "retry old events")
+				events = append(ackPendingEvents, events...)
+				ackPendingEvents = nil
+			}
+
 			if len(events) == 0 {
 				// No event bached, wait for new events (or termination)
-				// log.Debugln(ctxp, "Waiting messages...")
 				select {
+				case event := <-acksReceived.C:
+					/* Remove element from the waiting for Ack list */
+					ackPendingEvents = removeAckableFromList(ackPendingEvents, event)
 				case event := <-in:
 					// data, _ := p2.PrepareEvent(&event)
 					events = append(events, event)
-					// toAckEvents = append(toAckEvents, event)
 				case <-ctx.Done():
 					flush = true
 					log.Infoc(ctxp, "done")
@@ -99,12 +133,13 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 				}
 			} else {
 				// Some events in batched queue, try to enqueue more if available
-				// log.Debugln(ctxp, "Waiting more messages...", "batch", len(events))
 				select {
+				case event := <-acksReceived.C:
+					/* Remove element from the waiting for Ack list */
+					ackPendingEvents = removeAckableFromList(ackPendingEvents, event)
 				case event := <-in:
 					// data, _ := p2.PrepareEvent(&event)
 					events = append(events, event)
-					// toAckEvents = append(toAckEvents, event)
 				case <-ctx.Done():
 					log.Infoc(ctxp, "stopping")
 					ctl <- ControlEvent{p, p2, "STOPPING", ""}
@@ -124,24 +159,44 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 					}
 				}*/
 				log.Tracec(ctxp, "writer writing messages...", "batch", len(events))
-				err := p2.Write(events)
+
+				n, err := p2.Write(events)
+				sent += n
 				if err != nil {
-					log.Errorc(ctxp, "error writing messages...", "batch", len(events), "err", err)
+					log.Errorc(ctxp, "error writing messages...", "batch", n, "total", len(events), "err", err)
 					ctl <- ControlEvent{p, p2, "ERROR", ""}
-					return
+
+					delay := 10 * time.Millisecond * time.Duration(retryFactor)
+					if delay >= time.Minute {
+						delay = time.Minute
+					}
+					time.Sleep(delay)
+					retryFactor = retryFactor * 2
 				}
-				sent += len(events)
+
+				/* add n written elements to ackPendingEvents */
+				if p2.IsAckAsync() && n > 0 {
+					ackPendingEvents = append(ackPendingEvents, events[:n]...)
+				}
 				// FIXME: is this required ?
-				atomic.AddInt64(&p.Out, int64(len(events)))
+				atomic.AddInt64(&p.Out, int64(n))
 
 				if !p2.IsAckAsync() {
 					// log.Debugln(ctxp, "Sending async acks...", "batch", len(events))
-					for _, event := range events {
+					for _, event := range events[:n] {
 						event.Src.AckMsg(event.Msgid)
 					}
-					atomic.AddInt64(&p.Out_ack, int64(len(events)))
+					atomic.AddInt64(&p.Out_ack, int64(n))
 					// toAckEvents = nil
 				}
+
+				if n != len(events) { /* error case */
+					/* remove n already written elements from events */
+					events = events[n:]
+
+					continue // If we fail to send, we need to retry later
+				}
+				retryFactor = 1
 				events = nil
 			}
 		}

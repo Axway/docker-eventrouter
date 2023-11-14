@@ -1,12 +1,12 @@
 package file
 
 import (
-	"errors"
 	"context"
-	"os"
+	"errors"
 	"io"
-	"strings"
+	"os"
 	"strconv"
+	"strings"
 
 	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
@@ -102,7 +102,7 @@ func (q *FileStoreRawReader) Read() ([]processor.AckableEvent, error) {
 
 	if n == 0 || (err != nil && q.Pos == 0) {
 		/* Only oppening next file if all messages acked in current file */
-		if (errors.Is(err, io.EOF) && q.AckOffset < (q.Offset - 1)) {
+		if errors.Is(err, io.EOF) && q.AckOffset < (q.Offset-1) {
 			return nil, err
 		}
 
@@ -166,7 +166,7 @@ func (q *FileStoreRawReader) AckMsg(msgid processor.EventAck) {
 	// log.Debugln(q.CtxS, "Ackmsg", msgid)
 	offset, ok := msgid.(int64)
 	if !ok || offset <= q.AckOffset {
-		log.Fatalc(q.CtxS, "AckMsg", "offset", q.Offset, "msgid", msgid)
+		log.Fatalc(q.CtxS, "AckMsg", "ok?", ok, "offset", offset, "ackOffset", q.AckOffset, "msgid", msgid)
 	}
 	q.AckOffset = offset
 
@@ -176,7 +176,7 @@ func (q *FileStoreRawReader) AckMsg(msgid processor.EventAck) {
 		log.Errorc(q.CtxS, "Error opening file for writing last position", "filename", q.conf.ReaderFilename, "err", err)
 	} else {
 		defer f2.Close()
-		b := []byte(strconv.FormatInt(q.AckOffset,10) + "\n" + q.Filename)
+		b := []byte(strconv.FormatInt(q.AckOffset, 10) + "\n" + q.Filename)
 		_, err = f2.Write(b)
 	}
 }

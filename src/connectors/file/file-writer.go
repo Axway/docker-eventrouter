@@ -106,34 +106,38 @@ func (q *FileStoreRawWriter) PrepareEvent(event *processor.AckableEvent) (string
 	return str, nil
 }
 
-func (q *FileStoreRawWriter) Write(events []processor.AckableEvent) error {
+func (q *FileStoreRawWriter) Write(events []processor.AckableEvent) (int, error) {
 	datas := processor.PrepareEvents(q, events)
 
 	// log.Debugln(q.CtxS, "writing", "count", len(datas))
 	buf := []byte(strings.Join(datas, "\n") + "\n")
 	if len(buf) == 1 { /* data is empty: not writing */
-		return nil
+		return 0, nil
 	}
 
 	q.Size += int64(len(buf))
-	if q.Conf.MaxSize > 0 && q.Size > (q.Conf.MaxSize * 1048576) {
-		log.Debugc(q.CtxS, "switching", "filename", q.Filename, "size", q.Size, "maxsize", q.Conf.MaxSize * 1048576)
+	if q.Conf.MaxSize > 0 && q.Size > (q.Conf.MaxSize*1048576) {
+		log.Debugc(q.CtxS, "switching", "filename", q.Filename, "size", q.Size, "maxsize", q.Conf.MaxSize*1048576)
 		q.Switch()
-
-		buf = []byte(strings.Join(datas, "\n") + "\n")
 		q.Size = int64(len(buf))
 	}
 
-	if _, err := q.file.Write(buf); err != nil {
+	size, err := q.file.Write(buf)
+	n := strings.Count(string(buf[:size]), "\n")
+	if err != nil {
 		log.Errorc(q.CtxS, "error write message in file", "filename", q.Filename, "err", err)
-		return err
+		return n, err
 	}
 
-	return nil
+	return n, nil
 }
 
 func (q *FileStoreRawWriter) IsAckAsync() bool {
 	return false
+}
+
+func (q *FileStoreRawWriter) IsActive() bool {
+	return true
 }
 
 func (q *FileStoreRawWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {

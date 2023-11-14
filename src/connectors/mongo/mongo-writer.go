@@ -107,11 +107,15 @@ func (q *MongoWriter) IsAckAsync() bool {
 	return false
 }
 
+func (q *MongoWriter) IsActive() bool {
+	return true
+}
+
 func (q *MongoWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {
 	log.Fatalc(q.CtxS, "Not supported")
 }
 
-func (q *MongoWriter) Write(events []processor.AckableEvent) error {
+func (q *MongoWriter) Write(events []processor.AckableEvent) (int, error) {
 	var docs []interface{}
 	for _, event := range events {
 		var m interface{}
@@ -119,7 +123,7 @@ func (q *MongoWriter) Write(events []processor.AckableEvent) error {
 		s := event.Msg.(string)
 		err := json.Unmarshal([]byte(s), &m)
 		if err != nil {
-			return err
+			return 0, err
 		}
 		log.Tracec(q.CtxS, "Write", "msg", m)
 		msg := map[string]interface{}{"msg": m}
@@ -130,7 +134,7 @@ func (q *MongoWriter) Write(events []processor.AckableEvent) error {
 	_, err := q.collection.InsertMany(ctx, docs, &options.InsertManyOptions{})
 	if err != nil {
 		log.Errorc(q.CtxS, "insertMany", "n", len(docs), "err", err)
-		return err
+		return 0, err
 	}
-	return nil
+	return len(docs), nil
 }

@@ -114,6 +114,21 @@ func (m *QLTServerWriterConnection) IsAckAsync() bool {
 	return true
 }
 
+func (q *QLTServerWriterConnection) DrainAcks() {
+	for i := len(q.acks); i > 0; i-- {
+		select {
+		case _, ok := <-q.acks:
+			if !ok {
+				log.Debugc(q.CtxS, "acks channel closed while draining")
+				return
+			}
+		default:
+			log.Debugc(q.CtxS, "no event in acks channel while draining")
+			return
+		}
+	}
+}
+
 func (q *QLTServerWriterConnection) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {
 	for {
 		// log.Debugln(q.CtxS, "waiting msg to ack")
@@ -122,14 +137,20 @@ func (q *QLTServerWriterConnection) ProcessAcks(ctx context.Context, acks chan p
 			log.Infoc(q.CtxS, "close ack loop")
 			return
 		}
-		// log.Debugln(q.CtxS, "waiting ack from qlt", "msgId", event.Msgid)
+
+		if q.Qlt == nil {
+			log.Warnc(q.CtxS, "close warn not opened: sleeping")
+			q.DrainAcks()
+			continue
+		}
 
 		err := q.Qlt.WaitAck(qltWriterAckTimeout)
 		if err != nil {
 			log.Errorc(q.CtxS, "error waiting ack: close ack loop", "err", err)
+			q.DrainAcks()
 			return
 		}
-		// log.Debugln(q.CtxS, "ack received", "msgId", event.Msgid)
+
 		acks <- event
 	}
 }
@@ -138,18 +159,24 @@ func (m *QLTServerWriterConnection) Ctx() string {
 	return m.CtxS
 }
 
-func (q *QLTServerWriterConnection) Write(events []processor.AckableEvent) error {
+func (q *QLTServerWriterConnection) IsActive() bool {
+	return true
+}
+
+func (q *QLTServerWriterConnection) Write(events []processor.AckableEvent) (int, error) {
+	n := 0
 	// log.Debugln(q.CtxS, "Write events", "events", events)
 	for _, event := range events {
 		str, _ := event.Msg.(string)
 		if err := q.Qlt.Send(str); err != nil {
-			return err
+			return n, err
 		}
 		// log.Debugln(q.CtxS, "Wrote", str)
 		q.acks <- event
+		n++
 	}
 
-	return nil
+	return n, nil
 }
 
 func (m *QLTServerWriterConnection) Close() error {

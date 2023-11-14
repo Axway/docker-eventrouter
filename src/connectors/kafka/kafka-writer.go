@@ -142,14 +142,19 @@ func (q *KafkaWriter) IsAckAsync() bool {
 	return true
 }
 
+func (q *KafkaWriter) IsActive() bool {
+	return true
+}
+
 /*func (q *KafkaWriter) PrepareEvent(event *processor.AckableEvent) (string, error) {
 	msg := event.Msg.([]byte)
 	return string(msg), nil
 }*/
 
-func (q *KafkaWriter) Write(events []processor.AckableEvent) error {
+func (q *KafkaWriter) Write(events []processor.AckableEvent) (int, error) {
 	// datas := processor.PrepareEvents(q, events)
 	// log.Debugln(q.CtxS, "Writing Events")
+	n := 0
 	for _, event := range events {
 		// log.Debugln(q.CtxS, "Writing Event", "msg", event.Msg)
 		data := []byte(event.Msg.(string))
@@ -159,13 +164,14 @@ func (q *KafkaWriter) Write(events []processor.AckableEvent) error {
 		}, nil)
 		if err != nil {
 			log.Errorc(q.CtxS, "error writing event", "err", err)
-			return err
+			return n, err
 		}
 		log.Tracec(q.CtxS, "Wrote Event", "topic", q.Conf.Topic, "msg", event.Msg.(string))
 		q.acks.C <- event
+		n++
 	}
 	// log.Debugln(q.CtxS, "Flush")
 	// count := q.k.Flush(500)
 	// log.Debugc(q.CtxS, "Flush", "count", len(events), "nonFlushed", count)
-	return nil
+	return n, nil
 }
