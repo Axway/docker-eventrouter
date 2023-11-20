@@ -119,6 +119,11 @@ func (q *QLTClientWriterConnection) Write(events []processor.AckableEvent) (int,
 	// log.Debugln(q.CtxS, "Write events", "events", events)
 	for _, event := range events {
 		str, _ := event.Msg.(string)
+
+		if q.Qlt == nil {
+			log.Warnc(q.CtxS, "")
+			return n, nil
+		}
 		if err := q.Qlt.Send(str); err != nil {
 			//log.Debugc(q.CtxS, "close")
 			q.Close()
@@ -169,14 +174,14 @@ func (q *QLTClientWriterConnection) ProcessAcks(ctx context.Context, acks chan p
 			}
 
 			if q.Qlt == nil {
-				log.Warnc(q.CtxS, "close warn not opened: sleeping")
+				log.Warnc(q.CtxS, "close warn not opened: draining")
 				q.DrainAcks()
 				continue
 			}
 
 			err := q.Qlt.WaitAck()
 			if err != nil {
-				log.Infoc(q.CtxS, "error waiting ack: sleeping", "err", err)
+				log.Infoc(q.CtxS, "error waiting ack: draining", "err", err)
 				q.DrainAcks()
 				q.Close()
 				continue
