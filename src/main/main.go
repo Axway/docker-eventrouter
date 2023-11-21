@@ -62,6 +62,7 @@ func main() {
 
 	configFile := flag.String("config", "./qlt-router.yml", "path to config file")
 	port := flag.String("port", "8080", "http port")
+	host := flag.String("host", "0.0.0.0", "http host")
 
 	logFname := flag.String("log-file", "", "log file name")
 	logMaxSize := flag.Int("log-max-size", 100, "log file max size (MB)")
@@ -306,8 +307,8 @@ func main() {
 		http.Handle("/", fs)
 	}
 
-	log.Infoc(ctxS, "[HTTP] Listening on localhost:"+*port)
-	go http.ListenAndServe("localhost:"+*port, nil)
+	log.Infoc(ctxS, "[HTTP] Listening on "+*host+":"+*port)
+	go http.ListenAndServe(*host+":"+*port, nil)
 
 	time.Sleep(1 * time.Second)
 	channels.Display(ctxS)
