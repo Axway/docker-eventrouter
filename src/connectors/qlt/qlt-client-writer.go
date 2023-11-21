@@ -36,6 +36,7 @@ func (q *QLTClientWriter) Ctx() string {
 type QLTClientWriterConf struct {
 	Addresses         string
 	Cert, CertKey, Ca string
+	Synchronous       bool
 	Cnx               int
 }
 
@@ -56,7 +57,6 @@ func (c *QLTClientWriterConf) Start(context context.Context, p *processor.Proces
 			p.AddReader(c2)
 		}
 	}
-
 	return q, nil
 }
 
@@ -116,7 +116,7 @@ func (q *QLTClientWriterConnection) Write(events []processor.AckableEvent) (int,
 			q.Qlt = client
 		}
 	}
-	// log.Debugln(q.CtxS, "Write events", "events", events)
+	// log.Debugc(q.CtxS, "Write events", "events", events)
 	for _, event := range events {
 		str, _ := event.Msg.(string)
 
@@ -125,9 +125,16 @@ func (q *QLTClientWriterConnection) Write(events []processor.AckableEvent) (int,
 			return n, nil
 		}
 		if err := q.Qlt.Send(str); err != nil {
-			//log.Debugc(q.CtxS, "close")
+			// log.Debugc(q.CtxS, "close")
 			q.Close()
 			return n, err
+		}
+		if q.Conf.Synchronous {
+			// log.Debugc(q.CtxS, "Waiting for the ACK")
+			if err := q.Qlt.WaitAck(); err != nil {
+				q.Close()
+				return n, err
+			}
 		}
 		// log.Debugc(q.CtxS, "Wrote", "message", str)
 		q.acks <- event
@@ -138,7 +145,7 @@ func (q *QLTClientWriterConnection) Write(events []processor.AckableEvent) (int,
 }
 
 func (q *QLTClientWriterConnection) IsAckAsync() bool {
-	return true
+	return !q.Conf.Synchronous
 }
 
 func (q *QLTClientWriterConnection) IsActive() bool {
