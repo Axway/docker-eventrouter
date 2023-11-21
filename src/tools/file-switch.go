@@ -6,6 +6,7 @@ import (
 	"path"
 	"time"
 	"fmt"
+	"regexp"
 
 	"axway.com/qlt-router/src/log"
 	"github.com/esimov/gogu"
@@ -24,17 +25,17 @@ func TimestampedFilename(ctx, filenamePrefix string, filenameSuffix string) (str
 func NextFile(ctx, filenamePrefix string, filenameSuffix string, lastfilename string) (string, error) {
 	var nextfilename string
 
-	previousFiles, err := FileSwitchList(ctx, filenamePrefix, filenameSuffix)
-	if err != nil || len(previousFiles) == 0 {
+	filenames, err := FileSwitchList(ctx, filenamePrefix, filenameSuffix)
+	if err != nil || len(filenames) == 0 {
 		return lastfilename, err
 	}
 
-	nextfilename = previousFiles[len(previousFiles)-1]
-	for i := len(previousFiles)-1; i >= 0; i-- {
-		if previousFiles[i] == lastfilename {
+	nextfilename = filenames[len(filenames)-1]
+	for i := len(filenames)-1; i >= 0; i-- {
+		if filenames[i] == lastfilename {
 			break;
 		}
-		nextfilename = previousFiles[i]
+		nextfilename = filenames[i]
 	}
 	return nextfilename, nil
 }
@@ -60,36 +61,33 @@ func FileSwitchList(ctx, filenamePrefix string, filenameSuffix string) ([]string
 		log.Errorc(ctx, "error on ReadDir : readdir", "filenamePrefix", filenamePrefix, "err", err)
 		return nil, err
 	}
+	//log.Debugc(ctx, "FileSwitchList", "files", files)
 
-	// List file with basename prefix
-	previousFiles := gogu.Filter(files, func(file fs.DirEntry) bool {
-		basename := path.Base(filenamePrefix)
-		lenBase := len(basename)
-		lenFile := len(file.Name())
-		lenSuf := len(filenameSuffix)
-
-		return lenFile > lenBase && file.Name()[:lenBase] == basename &&
-			   lenFile > lenSuf && file.Name()[lenFile-lenSuf:] == filenameSuffix
+	// List file with pattern: prefix.(time.RFC3339Nano)(.suffix)
+	pattern := path.Base(filenamePrefix) + `\.` + `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z\.*` + filenameSuffix
+	r, _ := regexp.Compile(pattern)
+	filtered := gogu.Filter(files, func(file fs.DirEntry) bool {
+		return r.MatchString(file.Name())
 	})
 
-	names := gogu.Map(previousFiles, func(f fs.DirEntry) string { return path.Join(dir, f.Name()) })
-	//log.Debugc(ctx, "FileSwitchList", "filename", filename, "files", names)
+	names := gogu.Map(filtered, func(f fs.DirEntry) string { return path.Join(dir, f.Name()) })
+	//log.Debugc(ctx, "FileSwitchList", "names", names)
 	return names, nil
 }
 
 func FileSwitch(ctx string, filenamePrefix string, filenameSuffix string, maxfile int) (string, error) {
 	newfname := TimestampedFilename(ctx, filenamePrefix, filenameSuffix)
 
-	previousFiles, err := FileSwitchList(ctx, filenamePrefix, filenameSuffix)
+	filenames, err := FileSwitchList(ctx, filenamePrefix, filenameSuffix)
 	if err != nil {
 		return newfname, err
 	}
 
-	if maxfile > 0 && len(previousFiles) >= maxfile {
-		fmt.Println("Need to remove file ", fmt.Sprint(len(previousFiles)), ">=", fmt.Sprint(maxfile))
+	if maxfile > 0 && len(filenames) >= maxfile {
+		fmt.Println("Need to remove file ", fmt.Sprint(len(filenames)), ">=", fmt.Sprint(maxfile))
 		// Only keep Maxfile old files
-		for i := 0; i < len(previousFiles)-maxfile+1; i++ {
-			fname := previousFiles[i]
+		for i := 0; i < len(filenames)-maxfile+1; i++ {
+			fname := filenames[i]
 			log.Infoc(ctx, "Removing ", "filename", fname)
 			err := os.Remove(fname)
 			if err != nil {

@@ -8,7 +8,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"path"
 
 	"axway.com/qlt-router/src/connectors/file"
 	"axway.com/qlt-router/src/tools"
@@ -17,33 +16,12 @@ import (
 	"axway.com/qlt-router/src/processor"
 )
 
-func CleanFiles(ctx, filename string) error {
-	extention := path.Ext(filename)
-	refname := filename[:len(filename)-len(extention)]
-
-	entries, err := tools.FileSwitchList(ctx, filename, extention)
-	if err != nil {
-		fmt.Println("FileSwitchList error ")
-		return err
-	}
-
-	for _, entry := range entries {
-		if entry[:len(refname)] != refname {
-			return err
-		}
-		err := os.Remove(entry)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func Test1FileStoreRawWriterStart(t *testing.T) {
 	targetFilename := "/tmp/write_test1"
+	targetFilenameSuf := "zouzou"
 	ctx := "test1"
 
-	err := CleanFiles(ctx, targetFilename)
+	err := CleanFiles(ctx, targetFilename, targetFilenameSuf)
 	if err != nil {
 		return
 	}
@@ -55,7 +33,7 @@ func Test1FileStoreRawWriterStart(t *testing.T) {
 	channels := processor.NewChannels()
 	cIn := channels.Create("file-store-in", -1)
 	// cIn := make(chan processor.AckableEvent, 1000)
-	wp := processor.NewProcessor("file-store", &file.FileStoreRawWriterConfig{targetFilename, "", 0, 0}, channels)
+	wp := processor.NewProcessor("file-store", &file.FileStoreRawWriterConfig{targetFilename, targetFilenameSuf, 0, 0}, channels)
 	rp := processor.NewProcessor("mem-reader", &mem.MemReadersConf{msgs}, channels)
 
 	wp.Start(context.Background(), ctl, cIn, nil)
@@ -79,7 +57,7 @@ func Test1FileStoreRawWriterStart(t *testing.T) {
 		return
 	}
 
-	entries, err := tools.FileSwitchList(ctx, targetFilename, "")
+	entries, err := tools.FileSwitchList(ctx, targetFilename, targetFilenameSuf)
 	if err != nil {
 		t.Error(err)
 		return
@@ -114,7 +92,7 @@ func Test1FileStoreRawWriterStart(t *testing.T) {
 	}
 	memtest.MemMessageCheck(t, msgs, ackPos, wMessages)
 
-	err = CleanFiles(ctx, targetFilename)
+	err = CleanFiles(ctx, targetFilename, targetFilenameSuf)
 	if err != nil {
 		return
 	}
@@ -124,7 +102,7 @@ func Test2FileStoreMultipleFilesStart(t *testing.T) {
 	targetFilename := "/tmp/write_test2"
 	ctx := "test2"
 
-	err := CleanFiles(ctx, targetFilename)
+	err := CleanFiles(ctx, targetFilename, "")
 	if err != nil {
 		return
 	}
@@ -206,7 +184,7 @@ func Test2FileStoreMultipleFilesStart(t *testing.T) {
 	}
 	memtest.MemMessageCheck(t, msgs, ackPos, wMessages)
 
-	err = CleanFiles(ctx, targetFilename)
+	err = CleanFiles(ctx, targetFilename, "")
 	if err != nil {
 		return
 	}
