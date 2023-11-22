@@ -135,9 +135,10 @@ func (q *QLTClientWriterConnection) Write(events []processor.AckableEvent) (int,
 				q.Close()
 				return n, err
 			}
+		} else {
+			q.acks <- event
 		}
 		// log.Debugc(q.CtxS, "Wrote", "message", str)
-		q.acks <- event
 		n++
 	}
 
