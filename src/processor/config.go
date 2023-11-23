@@ -2,7 +2,7 @@ package processor
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 
 	log "axway.com/qlt-router/src/log"
 	"github.com/a8m/envsubst"
@@ -12,11 +12,12 @@ import (
 
 type Config struct {
 	// processors map[string]ProcessorConf
-	Streams []*Flow `yaml:""`
+	Streams     []*Flow `yaml:""`
+	Instance_id string  `yaml:"instance_id"`
 }
 
-func ParseConfigFile(ctx string, filename string) (*Config, error) {
-	data, err := ioutil.ReadFile(filename)
+func ParseConfigFile(ctx, filename string) (*Config, error) {
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		log.Errorc(ctx, "Failed to open ", "filename", filename, "err", err)
 		return nil, err

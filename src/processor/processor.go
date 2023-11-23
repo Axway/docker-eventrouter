@@ -3,10 +3,11 @@ package processor
 import (
 	"context"
 	"fmt"
-
-	"github.com/prometheus/client_golang/prometheus"
+	"regexp"
 
 	log "axway.com/qlt-router/src/log"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 type EventAck interface{}
@@ -30,14 +31,16 @@ type Processor struct {
 	Runtime  ConnectorRuntime
 	Runtimes []ConnectorRuntime
 
-	Flow     *Flow
-	FlowStep *FlowStep
+	Instance_id   string
+	Flow          *Flow
+	FlowStep      *FlowStep
+	OutCounter    prometheus.Counter
+	OutAckCounter prometheus.Counter
+
 	// In       int64
 	Out     int64
 	Out_ack int64
 	Context context.Context `json:"-"`
-
-	OutCounter prometheus.Counter `json:"-"`
 
 	Cin  *Channel
 	Cout *Channel
@@ -56,6 +59,26 @@ func NewProcessor(name string, conf Connector, channels *Channels) *Processor {
 	p.Chans = channels
 
 	return &p
+}
+
+var promInvalidCharacter = regexp.MustCompile(`[^a-zA-Z0-9_]+`)
+
+// Ensure valid prometheus counter when testing
+func (p *Processor) InitializePrometheusCounters() {
+	if p.OutCounter != nil {
+		return
+	}
+
+	id := fmt.Sprintf("%p", p)
+	name := promInvalidCharacter.ReplaceAllString(p.Name, "_")
+	p.OutCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "er_" + name + "_out_" + id,
+		Help: "The total number of " + p.Name + " events out (unspecified)",
+	})
+	p.OutAckCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "er_" + name + "_out_ack_" + id,
+		Help: "The total number of " + p.Name + " events out acked (unspecified)",
+	})
 }
 
 func (p *Processor) AddReader(reader Connector) (ConnectorRuntime, error) {

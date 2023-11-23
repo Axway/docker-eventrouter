@@ -57,6 +57,8 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 		return nil, err
 	}
 
+	p.InitializePrometheusCounters()
+
 	if p2.IsAckAsync() {
 		log.Infoc(ctxp, "Starting Writer Ack Loops (async writer)...")
 		acks := p.Chans.Create(ctxp+"WriterAsyncAck", 1000)
@@ -73,6 +75,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 					event.Src.AckMsg(event.Msgid)
 					acked++
 					atomic.AddInt64(&p.Out_ack, 1)
+					p.OutAckCounter.Inc()
 					// ctl <- ControlEvent{p, p2, "ACK", "" + fmt.Sprint(acked, sent)}
 					// FIXME: not ALL_ALL_DONE on writer ?
 					/*if acked == sent {
@@ -180,6 +183,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 				}
 				// FIXME: is this required ?
 				atomic.AddInt64(&p.Out, int64(n))
+				p.OutCounter.Add(float64(n))
 
 				if !p2.IsAckAsync() {
 					// log.Debugln(ctxp, "Sending async acks...", "batch", len(events))
@@ -187,6 +191,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 						event.Src.AckMsg(event.Msgid)
 					}
 					atomic.AddInt64(&p.Out_ack, int64(n))
+					p.OutAckCounter.Add(float64(n))
 					// toAckEvents = nil
 				}
 

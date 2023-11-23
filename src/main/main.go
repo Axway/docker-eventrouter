@@ -202,7 +202,7 @@ func main() {
 
 	log.Infoc(ctxS, "config [yaml]:", "marshall", string(b))
 
-	// Verify that CLone is properly implemented
+	// Verify that Clone is properly implemented
 	for _, p := range connectors.All() {
 		c1 := p.Conf
 		c2 := p.Conf.Clone()
@@ -214,7 +214,6 @@ func main() {
 	{ // Verify that all upstreams are defined
 		count := 0
 		for _, flow := range conf.Streams {
-			// if !flow.Disable {
 			if flow.Upstream != "" {
 				found := false
 				for _, flow2 := range conf.Streams {
@@ -227,12 +226,18 @@ func main() {
 					log.Errorc(ctxS, "Upstream flow not found", "flow", flow.Name, "upstream", flow.Upstream)
 				}
 			}
-			//}
 		}
 		if count != 0 {
 			os.Exit(1)
 		}
 	}
+
+	// Ensure to have an instance_id
+	if conf.Instance_id == "" {
+		hostname, _ := os.Hostname()
+		conf.Instance_id = hostname
+	}
+
 	// FIXME: comment
 	all := false
 
@@ -252,7 +257,7 @@ func main() {
 
 	for _, flow := range conf.Streams {
 		if !flow.Disable {
-			r, err := flow.Start(ctx, readerContext, all, ctl, channels, connectors)
+			r, err := flow.Start(ctx, readerContext, conf.Instance_id, all, ctl, channels, connectors)
 			if err != nil {
 				errors++
 			}

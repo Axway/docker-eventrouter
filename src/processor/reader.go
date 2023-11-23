@@ -60,6 +60,8 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 		return nil, err
 	}
 
+	p.InitializePrometheusCounters()
+
 	log.Infoc(ctxp, "Starting Reader Proxy Ack Loop...")
 	go func() {
 		defer p2.Close()
@@ -77,6 +79,7 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 				p2.AckMsg(msgid)
 				atomic.AddInt64(&acked, 1)
 				atomic.AddInt64(&p.Out_ack, 1)
+				p.OutAckCounter.Inc()
 				// log.Infoln(ctxp, "Ack...", "msgId", msgid, "acked", acked, "sent", sent, "all_ack", p.Out_ack, "all_sent", p.Out)
 				// ctl <- ControlEvent{p, p2, "ACK", "" + fmt.Sprint(acked, sent)}
 				if acked == sent {
@@ -145,6 +148,7 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 				sent++
 				// FIXME: is this required ?
 				atomic.AddInt64(&p.Out, 1)
+				p.OutCounter.Inc()
 			}
 			// log.Debugln(ctxp, "Sending messages...", "batch", len(events), "acked", acked, "sent", sent, "all_ack", p.Out_ack, "all_sent", p.Out)
 			if sent != 0 && lastAcked != acked && acked == sent {

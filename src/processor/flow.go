@@ -65,7 +65,7 @@ func (f *FlowStep) UnmarshalYAML(n *yaml.Node) error {
 	return err
 }
 
-func (flow *Flow) Start(ctx context.Context, readerContext context.Context, all bool, ctl chan ControlEvent, channels *Channels, processors *Processors) ([]*Processor, error) {
+func (flow *Flow) Start(ctx context.Context, readerContext context.Context, instance_id string, all bool, ctl chan ControlEvent, channels *Channels, processors *Processors) ([]*Processor, error) {
 	ctxS := "flow"
 	if flow.Disable && !all {
 		log.Warnc(ctxS, "flow disabled", "name", flow.Name)
@@ -84,11 +84,11 @@ func (flow *Flow) Start(ctx context.Context, readerContext context.Context, all 
 	var runtimeProcessor []*Processor
 	for idx, step := range steps {
 		channelName := flow.Name + "-" + fmt.Sprint(idx)
-		// writer := false
+		writer := false
 		reader := false
 		if idx == len(steps)-1 {
 			out = nil
-			// reader = true
+			writer = true
 		} else {
 			if idx == 0 {
 				channelName = flow.Name + "-reader"
@@ -98,9 +98,10 @@ func (flow *Flow) Start(ctx context.Context, readerContext context.Context, all 
 			}
 			out = channels.Create(channelName, flowChannelSize)
 		}
-		flowtxt += fmt.Sprint(step.Type)
+		flowtxt += step.Type
 		connector := step.Conf
 		p := NewProcessor(step.Type, connector, channels)
+		p.Instance_id = instance_id
 
 		if p == nil { // FIXME: cannot be nil : already checked when loading configuration
 			log.Errorc(ctxS, "Processor not found", "name", flow.Name+"/"+step.Type)
@@ -132,14 +133,37 @@ func (flow *Flow) Start(ctx context.Context, readerContext context.Context, all 
 			p.Cin = in
 			p.Cout = out
 
-			runtimeProcessor = append(runtimeProcessor, p)
-			if reader {
+			if reader || writer {
+				position := "reader"
+				if writer {
+					position = "writer"
+				}
 				p.OutCounter = promauto.NewCounter(prometheus.CounterOpts{
-					Name:        "qlt_in_message_total",
-					Help:        "The total number of qlt messages for",
-					ConstLabels: prometheus.Labels{"reader": step.Type, "flow": flow.Name},
+					Name: "er_messages_total",
+					Help: "The total number messages processed",
+					ConstLabels: prometheus.Labels{
+						"position":       position,
+						"type":           step.Type,
+						"stream":         flow.Name,
+						"upstream":       flow.Upstream,
+						"er_instance_id": p.Instance_id,
+					},
+				})
+				p.OutAckCounter = promauto.NewCounter(prometheus.CounterOpts{
+					Name: "er_ack_messages_total",
+					Help: "The total number messages acked",
+					ConstLabels: prometheus.Labels{
+						"position":       position,
+						"type":           step.Type,
+						"stream":         flow.Name,
+						"upstream":       flow.Upstream,
+						"er_instance_id": p.Instance_id,
+					},
 				})
 			}
+
+			runtimeProcessor = append(runtimeProcessor, p)
+
 			log.Infoc(ctxS, "flow", "name", flow.Name, "processorName", p.Name, "conf", fmt.Sprintf("%+v", p.Conf))
 			if step.Scale > 0 {
 				ParallelOrdered(ctx, channelName+"-scale", step.Scale, ctl, in.C, out.C, channels, p)
