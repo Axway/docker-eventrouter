@@ -184,6 +184,9 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 				// FIXME: is this required ?
 				atomic.AddInt64(&p.Out, int64(n))
 				p.OutCounter.Add(float64(n))
+				for i := 0; i < n; i++ {
+					p.OutDataCounter.Add(float64(len(events[i].Msg.(string))))
+				}
 
 				if !p2.IsAckAsync() {
 					// log.Debugln(ctxp, "Sending async acks...", "batch", len(events))

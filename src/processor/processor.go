@@ -31,11 +31,12 @@ type Processor struct {
 	Runtime  ConnectorRuntime
 	Runtimes []ConnectorRuntime
 
-	Instance_id   string
-	Flow          *Flow
-	FlowStep      *FlowStep
-	OutCounter    prometheus.Counter
-	OutAckCounter prometheus.Counter
+	Instance_id    string
+	Flow           *Flow
+	FlowStep       *FlowStep
+	OutCounter     prometheus.Counter
+	OutDataCounter prometheus.Counter
+	OutAckCounter  prometheus.Counter
 
 	// In       int64
 	Out     int64
@@ -74,6 +75,10 @@ func (p *Processor) InitializePrometheusCounters() {
 	p.OutCounter = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "er_" + name + "_out_" + id,
 		Help: "The total number of " + p.Name + " events out (unspecified)",
+	})
+	p.OutDataCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "er_" + name + "_data_out_" + id,
+		Help: "The total volume " + p.Name + " events out (unspecified)",
 	})
 	p.OutAckCounter = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "er_" + name + "_out_ack_" + id,

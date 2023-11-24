@@ -138,6 +138,10 @@ func (flow *Flow) Start(ctx context.Context, readerContext context.Context, inst
 				if writer {
 					position = "writer"
 				}
+				upstream := flow.Upstream
+				if upstream == "" {
+					upstream = "none"
+				}
 				p.OutCounter = promauto.NewCounter(prometheus.CounterOpts{
 					Name: "er_messages_total",
 					Help: "The total number messages processed",
@@ -145,7 +149,18 @@ func (flow *Flow) Start(ctx context.Context, readerContext context.Context, inst
 						"position":       position,
 						"type":           step.Type,
 						"stream":         flow.Name,
-						"upstream":       flow.Upstream,
+						"upstream":       upstream,
+						"er_instance_id": p.Instance_id,
+					},
+				})
+				p.OutDataCounter = promauto.NewCounter(prometheus.CounterOpts{
+					Name: "er_messages_data_total",
+					Help: "The total volume messages processed",
+					ConstLabels: prometheus.Labels{
+						"position":       position,
+						"type":           step.Type,
+						"stream":         flow.Name,
+						"upstream":       upstream,
 						"er_instance_id": p.Instance_id,
 					},
 				})
@@ -156,7 +171,7 @@ func (flow *Flow) Start(ctx context.Context, readerContext context.Context, inst
 						"position":       position,
 						"type":           step.Type,
 						"stream":         flow.Name,
-						"upstream":       flow.Upstream,
+						"upstream":       upstream,
 						"er_instance_id": p.Instance_id,
 					},
 				})

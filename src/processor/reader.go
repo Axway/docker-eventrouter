@@ -149,6 +149,7 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 				// FIXME: is this required ?
 				atomic.AddInt64(&p.Out, 1)
 				p.OutCounter.Inc()
+				p.OutDataCounter.Add(float64(len(e.Msg.(string))))
 			}
 			// log.Debugln(ctxp, "Sending messages...", "batch", len(events), "acked", acked, "sent", sent, "all_ack", p.Out_ack, "all_sent", p.Out)
 			if sent != 0 && lastAcked != acked && acked == sent {
