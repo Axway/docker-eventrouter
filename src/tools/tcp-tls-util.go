@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
-	"time"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"axway.com/qlt-router/src/log"
 )
@@ -91,7 +91,7 @@ func TlsConnect(
 	}
 
 	tlsConfig := &tls.Config{
-		MinVersion:        tls.VersionTLS12, // FIXME should we be able do force only 1.2 ? MaxVersion
+		MinVersion: tls.VersionTLS12, // FIXME should we be able do force only 1.2 ? MaxVersion
 		// Need to test if when we allow 1.3, can we runcheck with someone that doesn't understand 1.3, like ER?
 		// when I allow 1.2, how do I runcheck with someone that uses 1.3? Will I only use 1.3?
 		CipherSuites: []uint16{
@@ -137,7 +137,15 @@ func TlsConnect(
 		p := pem.EncodeToMemory(&block)
 		log.Debugc(prefix, "pem", "data", string(p))
 	}
-	log.Infoc(ctx, "client: handshake: ", "handshake", state.HandshakeComplete, "mutual", state.NegotiatedProtocolIsMutual)
+	log.Infoc(ctx, "TLS - Client: conn: Handshake completed")
+
+	log.Infoc(ctx, "TLS - Client info",
+		"version", tls.VersionName(state.Version),
+		"CipherSuite", state.CipherSuite,
+		"CipherSuiteName", tls.CipherSuiteName(state.CipherSuite),
+		"handshakecomplete", state.HandshakeComplete,
+		"negotiatedProtocol", state.NegotiatedProtocol,
+		"negotiatedProtocolIsMutual", state.NegotiatedProtocolIsMutual)
 
 	return conn, ctx, nil
 }
@@ -179,9 +187,10 @@ func TlsLogInfo(tlscon *tls.Conn, ctx string) {
 	state := tlscon.ConnectionState()
 
 	log.Infoc(ctx, "TLS - Server info",
-		"version", state.Version,
+		"version", tls.VersionName(state.Version),
 		"serverName", state.ServerName,
 		"CipherSuite", state.CipherSuite,
+		"CipherSuiteName", tls.CipherSuiteName(state.CipherSuite),
 		"OCSPResponse", state.OCSPResponse,
 		"handshakecomplete", state.HandshakeComplete,
 		"negotiatedProtocol", state.NegotiatedProtocol,

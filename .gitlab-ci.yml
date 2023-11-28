@@ -48,7 +48,7 @@ unit-test:
     - ./scripts/run-unit-test-docker.sh
 
 .build:
-  image: golang:buster
+  image: golang:bookworm
   stage: build
   needs:
     - version
