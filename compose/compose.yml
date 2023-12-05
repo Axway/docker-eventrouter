@@ -1,0 +1,24 @@
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
+#
+# Copyright (c) 2023 Axway Software SA and its affiliates. All rights reserved.
+#
+#
+
+version: "3.5"
+
+services:
+  eventrouter:
+    image: eventrouter/eventrouter:3.0.
+
+    ports:
+    - "1325:1325" # same ports as the ones configured as input in yml
+                  # configuration file
+
+    volumes:
+      - "./data:/data"
+      - "./conf/qlt-router.yml:/qlt-router.yml"
+
+volumes:
+  eventrouter_data:
+    driver: local
+

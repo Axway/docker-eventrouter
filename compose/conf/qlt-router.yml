@@ -1,0 +1,109 @@
+streams:
+  - name: QLT_input
+    disable: false
+    description: "qlt to file stream"
+    upstream: ""
+    reader:
+      type: "qlt-server-reader"
+      conf:
+        port: 1325
+    writer:
+      type: "file-writer"
+      conf:
+        filenamePrefix: "./qlt-messages"
+        filenameSuffix: "xml"
+        maxSize: 2  # Integer: number of MBytes, the minimum size is 1 MB
+        maxFile: 10 # Integer: number of files used by the writer, when
+                    # this number is reached the oldest file will be erased
+                    # so that a new one will be created.
+                    # Value 0 equals to no limit
+- name: QLT_out_ER
+    disable: false
+    description: "file to qlt stream (ER)"
+    upstream: QLT_input
+    reader:
+      type: "file-reader"
+      conf:
+        filenamePrefix: "./qlt-messages"
+        filenameSuffix: "xml"
+        readerFilename: "stream03.file-reader.cursor"
+        size: 10000 # size of the reader buffer in bytes (default = 10000)
+    writer:
+      type: "qlt-client-writer"
+      conf:
+        addresses: "addr:port"
+        cnx: 1
+- name: QLT_out_Sentinel
+    disable: false
+    description: "file to qlt stream (Sentinel)"
+    upstream: QLT_input
+    reader:
+      type: "file-reader"
+      conf:
+        filenamePrefix: "./qlt-messages"
+        filenameSuffix: "xml"
+        readerFilename: "stream04.file-reader.cursor"
+    writer:
+      type: "qlt-client-writer"
+      conf:
+        addresses: "addr:port"
+        synchronous: true # needed if target is Sentinel
+        cnx: 1
+  - name: TransformXMLJson
+    disable: false
+    description: "transforms QLT messages to json messages"
+    upstream: QLT_input
+    reader:
+      type: "file-reader"
+      conf:
+        filenamePrefix: "./qlt-messages"
+        filenameSuffix: "xml"
+        readerFilename: "stream02.file-reader.cursor"
+        size: 10000 # size of the reader buffer in bytes (default = 10000)
+    transforms:
+      - type: "qlt2json"
+    writer:
+      type: "file-writer"
+      conf:
+        filenamePrefix: "./qlt-messages"
+        filenameSuffix: "json"
+        maxSize: 2  # Integer: number of MBytes, the minimum size is 1 MB
+        maxFile: 10 # Integer: number of files used by the writer, when
+                    # this number is reached the oldest file will be erased
+                    # so that a new one will be created.
+                    # Value 0 equals to no limit
+- name: Kafka_out
+    disable: false
+    description: "file to kafka stream"
+    upstream: TransformXMLJson
+    reader:
+      type: "file-reader"
+      conf:
+        filenamePrefix: "./qlt-messages"
+        filenameSuffix: "json"
+        readerFilename: "stream05.file-reader.cursor"
+    writer:
+      type: "kafka-writer"
+      conf:
+        servers: "addr:port"
+        topic: "topic"
+- name: Kafka_in
+    disable: false
+    description: "kafka stream to file"
+    upstream: Kafka_out
+    reader:
+      type: "kafka-reader"
+      conf:
+        servers: "addr:port"
+        topic: "topic"
+        group: "group1"
+    writer:
+      type: "file-writer"
+      conf:
+        filenamePrefix: "./kafka-messages"
+        filenameSuffix: "json"
+        maxSize: 2  # Integer: number of MBytes, the minimum size is 1 MB
+        maxFile: 10 # Integer: number of files used by the writer, when
+                    # this number is reached the oldest file will be erased
+                    # so that a new one will be created.
+                    # Value 0 equals to no limit
