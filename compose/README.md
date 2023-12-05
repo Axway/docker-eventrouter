@@ -1,143 +1,63 @@
-# AMPLIFY Sentinel Event Router Docker
+# Axway Event Router Docker
+This document describes how to download, customize, deploy, and manage the Axway Event Router. The compose.yml describes the Axway Event Router service and allows you to manage the it.
 
-## Before you begin
-
+## Prerequisites
 This document assumes a basic understanding of core Docker concepts such as containers, container images, and basic Docker commands.
-If needed, see [Get started with Docker](https://docs.docker.com/get-started/) for a primer on container basics or [Docker Compose Overview](https://docs.docker.com/compose/) for details on using Docker Compose.
+See [Get started with Docker](https://docs.docker.com/get-started/) for a primer on container basics or [Docker Compose Overview](https://docs.docker.com/compose/) for details on using Docker Compose.
+Additionally, you require:
+- Docker 17.11 or higher
+- Meet the sizing requirements:
+-- Disk space for data persistence: Calculate based on the file writers configured with the maximum file size * maximum number of files
+-- Memory: 128 MB
+- If you plan to use SSL/TLS, please see [Set up certificates and keys](#set up certificates and keys) 
+- Disk space for the Docker image: 30 MB
 
-### Prerequisites
+No license key is required.
 
-- Docker version 17.11 or higher
-- Docker Compose version 1.17.0 or higher
+## Download the Axway Event Router package
 
-## How to use the Sentinel Event Router docker-compose.yml file
+1) Download the EventRouter_3.0_DockerImage_linux-x86-64.tar.gz package from [Axway Repository](https://repository.axway.com/catalog?products=a1E7S000003RwTJUA0&versions=a1F7S000001x9GGUAY).
 
-The docker-compose.yml describes the Sentinel Event Router service. This file allows management of the Sentinel Event Router service.
+2) To load the image the AxwayEventRouter_3.0.XXXXXXXX_DockerImage.tar.gz, run:
 
-You can use the ../docker/Dockerfile to build your own or use the official Axway Sentinel Event Router image.
+    ```console
+    docker image load -i AxwayEventRouter_3.0.XXXXXXXX_DockerImage.tar.gz
+    ```
 
-### docker-compose parameters
+3) Check that the image is successfully loaded:
 
-The following parameters are available in the docker-compose.yml file. Use these parameters to customize the Sentinel Event Router service. The values can be a string, number, or null.
+    ```console
+    docker images --filter reference=eventrouter/eventrouter
+    ```
 
- **Parameter**             |  **Values**  |  **Description**
- ------------------------- | :----------: | ---------------
-ER_RECONFIG                |  "YES"/"NO"  |  Parameter used to force reinitialization of Event Router configuration
-ER_HEALTHCHECK_INTERVAL    |  \<number>   |  Time between healthchecks. In seconds.
-ER_NAME                    |  \<string>   |  Name of the Event Router instance. (The maximum length of this name is 50 characters.)
-ER_LOG_LEVEL               |  \<number>   |  The Logging Level of the DISP entity. By default, the value of this parameter is 1. From 0 to 4.
-ER_MESSAGE_SIZE            |  \<number>   |  The maximum length of a message.
-ER_RELAY                   |  "YES"/"NO"  |  Whether or not the Sentinel Event Router is a relay between another Sentinel Event Router and the final destination.
-ER_INCOMING_MAX            |  \<number>   |  The maximum number of source applications that can simultaneously connect to the Event Router.
-ER_PORT                    |  \<number>   |  The TCP/IP port that the Sentinel Event Router will use to receive messages.
-ER_USE_SSL                 |  "YES"/"NO"  |
-ER_CERTIFICATE_FILE        |  \<string>   |  Event Router server certificate. It must refer to a PKCS12 certificate.
-ER_CERT_PASSWORD_FILE      |  \<string>   |  Event Router server certificate password.
-ER_SSL_CIPHER_SUITE        |  \<string>   |  List of algorithms supported (Up to eight cipher suites, separated by comma.). The list must be in decreasing order of preference.
-ER_SSL_VERSION_MIN         |  \<string>   |  List of accepted protocol versions. Values: ssl_3.0, tls_1.0, tls_1.1 or tls_1.2.
-DEFAULT_LOG_LEVEL          |  \<number>   |  The Logging Level of the DISP entity. By default, the value of this parameter is 1. From 0 to 4.
-DEFAULT_MAX_MESSAGES       |  \<number>   |  The maximum number of messages that the overflow and batch files can store.
-DEFAULT_ADDRESS            |  \<string>   |  The TCP/IP address of the default target
-DEFAULT_PORT               |  \<number>   |  TCP/IP port of the default target
-DEFAULT_BACKUP_ADDRESS     |  \<string>   |  The TCP/IP address of the default backup target
-DEFAULT_BACKUP_PORT        |  \<number>   |  TCP/IP port of the default backup target
-DEFAULT_TIMEOUT            |  \<number>   |  The number of seconds that the Event Router waits for targets to acknowledge receipt of a message that the Event Router sends.
-DEFAULT_SHORT_WAIT         |  \<number>   |  The number of seconds in the short wait.
-DEFAULT_LONG_WAIT          |  \<number>   |  The number of seconds in the long wait.
-DEFAULT_JUMP_WAIT          |  \<number>   |  The number of seconds in the jump wait.
-DEFAULT_KEEP_CONNECTION    |  \<number>   |  The number of seconds that the Event Router maintains the connections to targets after successfully sending messages to the targets.
-DEFAULT_HEARTBEAT          |  \<number>   |  The number of minutes between successive emissions of HeartBeat Event messages from the Event Router to the default target.
-DEFAULT_USE_SSL_OUT        |  "YES"/"NO"  |  Enable security profile between the Event Router and the default target.
-DEFAULT_SSL_CIPHER_SUITE   |  \<string>   |  List of algorithms supported (Up to eight cipher suites, separated by comma.). The list must be in decreasing order of preference.
-DEFAULT_SSL_VERSION_MIN    |  \<string>   |  List of accepted protocol versions. Values: ssl_3.0, tls_1.0, tls_1.1 or tls_1.2.
-DEFAULT_CA_CERT            |  \<string>   |  CA certificate of the default target.
-TARGET1_NAME               |  \<string>   |  This will be used to create the section in the configuration file. Use capital letters. Note that the target1 will be used as the default target.
-TARGET1_MAX_MESSAGES       |  \<number>   |  The maximum number of messages that the overflow and batch files can store.
-TARGET1_ADDRESS            |  \<string>   |  The TCP/IP address of the Target 1.
-TARGET1_PORT               |  \<number>   |  TCP/IP port of the Target 1.
-TARGET1_BACKUP_ADDRESS     |  \<string>   |  The TCP/IP address of the backup for Target 1.
-TARGET1_BACKUP_PORT        |  \<number>   |  TCP/IP port of the backup for Target 1.
-TARGET1_TIMEOUT            |  \<number>   |  The number of seconds that the Event Router waits for targets to acknowledge receipt of a message that the Event Router sends.
-TARGET1_SHORT_WAIT         |  \<number>   |  The number of seconds in the short wait.
-TARGET1_LONG_WAIT          |  \<number>   |  The number of seconds in the long wait.
-TARGET1_JUMP_WAIT          |  \<number>   |  The number of seconds in the jump wait.
-TARGET1_KEEP_CONNECTION    |  \<number>   |  The number of seconds that the Event Router maintains the connections to targets after successfully sending messages to the targets.
-TARGET1_HEARTBEAT          |  \<number>   |  The number of minutes between successive emissions of HeartBeat Event messages from the Event Router to the target.
-TARGET1_USE_SSL_OUT        |  "YES"/"NO"  |  Enable security profile between the Event Router and the Target 1.
-TARGET1_CA_CERT            |  \<string>   |  CA certificate of the Target 1.
-TARGET1_SSL_CIPHER_SUITE   |  \<string>   |  List of algorithms supported (Up to eight cipher suites, separated by comma.). The list must be in decreasing order of preference.
-TARGET1_SSL_VERSION_MIN    |  \<string>   |  List of accepted protocol versions. Values: ssl_3.0, tls_1.0, tls_1.1 or tls_1.2.
-USER_TARGET_XML            |  \<string>   |  Path within the container pointing to a user defined target.xml file. The Target Parameters File is an XML file used to set the target parameters, such as routing rules, for specific Event Router targets.
+    Expected output:
+    
+    ```console
 
-**Note** The block starting by TARGET1, can be repeated for as many targets as needed, just increment the number in the parameter name. (TARGET1_NAME -> TARGET2_NAME, ...)
-**Note** When using multiple targets, the target.xml generated will be for a broadcast use case, for a different use case configuration, the parameter USER_TARGET_XML must be specified.
+    REPOSITORY                TAG                 IMAGE ID            CREATED             SIZE
+    eventrouter/eventrouter   3.0.XXXXXXXX        27a34f72a7a4        18 hours ago        29.3MB
+    ```
 
-### How to use the official Sentinel Event Router image
+## Configure the Axway Event Router
 
-1) Download the Sentinel Event Router DockerImage package from [Axway Support](https://support.axway.com/).
+The ./conf/event-router.yml file is responsible for all Axway Event Router configuration. See the [Axway Event Router](https://docs.axway.com/bundle?cluster=true&exclude_metadata_filter.field=display-type&exclude_metadata_filter.value=inline&labelkey=prod-sentinel-420&rpp=20&sort.field=title&sort.value=asc) documentation for details on editing this file. 
 
-2) Load the image.
+## Deploy the Axway Event Router service using Compose
 
-From the folder where the SentinelEventRouter_2.4.0-SP4_DockerImage_allOS_BN13496000.tar.gz is located, run the command:
+You can use the Docker Compose compose.yml file to automate application deployment and customization.
 
-```console
-docker image load -i SentinelEventRouter_2.4.0-SP4_DockerImage_allOS_BN13496000.tar.gz
-```
+1) Customize the parameters in the compose.yml. Be sure to set the image parameter to match the image you are using. For example, "image: eventrouter/eventrouter:3.0.XXXXXXXX".
 
-3) Check that the image is successfully loaded.
+2) Set data persistence. The Axway Event Router compose.yml file defines a volume as a mechanism for persisting data generated and used by the Event Router.
+You can change the volume configuration to use a previously created volume, as described in [Volumes top-level element](https://docs.docker.com/compose/compose-file/07-volumes) and [Create and manage volumes](https://docs.docker.com/storage/volumes/#create-and-manage-volumes).
 
-Run the command:
+3) Create and run the Axway Event Router service. From the compose.yml file location, run:
+    ```console
+    docker compose up -d
+    ```
+    The `up` command builds, recreates, starts, and attaches to a container for services. Unless they are already running, this command also starts any linked services.
 
-```console
-docker images --filter reference=eventrouter/eventrouter
-```
-
-You should get an output like:
-```console
-
-REPOSITORY                TAG                 IMAGE ID            CREATED             SIZE
-eventrouter/eventrouter   2.4.0-SP4           27a34f72a7a4        18 hours ago        158MB
-```
-
-### How to manage the Sentinel Event Router service from your docker-compose.yml file
-
-You can use docker-compose to automate application deployment and customization.
-
-#### 1. Customization
-
-Before you start, customize the parameters in the docker-compose.yml.
-
-Set the image parameter to match the image you want to use. For example: "image: eventrouter/eventrouter:2.4.0-SP4".
-
-#### 2. Data persistence
-
-The Sentinel Event Router docker-compose.yml file defines a volume as a mechanism for persisting data generated by and used by Sentinel Event Router.
-The overflow file is placed in this volume so it can be reused when creating and starting a new Sentinel Event Router container.
-
-You can change the volume configuration to use a previously created volume, as described in [Volumes configuration reference](https://docs.docker.com/compose/compose-file/#volume-configuration-reference) and [Create and manage volumes](https://docs.docker.com/storage/volumes/#create-and-manage-volumes).
-
-#### 3. Create and start the Sentinel Event Router service
-
-From the folder where the docker-compose.yml file is located, run the command:
-
-```console
-docker-compose up
-```
-
-The `up` command builds (if needed), recreates, starts, and attaches to a container for services.
-Unless they are already running, this command also starts any linked services.
-
-You can use the -d option to run containers in the background.
-
-```console
-docker-compose up -d
-```
-
-You can use the -V option to recreate anonymous volumes instead of retrieving data from the previous containers.
-
-```console
-docker-compose up -V
-```
+## Manage the Event Router service
 
 Run the `docker ps` command to see the running containers.
 
@@ -145,110 +65,82 @@ Run the `docker ps` command to see the running containers.
 docker ps
 ```
 
-#### 4. Stop and remove the Sentinel Event Router service
-
-From the folder where the docker-compose.yml file is located, you can stop the containers using the command:
+Run the `docker compose logs` command to see the container logs.
 
 ```console
-docker-compose down
+docker compose logs
+```
+
+#### Stop the Event Router service
+
+From the compose.yml file, stop the containers using the command:
+
+```console
+docker compose stop
+```
+
+#### Start the Event Router service
+
+From the compose.yml file, start the Axway Event Router service using `start` if it was stopped using `stop`.
+
+```console
+docker compose start
+```
+
+#### Stop and remove the Event Router service
+
+From  the compose.yml file, stop the containers using the command:
+
+```console
+docker compose down
 ```
 
 The `down` command stops containers, and removes containers, networks, anonymous volumes, and images created by `up`.
-You can use the -v option to remove named volumes declared in the `volumes` section of the Compose file, and anonymous volumes attached to containers.
+You can use the -v option to remove named volumes declared in the `volumes` section of the Compose file and anonymous volumes attached to containers.
 
-#### 5. Start the Sentinel Event Router service
+## Set up certificates and keys
+The compose.yml mounts certificates and keys as Docker secrets and defines associated environment variables to refer to your event-router.yml configuration file.
 
-From the folder where the docker-compose.yml file is located, you can start the Sentinel Event Router service using `start` if it was stopped using `stop`.
+The secrets section maps the files on the host in the ./conf directory to the secrets qlt_server_cert.pem (an x509 certificate) and qlt_server_key.pem (its private key). 
 
-```console
-docker-compose start
+```secrets:
+  qlt_server_cert.pem:
+    file: ./conf/qlt_server_cert.pem
+  qlt_server_key.pem:
+    file: ./conf/qlt_server_key.pem
 ```
+To enable the eventrouter service secrets:
 
-#### 6. Stop Sentinel Event Router service
-
-From the folder where the docker-compose.yml file is located, you can stop the containers using the command:
-
-```console
-docker-compose stop
+```services:
+  eventrouter:
+    ...
+    environment:
+      ER_QLT_SERVER_CERT: /run/secrets/qlt_server_cert.pem
+      ER_QLT_SERVER_KEY: /run/secrets/qlt_server_key.pem
+    ...
+    secrets:
+    - qlt_server_cert.pem
+    - qlt_server_key.pem
+    
 ```
+The environment variables ER_QLT_SERVER_CERT and ER_QLT_SERVER_KEY refer to the enabled secrets. You can use them in your stream definition in the event-router.yml file as follows:
 
-#### 7. Access Sentinel Event Router directories in the container
-For debugging purpose, you can require access to the Sentinel Event Router container.
-
-List the running containers using the command:
-
-```console
-docker container ls -a
+```...
+streams:
+  - name: "QLT_input"
+    disable: false
+    description: "QLT to file"
+    upstream: ""
+    reader:
+      type: qlt-server-reader
+      conf:
+        port: 1325
+        cert: $ER_QLT_SERVER_CERT
+        certKey: $ER_QLT_SERVER_KEY
 ```
-Locate the container ID, for example 0cdg611581c9.
-Using the container ID, run the following command:
-
-```console
-docker exec -it 0cdg611581c9 /bin/bash
-```
-From within the container you can then run Sentinel Event Router commands:
-
-```console
-axway@0cdg611581c9:~$ pwd
-/opt/axway
-axway@0cdg611581c9:~$ cd er/conf/
-axway@0cdg611581c9:~/er/conf$ . ./profile
-axway@fe3184f165bd:~/er/conf$ agtcmd status
-(...)
-axway@fe3184f165bd:~/er/conf$ cd ~/data
-```
-
-### Customization
-
-To enable customization, you must define a mapped volume that refers to a local directory containing the targets' file.
-In this example, the directory '/opt/app/custom' in the container maps the local directory './custom'. The mapped directory '/opt/app/custom' is in read-only mode.
-
-```
-volumes:
-  - ./custom:/opt/app/custom:ro
-```
-
-#### SSL Certificates
-
-To specify your SSL certificates as the targets' certificate and a Sentinel Event Router server certificate, use the following variables:
-- TARGETxx_CA_CERT: The path to the CA certificate of Target xx.
-- ER_CERTIFICATE_FILE: The path to the Event Router server certificate. It must refer to a PKCS12 certificate.
-- ER_CERT_PASSWORD_FILE: File containing the Event Router server certificate password.
-
-For example:
-```
-service:
-    eventrouter:
-        environment:
-            TARGET1_CA_CERT:       "/run/secrets/target1_ca_cert.pem"
-            ER_CERTIFICATE_FILE:   "/run/secrets/eventrouter.p12"
-            ER_CERT_PASSWORD_FILE: "/run/secrets/eventrouter_p12.pwd"
-secrets:
-    target1_ca_cert.pem:
-        file: ./conf/target1_ca_cert.pem
-    eventrouter.p12:
-       file: ./conf/eventrouter.p12
-    eventrouter_p12.pwd:
-        file: ./conf/eventrouter_p12.pwd
-```
-
-If one of the specified certificates has changed, when the container starts it is automatically updated so that the container always uses the certificate located in the local directory.
-
-
-#### Custom targets file
-
-For example:
-
-```
-service:
-    eventrouter:
-        environment:
-            USER_TARGET_XML:   "/opt/app/custom/target.xml"
-```
-
 ## Copyright
 
-Copyright (c) 2022 Axway Software SA and its affiliates. All rights reserved.
+Copyright (c) 2024 Axway Software SA and its affiliates. All rights reserved.
 
 ## License
 
