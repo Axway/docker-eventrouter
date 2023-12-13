@@ -2,56 +2,49 @@ package kafka
 
 import (
 	"context"
-	"fmt"
+	"net"
 	"os"
+	"strconv"
 	"time"
 
 	"axway.com/qlt-router/src/log"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/segmentio/kafka-go"
 )
 
 func KafkaCreateTopic(ctx, url, topic string) error {
 	log.Infoc(ctx, "kafka create topic", "url", url)
 
-	conf := kafka.ConfigMap{
-		"bootstrap.servers": url,
-	}
-	log.Infoc(ctx, "kafka New Admin", "conf", fmt.Sprintf("%+v", conf))
-	k, err := kafka.NewAdminClient(&conf)
+	conn, err := kafka.Dial("tcp", url)
 	if err != nil {
-		log.Errorc(ctx, "err", err)
-		return err
+		panic(err.Error())
 	}
-	defer k.Close()
-	defer log.Infoc(ctx, "Closed")
-	ctxd, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	defer conn.Close()
 
-	maxDur, err := time.ParseDuration("10s")
+	controller, err := conn.Controller()
 	if err != nil {
-		panic("ParseDuration(10s)")
+		panic(err.Error())
 	}
+	var controllerConn *kafka.Conn
+	controllerConn, err = kafka.Dial("tcp", net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)))
+	if err != nil {
+		panic(err.Error())
+	}
+	defer controllerConn.Close()
 
-	results, err := k.CreateTopics(
-		ctxd,
-		// Multiple topics can be created simultaneously
-		// by providing more TopicSpecification structs here.
-		[]kafka.TopicSpecification{{
+	topicConfigs := []kafka.TopicConfig{
+		{
 			Topic:             topic,
 			NumPartitions:     1,
 			ReplicationFactor: 1,
-		}},
-		// Admin options
-		kafka.SetAdminOperationTimeout(maxDur))
+		},
+	}
+
+	err = controllerConn.CreateTopics(topicConfigs...)
 	if err != nil {
 		log.Errorc(ctx, "Failed to create topic", "err", err)
 		return err
 	}
 
-	// Print results
-	for _, result := range results {
-		log.Infoc(ctx, "topic creation result", "topic", result)
-	}
 	return nil
 }
 
@@ -59,52 +52,36 @@ func KafkaFlushTopicFromUrl(ctx, url, group, topic string) error {
 	log.Infoc(ctx, "Opening kafka", "url", url)
 	hostname, err := os.Hostname()
 	if err != nil {
-		log.Fatalc(ctx, "err", err)
-		return err
-	}
-	conf := kafka.ConfigMap{
-		"bootstrap.servers":                  url,
-		"client.id":                          hostname + "-reader",
-		"group.id":                           group,
-		"auto.offset.reset":                  "latest",
-		"broker.address.family":              "v4",
-		"topic.metadata.refresh.interval.ms": "100",
-		"allow.auto.create.topics":           true,
+		log.Fatalc(ctx, "hostname", "err", err)
 	}
 
-	log.Infoc(ctx, "New Consumer", "conf", fmt.Sprintf("%+v", conf))
-	k, err := kafka.NewConsumer(&conf)
-	if err != nil {
-		log.Errorc(ctx, "err", err)
-		return err
+	dialer := &kafka.Dialer{
+		// Timeout:   10 * time.Second,
+		DualStack: true,
+		ClientID:  hostname + "-reader",
+		//TLS: tls.Config
 	}
-	defer k.Close()
+
+	log.Infoc(ctx, "New Reader")
+	reader := kafka.NewReader(kafka.ReaderConfig{
+		Brokers:        []string{url},
+		GroupID:        group,
+		Topic:          topic,
+		MaxBytes:       10e6, // 10MB
+		Dialer:         dialer,
+		CommitInterval: time.Second, // flushes commits to Kafka every second
+	})
+	defer reader.Close()
 	defer log.Infoc(ctx, "Closed")
-	metadata, err := k.GetMetadata(nil, true, 100)
-	if err != nil {
-		log.Errorc(ctx, "metadata", "err", err)
-		return err
-	}
-	log.Infoc(ctx, "Kafka info", "url", url, "metadata", metadata)
-
-	err = k.SubscribeTopics([]string{topic}, nil)
-	if err != nil {
-		log.Errorc(ctx, "error subscribing topics", "err", err)
-		return err
-	}
 
 	for {
-		msg, err := k.ReadMessage(100 * time.Millisecond)
+		msg, err := reader.ReadMessage(context.Background())
 		if err != nil {
-			if err.(kafka.Error).Code() != kafka.ErrTimedOut {
-				log.Errorc(ctx, "readMessage", "err", err)
-				return err
-			}
 			log.Errorc(ctx, "readMessage", "err", err)
 			break
 		}
 		log.Infoc(ctx, "Flush Message", "msg", msg)
-		k.CommitMessage(msg)
+		reader.CommitMessages(context.Background(), msg)
 	}
 
 	log.Infoc(ctx, "All Message flushed", "topic", topic)

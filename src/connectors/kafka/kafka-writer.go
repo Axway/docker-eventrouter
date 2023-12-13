@@ -2,33 +2,30 @@ package kafka
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"os"
+	"strings"
 
 	"axway.com/qlt-router/src/config"
 	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/segmentio/kafka-go"
 )
 
 var (
-	kafkaCloseFlushTimeout      = config.DeclareDuration("connectors.kafka-writer.closeFlushTimeout", "15s", "Kafka close flush timeout")
-	kafkaAckQueueSize           = config.DeclareInt("connectors.kafka-writer.ackQueueSize", 1000, "Kafka ack Queue Size")
-	kafkaWriteDeliveryQueueSize = config.DeclareInt("connectors.kafka-writer.writeDeliveryQuerySize", 1000, "Kafka Write Delivery Queue Size")
+	kafkaAckQueueSize = config.DeclareInt("connectors.kafka-writer.ackQueueSize", 1000, "Kafka ack Queue Size")
 )
 
 type KafkaWriterConf struct {
 	Servers string
 	Topic   string
-	Group   string
 }
 
 type KafkaWriter struct {
-	CtxS string
-	Conf *KafkaWriterConf
-	k    *kafka.Producer
-	acks *processor.Channel
+	CtxS     string
+	Conf     *KafkaWriterConf
+	Writer   *kafka.Writer
+	sentMess *processor.Channel
+	acksCh   chan kafka.Message
+	errorCh  chan error
 	// delivery_chan chan kafka.Event
 }
 
@@ -44,35 +41,36 @@ func (c *KafkaWriterConf) Clone() processor.Connector {
 }
 
 func (q *KafkaWriter) Init(p *processor.Processor) error {
-	q.CtxS = p.Name //"[KAFKA-WRITER] " //+ p.Flow.Name
-	hostname, err := os.Hostname()
-	if err != nil {
-		log.Fatalc(q.CtxS, "hostname", "err", err)
-	}
-	conf := kafka.ConfigMap{
-		"bootstrap.servers": q.Conf.Servers,
-		"client.id":         hostname + "-writer",
-		//"group.id":                           q.Conf.Group,
-		"acks":                  "all",
-		"broker.address.family": "v4",
-		//"topic.metadata.refresh.interval.ms": "100",
-	}
-	log.Infoc(q.CtxS, "New Producer", "conf", fmt.Sprintf("%+v", conf))
-	k, err := kafka.NewProducer(&conf)
-	if err != nil {
-		log.Errorc(q.CtxS, "kafka new producer error", "err", err)
-	}
-	q.k = k
-	// q.delivery_chan = make(chan kafka.Event, kafkaWriteDeliveryQueueSize)
-	q.acks = p.Chans.Create("kafka-acks", kafkaAckQueueSize)
+	q.CtxS = p.Name
 
-	meta, err := k.GetMetadata(nil, true, 100)
-	if err != nil {
-		log.Errorc(q.CtxS, "fetch metadata", "err", err)
-		return err
+	q.sentMess = p.Chans.Create("kafka-sent", kafkaAckQueueSize)
+	q.acksCh = make(chan kafka.Message, kafkaAckQueueSize)
+	q.errorCh = make(chan error, kafkaAckQueueSize)
+
+	addrs := strings.Split(q.Conf.Servers, ",")
+	q.Writer = &kafka.Writer{
+		Addr:                   kafka.TCP(addrs...),
+		Topic:                  q.Conf.Topic,
+		RequiredAcks:           kafka.RequireAll,
+		AllowAutoTopicCreation: true,
+		Async:                  true,
+		Completion:             q.kafkaCompletion,
+		/*Transport: &kafka.Transport{
+			TLS: &tls.Config{},
+		  },*/
 	}
-	log.Infoc(q.CtxS, "metadata", "meta", meta)
+
+	log.Infoc(q.CtxS, "connected to kafka servers as producer", "servers", q.Conf.Servers, "topic", q.Conf.Topic)
 	return nil
+}
+
+func (q *KafkaWriter) kafkaCompletion(messages []kafka.Message, err error) {
+	if err != nil {
+		q.errorCh <- err
+	}
+	for _, message := range messages {
+		q.acksCh <- message
+	}
 }
 
 func (q *KafkaWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {
@@ -82,12 +80,12 @@ func (q *KafkaWriter) ProcessAcks(ctx context.Context, acks chan processor.Ackab
 	defer log.Infoc(q.CtxS, "Stopped processing acks")
 loop:
 	for {
-		// log.Debugln(q.CtxS, "Starting processing ack")
+		// log.Debugc(q.CtxS, "Starting processing ack")
 		var event processor.AckableEvent
 		var ok bool
 		select {
-		case event, ok = <-q.acks.C:
-			// log.Debugln(q.CtxS, "Received Ack", event)
+		case event, ok = <-q.sentMess.C:
+			// log.Debugc(q.CtxS, "Event waiting for Ack")
 			if !ok {
 				log.Infoc(q.CtxS, "close ack loop")
 				return
@@ -95,37 +93,24 @@ loop:
 		case <-done:
 			break loop
 		}
-		// log.Debugln(q.CtxS, "Wait Events")
+
 		select {
-		case e := <-q.k.Events():
-			// log.Debugln(q.CtxS, "kafka event", e.String())
-			switch ev := e.(type) {
-			case *kafka.Message:
-				if ev.TopicPartition.Error != nil {
-					// FIXME: failure: should resend !!!
-					log.Fatalc(q.CtxS, "Delivery failed", "partition", fmt.Sprintf("%+v", ev.TopicPartition))
-				} else {
-					// log.Printf(q.Ctx+"Delivered message to %v\n", ev.TopicPartition)
-					/*fmt.Printf("Delivered message to topic %s [%d] at offset %v\n",
-					*ev.TopicPartition.Topic, ev.TopicPartition.Partition, ev.TopicPartition.Offset)*/
-				}
-				log.Debugc(q.CtxS, "Received Ack", "event", event)
-				acks <- event
-			}
+		case err := <-q.errorCh:
+			log.Infoc(q.CtxS, "err returned by kafka", "err", err)
+			break loop
+		case <-q.acksCh:
+			// log.Debugc(q.CtxS, "Received Ack")
+			acks <- event
 		case <-done:
 			break loop
 		}
+
 	}
 }
 
 func (q *KafkaWriter) Close() error {
 	log.Infoc(q.CtxS, "Closing...")
-	n := q.k.Flush(int(kafkaCloseFlushTimeout.Milliseconds()))
-	q.k.Close()
-	if n != 0 {
-		log.Errorc(q.CtxS, "Failed to close writer", "n", n)
-		return errors.New("Unfinished work")
-	}
+	q.Writer.Close()
 	log.Infoc(q.CtxS, "Closed")
 	return nil
 }
@@ -156,22 +141,14 @@ func (q *KafkaWriter) Write(events []processor.AckableEvent) (int, error) {
 	// log.Debugln(q.CtxS, "Writing Events")
 	n := 0
 	for _, event := range events {
-		// log.Debugln(q.CtxS, "Writing Event", "msg", event.Msg)
 		data := []byte(event.Msg.(string))
-		err := q.k.Produce(&kafka.Message{
-			TopicPartition: kafka.TopicPartition{Topic: &q.Conf.Topic, Partition: kafka.PartitionAny},
-			Value:          data,
-		}, nil)
-		if err != nil {
+		if err := q.Writer.WriteMessages(context.Background(), kafka.Message{Value: data}); err != nil {
 			log.Errorc(q.CtxS, "error writing event", "err", err)
 			return n, err
 		}
 		log.Tracec(q.CtxS, "Wrote Event", "topic", q.Conf.Topic, "msg", event.Msg.(string))
-		q.acks.C <- event
+		q.sentMess.C <- event
 		n++
 	}
-	// log.Debugln(q.CtxS, "Flush")
-	// count := q.k.Flush(500)
-	// log.Debugc(q.CtxS, "Flush", "count", len(events), "nonFlushed", count)
 	return n, nil
 }

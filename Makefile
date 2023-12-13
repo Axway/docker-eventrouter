@@ -19,13 +19,13 @@ pack:
 	tar cvfJ $(NAME)-$(VERSION).tar.xz ./event-router ./README.*.md
 
 build:
-	(cd src/main ; CGO_ENABLED=1 go build -o ../../$(NAME) $(LDFLAGS))
+	(cd src/main ; CGO_ENABLED=0 go build -o ../../$(NAME) $(LDFLAGS))
 
 build-musl:
-	(cd src/main ; CGO_ENABLED=1 go build -o ../../$(NAME) -tags musl $(LDFLAGS))
+	(cd src/main ; CGO_ENABLED=0 go build -o ../../$(NAME) -tags musl $(LDFLAGS))
 
 build-glibc:
-	(cd src/main ; CGO_ENABLED=1 go build -o ../../$(NAME) $(LDFLAGS))
+	(cd src/main ; CGO_ENABLED=0 go build -o ../../$(NAME) $(LDFLAGS))
 
 build-linux-x86:
 	(cd src/main ; CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ../$(NAME) $(LDFLAGS))
@@ -58,7 +58,7 @@ clean:
 test-integration:
 	# go test -v -timeout=5s ./src/...
 	# go test --cover --short --timeout 5s ./src/...
-	CGO_ENABLED=1 gotestsum --junitfile report.xml --format testname --raw-command go test --cover --timeout 10s --tags musl  --coverprofile=coverage.txt --covermode=atomic --coverpkg "$(shell go list ./src/...  | tr '\n' ",")" --json ./src/... 
+	CGO_ENABLED=0 gotestsum --junitfile report.xml --format testname --raw-command go test --cover --timeout 10s --tags musl  --coverprofile=coverage.txt --covermode=atomic --coverpkg "$(shell go list ./src/...  | tr '\n' ",")" --json ./src/... 
 	go tool cover -func coverage.txt
 	go run github.com/boumenot/gocover-cobertura < coverage.txt > coverage.xml
 	go-cover-treemap -coverprofile coverage.txt  > coverage.svg

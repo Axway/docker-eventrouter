@@ -4,11 +4,19 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
+	"time"
 
 	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/segmentio/kafka-go"
 )
+
+type TopicPartition struct {
+	Topic     string
+	Partition int
+	Offset    int64
+}
 
 type KafkaReaderConf struct {
 	Servers string
@@ -17,9 +25,10 @@ type KafkaReaderConf struct {
 }
 
 type KafkaReader struct {
-	CtxS string
-	Conf *KafkaReaderConf
-	k    *kafka.Consumer
+	CtxS   string
+	Conf   *KafkaReaderConf
+	Reader *kafka.Reader
+	Dialer *kafka.Dialer
 }
 
 func (conf *KafkaReaderConf) Start(ctx context.Context, p *processor.Processor, ctl chan processor.ControlEvent, inc chan processor.AckableEvent, out chan processor.AckableEvent) (processor.ConnectorRuntime, error) {
@@ -42,40 +51,39 @@ func (q *KafkaReader) Init(p *processor.Processor) error {
 		log.Fatalc(q.CtxS, "hostname", "err", err)
 	}
 
-	k, err := kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers":     q.Conf.Servers,
-		"client.id":             hostname + "-reader",
-		"group.id":              q.Conf.Group,
-		"auto.offset.reset":     "earliest",
-		"enable.auto.commit":    false,
-		"broker.address.family": "v4",
-		//"session.timeout.ms":    "6000",
-		//"heartbeat.interval.ms": 100,
+	q.Dialer = &kafka.Dialer{
+		// Timeout:   10 * time.Second,
+		DualStack: true,
+		ClientID:  p.Instance_id + "-" + hostname + "-" + q.Conf.Group + "-reader",
+		//TLS: tls.Config
+	}
+	addrs := strings.Split(q.Conf.Servers, ",")
+	q.Reader = kafka.NewReader(kafka.ReaderConfig{
+		Brokers:        addrs,
+		GroupID:        q.Conf.Group,
+		Topic:          q.Conf.Topic,
+		MaxBytes:       10e6, // 10MB
+		Dialer:         q.Dialer,
+		CommitInterval: time.Second, // flushes commits to Kafka every second
 	})
-	if err != nil {
-		log.Errorc(q.CtxS, "error creation kafka consumer", "err", err)
-		return err
-	}
-	q.k = k
 
-	err = q.k.SubscribeTopics([]string{q.Conf.Topic}, nil)
-	if err != nil {
-		log.Errorc(q.CtxS, "error subscribing topics", "err", err)
-		return err
-	}
 	log.Infoc(q.CtxS, "connected to kafka servers as consumer", "servers", q.Conf.Servers, "topic", q.Conf.Topic)
 	return err
 }
 
 func (q *KafkaReader) AckMsg(ack processor.EventAck) {
-	ack2 := ack.(kafka.TopicPartition)
+	ack2 := ack.(TopicPartition)
 	log.Debugc(q.CtxS, "commiting offsets", "ack", ack2)
-	committed, err := q.k.CommitOffsets([]kafka.TopicPartition{ack2})
-	if err != nil {
+
+	var m kafka.Message
+	m.Offset = ack2.Offset
+	m.Topic = ack2.Topic
+	m.Partition = ack2.Partition
+
+	if err := q.Reader.CommitMessages(context.Background(), m); err != nil {
 		log.Errorc(q.CtxS, "error commiting offsets", "err", err)
-	} else {
-		log.Tracec(q.CtxS, "committed offsets", "ack", ack2, "partitions", committed)
 	}
+	log.Tracec(q.CtxS, "committed offsets", "ack", ack2, "partitions", m.Partition)
 }
 
 func (q *KafkaReader) Ctx() string {
@@ -83,21 +91,26 @@ func (q *KafkaReader) Ctx() string {
 }
 
 func (q *KafkaReader) Read() ([]processor.AckableEvent, error) {
-	msg, err := q.k.ReadMessage(-1)
+	msg, err := q.Reader.FetchMessage(context.Background())
 	if err != nil {
 		// The client will automatically try to recover from all errors.
 		log.Errorc(q.CtxS, "reader error", "err", err, "msg", fmt.Sprintf("%+v", msg))
 		return nil, err
 	}
-	c := msg.TopicPartition
-	log.Tracec(q.CtxS, "Message", "partition", msg.TopicPartition, "msg", string(msg.Value))
+
+	var c TopicPartition
+	c.Topic = msg.Topic
+	c.Partition = msg.Partition
+	c.Offset = msg.Offset
+
+	log.Tracec(q.CtxS, "Message", "topic", msg.Topic, "partition", msg.Partition, "offset", msg.Offset, string(msg.Key), string(msg.Value))
 	out := processor.AckableEvent{q, c, string(msg.Value), nil}
 	return []processor.AckableEvent{out}, nil
 }
 
 func (q *KafkaReader) Close() error {
 	log.Infoc(q.CtxS, "closing kafka-reader")
-	err := q.k.Close()
+	err := q.Reader.Close()
 	if err != nil {
 		log.Errorc(q.CtxS, "error closing kafka-reader", "err", err)
 	} else {

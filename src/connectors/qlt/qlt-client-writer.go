@@ -53,7 +53,7 @@ func (c *QLTClientWriterConf) Start(context context.Context, p *processor.Proces
 			acks := p.Chans.Create(q.CtxS+"-AckEvent (Not Tracked)", qltAckQueueSize)
 			// TcpChaosInit(TCPChaosConf{Name: q.Ctx, Addr: addr})
 			c2 := &QLTClientWriterConnection{c, q.CtxS, addr, nil, acks.C}
-			log.Debugc(q.CtxS, "AddReader!!!!*************************")
+			// log.Debugc(q.CtxS, "AddReader!!!!*************************")
 			p.AddReader(c2)
 		}
 	}

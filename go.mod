@@ -4,7 +4,6 @@ go 1.21
 
 require (
 	github.com/aws/aws-sdk-go v1.48.1
-	github.com/confluentinc/confluent-kafka-go v1.9.2
 	github.com/jackc/pgx/v4 v4.18.1
 	github.com/prometheus/client_golang v1.17.0
 	github.com/segmentio/kafka-go v0.4.45
@@ -14,6 +13,7 @@ require (
 
 require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/pierrec/lz4/v4 v4.1.18 // indirect

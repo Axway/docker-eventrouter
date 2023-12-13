@@ -31,7 +31,6 @@ func TestKafkaConnectorGen(t *testing.T) {
 	writer := &KafkaWriterConf{
 		Servers: url,
 		Topic:   topic,
-		Group:   "g5",
 	}
 	reader := &KafkaReaderConf{
 		Servers: url,
