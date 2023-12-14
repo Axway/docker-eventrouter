@@ -60,7 +60,7 @@ func main() {
 	ctxS := "main"
 	log.SetLevel(log.InfoLevel)
 
-	configFile := flag.String("config", "./qlt-router.yml", "path to config file")
+	configFile := flag.String("config", "./event-router.yml", "path to config file")
 	port := flag.String("port", "8080", "http port")
 	host := flag.String("host", "0.0.0.0", "http host")
 
@@ -282,7 +282,7 @@ func main() {
 
 	/*log.Println("[HTTP] Setting up / welcome...")
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Welcome to qlt-router!")
+		fmt.Fprintf(w, "Welcome to event-router!")
 	})*/
 
 	log.Infoc(ctxS, "[HTTP] Setting up /metrics (prometheus)...")

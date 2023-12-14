@@ -2,7 +2,7 @@ include .env
 #export $(shell sed 's/=.*//' .env)
 
 VERSION := ${VERSION}
-NAME := qlt-router
+NAME := event-router
 DATE := $(shell date +'%Y-%m-%d_%H:%M:%S')
 BUILD := $(shell git rev-parse HEAD | cut -c1-8)
 #LDFLAGS :=-ldflags '-s -w -X=main.Version=$(VERSION) -X=main.Build=$(BUILD) -X=main.Date=$(DATE)'
@@ -16,7 +16,7 @@ PUBLISH := $(REGISTRY)/$(IMAGE)
 all: build
 
 pack:
-	tar cvfJ $(NAME)-$(VERSION).tar.xz ./qlt-router ./README.*.md
+	tar cvfJ $(NAME)-$(VERSION).tar.xz ./event-router ./README.*.md
 
 build:
 	(cd src/main ; CGO_ENABLED=1 go build -o ../../$(NAME) $(LDFLAGS))
@@ -37,10 +37,10 @@ docker-external-down:
 	docker-compose -f docker-compose-external.yml down --remove-orphans -v
 
 #dev: build
-#	find ./src -name "*.go" | entr ./qlt-router --config ./qlt-router.conf
+#	find ./src -name "*.go" | entr ./event-router --config ./event-router.conf
 
 dev:
-	ls -d ./qlt-router.conf src/* | entr -r sh -c "make && ./$(NAME) --config ./$(NAME).conf "
+	ls -d ./event-router.conf src/* | entr -r sh -c "make && ./$(NAME) --config ./$(NAME).conf "
 
 docker-test:
 	./scripts/run-integration-test-local.sh
@@ -98,7 +98,7 @@ docker-publish: docker
 
 certs:
 	openssl genrsa -out certs/server.key 2048
-	openssl req -new -x509 -sha256 -key certs/server.key -out certs/server.pem -days 3650 -subj "/C=FR/ST=Paris/L=La Defense/O=Axway/CN=qlt-router"
+	openssl req -new -x509 -sha256 -key certs/server.key -out certs/server.pem -days 3650 -subj "/C=FR/ST=Paris/L=La Defense/O=Axway/CN=event-router"
 	openssl x509 -text -noout -in certs/server.pem
-	#cp certs/server.pem tests/test/certs/qlt-router.pem
+	#cp certs/server.pem tests/test/certs/event-router.pem
 

@@ -1,7 +1,7 @@
-Name:           qlt-router
+Name:           event-router
 Version:        1.0.0
 Release:        1
-Summary:        QLT Router
+Summary:        Axway Event Router
 BuildArch:      x86_64
 
 License:        Axway License
@@ -13,7 +13,7 @@ AutoReq:        no
 Prefix:         /
 
 %description
-qlt-router filters/routes/transforms/aggregates Axway Sentinel events toward multiple targets : sentinel, kafka, eleasticsearch, files, postgres,... 
+event-router filters/routes/transforms/aggregates Axway Sentinel events toward multiple targets : sentinel, kafka, eleasticsearch, files, postgres,... 
 
 %prep
 %setup -q

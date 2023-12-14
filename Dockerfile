@@ -14,11 +14,11 @@ COPY ./src/ ./src/
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     make build-musl
-RUN /app/src/qlt-router version
+RUN /app/src/event-router version
 
 FROM alpine
 RUN apk add --no-cache ca-certificates
 
-COPY --from=build /app/src/qlt-router /usr/bin/qlt-router
+COPY --from=build /app/src/event-router /usr/bin/event-router
 
-CMD [ "qlt-router" ]
+CMD [ "event-router" ]

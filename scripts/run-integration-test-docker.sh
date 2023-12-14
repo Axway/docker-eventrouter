@@ -3,8 +3,8 @@
 
 set -euo pipefail
 
-export COMPOSE_PROJECT_NAME=qlt_router_integration
-NAME=qlt_router_integration_sut 
+export COMPOSE_PROJECT_NAME=event_router_integration
+NAME=event_router_integration_sut 
 
 run() {
     docker rm -f $NAME || true 
@@ -20,6 +20,7 @@ case ${1:-} in
         docker compose -f docker-compose.test.yml pull
         docker compose -f docker-compose.test.yml down --remove-orphans -v
         run
+        docker compose -f docker-compose.test.yml down --remove-orphans -v
     ;;
     *)
         run

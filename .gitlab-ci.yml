@@ -1,5 +1,5 @@
 variables:
-  NAME: qlt-router
+  NAME: event-router
   DOCKER_REPO: sentineleventrouter-docker-snapshot-ptx.artifactory-ptx.ecd.axway.int
   RPM_REPO: https://artifactory-ptx.ecd.axway.int/artifactory/sentineleventrouter-generic-snapshot-ptx
   CURL_IMAGE: "davinci1976/docker-ci:unstable"
@@ -121,7 +121,7 @@ integration-test:
     key: GO
   coverage: "/\\(statements\\)(?:\\s+)?(\\d+(?:\\.\\d+)?%)/"
   script:
-    - ./scripts/run-integration-test-docker.sh
+    - ./scripts/run-integration-test-docker.sh reset
   artifacts:
     when: always
     paths:

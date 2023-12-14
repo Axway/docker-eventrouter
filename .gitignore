@@ -1,6 +1,7 @@
 /artefacts
 output.txt
 /qlt-router
+/event-router
 *.tar.*
 licenses
 /data

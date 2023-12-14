@@ -3,14 +3,14 @@
 
 set -euo pipefail
 
-export COMPOSE_PROJECT_NAME=qlt_router_build
-NAME=qlt-router
+export COMPOSE_PROJECT_NAME=event_router_build
+NAME=event-router
 CONTAINER=$COMPOSE_PROJECT_NAME-$NAME
 
 run() {
     docker rm -f $CONTAINER || true
-    docker build -f Dockerfile.glibc -t qlt_router_build_glibc .
-    docker run --name $CONTAINER qlt_router_build_glibc $NAME version
+    docker build -f Dockerfile.glibc -t event_router_build_glibc .
+    docker run --name $CONTAINER event_router_build_glibc $NAME version
     docker cp $CONTAINER:/usr/bin/$NAME .
     docker rm -f $CONTAINER || true 
 }

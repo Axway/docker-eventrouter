@@ -1,4 +1,4 @@
-# qlt-router
+# event-router
 
 
 https://docs.axway.com/bundle/amplify-central/page/docs/integrate_with_central/query-the-traceability-apis-with-lexus/index.html
@@ -90,14 +90,14 @@ Additional features/usage case
 ## Cloud environment (helm)
 - curl http://qlt-router.eks.mft.apirs.net
 - helm list
-- helm install ./helm/qlt-router --name qlt-router --namespace jda
-- helm del --purge qlt-router
+- helm install ./helm/event-router --name event-router --namespace jda
+- helm del --purge event-router
 - kubectl get svc,pods
-- kubectl logs -lapp.kubernetes.io/name=qlt-router
+- kubectl logs -lapp.kubernetes.io/name=event-router
 
 
 ```sh
-make && ./qlt-router --qlt_port=3333 --filename="zouzou" "--pg_url=postgresql://mypguser:mypgsecretpassword@localhost:5432/mypgdb"
+make && ./event-router --qlt_port=3333 --filename="zouzou" "--pg_url=postgresql://mypguser:mypgsecretpassword@localhost:5432/mypgdb"
 ```
 
 # 

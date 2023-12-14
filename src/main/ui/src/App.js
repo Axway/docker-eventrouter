@@ -184,7 +184,7 @@ export default function App(props) {
     const streamsV = rootStreams?.map(x => <div className="stream-line" key={x.Name}><DisplayStream x={x} processorsD={processorsD} streamsD={streamsD} channelsD={channelsD} /></div>)
     //console.log("draw")
     return <>
-        <h1>QLT Router {props.name}! {status}</h1>
+        <h1>Axway Event Router {props.name}! {status}</h1>
         {JSON.stringify(state.Distribution)}
 
         <div className="scontent">

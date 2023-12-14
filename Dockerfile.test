@@ -14,6 +14,6 @@ COPY ./src/ ./src/
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     make build-musl
-RUN /app/src/qlt-router version
+RUN /app/src/event-router version
 
 

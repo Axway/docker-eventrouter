@@ -1,4 +1,4 @@
-# qlt-router
+# event-router
 
 - rpm snapshot: https://artifactory-ptx.ecd.axway.int/artifactory/sentineleventrouter-generic-snapshot-ptx/qlt-router/qlt-router-$BRANCH.rpm [https://artifactory-ptx.ecd.axway.int/artifactory/sentineleventrouter-generic-snapshot-ptx/qlt-router/qlt-router-master.rpm](qlt-router-master.rpm)
 - docker snapshot:  sentineleventrouter-docker-snapshot-ptx.artifactory-ptx.ecd.axway.int/qlt-router:$BRANCH
@@ -86,8 +86,8 @@ govulncheck ./...
 ## Profiling
 
 ```sh
-./qlt-router --cpuprofile qlt-router.prof
-go tool pprof ./qlt-router qlt-router.prof
+./event-router --cpuprofile event-router.prof
+go tool pprof ./event-router event-router.prof
 
 ```
 

@@ -3,8 +3,8 @@
 
 set -euo pipefail
 
-export COMPOSE_PROJECT_NAME=qlt_router_unit
-NAME=qlt_router_unit_sut 
+export COMPOSE_PROJECT_NAME=event_router_unit
+NAME=event_router_unit_sut 
 
 run() {
     docker rm -f $NAME || true 
