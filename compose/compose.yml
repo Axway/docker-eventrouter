@@ -15,8 +15,8 @@ services:
                   # configuration file
 
     volumes:
-      - "./data:/data"
-      - "./conf/qlt-router.yml:/qlt-router.yml"
+      - eventrouter_data:/data
+      - "./conf/event-router.yml:/event-router.yml"
 
 volumes:
   eventrouter_data:

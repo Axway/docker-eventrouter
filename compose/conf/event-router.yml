@@ -87,6 +87,12 @@ streams:
       conf:
         servers: "addr:port"
         topic: "topic"
+        # ca: 
+        # cert: 
+        # certKey: 
+        # user: 
+        # password: 
+        # saslType: 
 - name: Kafka_in
     disable: false
     description: "kafka stream to file"
@@ -97,6 +103,12 @@ streams:
         servers: "addr:port"
         topic: "topic"
         group: "group1"
+        # ca: 
+        # cert: 
+        # certKey: 
+        # user: 
+        # password: 
+        # saslType: 
     writer:
       type: "file-writer"
       conf:
