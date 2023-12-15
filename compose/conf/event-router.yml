@@ -34,7 +34,7 @@ streams:
         addresses: "addr:port"
         cnx: 1
 - name: QLT_out_Sentinel
-    disable: false
+    disable: true
     description: "file to qlt stream (Sentinel)"
     upstream: QLT_input
     reader:
@@ -49,8 +49,8 @@ streams:
         addresses: "addr:port"
         synchronous: true # needed if target is Sentinel
         cnx: 1
-  - name: TransformXMLJson
-    disable: false
+ - name: TransformXMLJson
+    disable: true
     description: "transforms QLT messages to json messages"
     upstream: QLT_input
     reader:
@@ -73,7 +73,7 @@ streams:
                     # so that a new one will be created.
                     # Value 0 equals to no limit
 - name: Kafka_out
-    disable: false
+    disable: true
     description: "file to kafka stream"
     upstream: TransformXMLJson
     reader:
@@ -94,7 +94,7 @@ streams:
         # password: 
         # saslType: 
 - name: Kafka_in
-    disable: false
+    disable: true
     description: "kafka stream to file"
     upstream: Kafka_out
     reader:
