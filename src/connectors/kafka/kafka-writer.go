@@ -2,12 +2,17 @@ package kafka
 
 import (
 	"context"
+	"crypto/tls"
 	"strings"
 
 	"axway.com/qlt-router/src/config"
 	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
+	"axway.com/qlt-router/src/tools"
 	"github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/sasl"
+	"github.com/segmentio/kafka-go/sasl/plain"
+	"github.com/segmentio/kafka-go/sasl/scram"
 )
 
 var (
@@ -15,8 +20,11 @@ var (
 )
 
 type KafkaWriterConf struct {
-	Servers string
-	Topic   string
+	Servers           string
+	Topic             string
+	Cert, CertKey, Ca string
+	User, Password    string
+	SaslType          string
 }
 
 type KafkaWriter struct {
@@ -47,6 +55,34 @@ func (q *KafkaWriter) Init(p *processor.Processor) error {
 	q.acksCh = make(chan kafka.Message, kafkaAckQueueSize)
 	q.errorCh = make(chan error, kafkaAckQueueSize)
 
+	var mechanism sasl.Mechanism
+	var err error
+	if q.Conf.User != "" && q.Conf.Password != "" {
+		log.Infoc(q.CtxS, "User and password set. Using SASL.", "type", q.Conf.SaslType)
+
+		if strings.EqualFold(q.Conf.SaslType, "SCRAM-SHA-512") {
+			mechanism, err = scram.Mechanism(scram.SHA512, q.Conf.User, q.Conf.Password)
+			if err != nil {
+				log.Fatalc(q.CtxS, "mechanism", "err", err)
+			}
+		} else if strings.EqualFold(q.Conf.SaslType, "SCRAM-SHA-256") {
+			mechanism, err = scram.Mechanism(scram.SHA256, q.Conf.User, q.Conf.Password)
+			if err != nil {
+				log.Fatalc(q.CtxS, "mechanism", "err", err)
+			}
+		} else if strings.EqualFold(q.Conf.SaslType, "plain") || q.Conf.SaslType == "" {
+			mechanism = plain.Mechanism{Username: q.Conf.User, Password: q.Conf.Password}
+		} else {
+			log.Fatalc(q.CtxS, "Unknonw value for SaslType (plain, scram-sha-256, scram-sha-512)", "value", q.Conf.SaslType)
+		}
+	}
+
+	var tlsConfig *tls.Config
+	if q.Conf.Ca != "" {
+		log.Infoc(q.CtxS, "SSL configured", "CA", q.Conf.Ca)
+
+		tlsConfig = tools.TlsClientConfig(q.Conf.Ca, q.Conf.Cert, q.Conf.CertKey, "kafka-writer")
+	}
 	addrs := strings.Split(q.Conf.Servers, ",")
 	q.Writer = &kafka.Writer{
 		Addr:                   kafka.TCP(addrs...),
@@ -55,9 +91,11 @@ func (q *KafkaWriter) Init(p *processor.Processor) error {
 		AllowAutoTopicCreation: true,
 		Async:                  true,
 		Completion:             q.kafkaCompletion,
-		/*Transport: &kafka.Transport{
-			TLS: &tls.Config{},
-		  },*/
+		Transport: &kafka.Transport{
+			TLS:  tlsConfig,
+			SASL: mechanism,
+		},
+		ErrorLogger: kafka.LoggerFunc(logf),
 	}
 
 	log.Infoc(q.CtxS, "connected to kafka servers as producer", "servers", q.Conf.Servers, "topic", q.Conf.Topic)

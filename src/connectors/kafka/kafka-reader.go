@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"os"
 	"strings"
@@ -9,7 +10,11 @@ import (
 
 	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
+	"axway.com/qlt-router/src/tools"
 	"github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/sasl"
+	"github.com/segmentio/kafka-go/sasl/plain"
+	"github.com/segmentio/kafka-go/sasl/scram"
 )
 
 type TopicPartition struct {
@@ -19,9 +24,12 @@ type TopicPartition struct {
 }
 
 type KafkaReaderConf struct {
-	Servers string
-	Topic   string
-	Group   string
+	Servers           string
+	Topic             string
+	Group             string
+	Cert, CertKey, Ca string
+	User, Password    string
+	SaslType          string
 }
 
 type KafkaReader struct {
@@ -29,6 +37,13 @@ type KafkaReader struct {
 	Conf   *KafkaReaderConf
 	Reader *kafka.Reader
 	Dialer *kafka.Dialer
+}
+
+func logf(msg string, a ...interface{}) {
+	fmt.Print(time.Now().Format("2006-01-02T15:04:05.000000-07:00"))
+	fmt.Print(" ERR [KAFKA] ")
+	fmt.Printf(msg, a...)
+	fmt.Println()
 }
 
 func (conf *KafkaReaderConf) Start(ctx context.Context, p *processor.Processor, ctl chan processor.ControlEvent, inc chan processor.AckableEvent, out chan processor.AckableEvent) (processor.ConnectorRuntime, error) {
@@ -51,12 +66,40 @@ func (q *KafkaReader) Init(p *processor.Processor) error {
 		log.Fatalc(q.CtxS, "hostname", "err", err)
 	}
 
+	var mechanism sasl.Mechanism
+	if q.Conf.User != "" && q.Conf.Password != "" {
+		log.Infoc(q.CtxS, "User and password set. Using SASL.", "type", q.Conf.SaslType)
+
+		if strings.EqualFold(q.Conf.SaslType, "SCRAM-SHA-512") {
+			mechanism, err = scram.Mechanism(scram.SHA512, q.Conf.User, q.Conf.Password)
+			if err != nil {
+				log.Fatalc(q.CtxS, "mechanism", "err", err)
+			}
+		} else if strings.EqualFold(q.Conf.SaslType, "SCRAM-SHA-256") {
+			mechanism, err = scram.Mechanism(scram.SHA256, q.Conf.User, q.Conf.Password)
+			if err != nil {
+				log.Fatalc(q.CtxS, "mechanism", "err", err)
+			}
+		} else if strings.EqualFold(q.Conf.SaslType, "plain") || q.Conf.SaslType == "" {
+			mechanism = plain.Mechanism{Username: q.Conf.User, Password: q.Conf.Password}
+		} else {
+			log.Fatalc(q.CtxS, "Unknonw value for SaslType (plain, scram-sha-256, scram-sha-512)", "value", q.Conf.SaslType)
+		}
+	}
+
+	var tlsConfig *tls.Config
+	if q.Conf.Ca != "" {
+		log.Infoc(q.CtxS, "SSL configured", "CA", q.Conf.Ca)
+		tlsConfig = tools.TlsClientConfig(q.Conf.Ca, q.Conf.Cert, q.Conf.CertKey, "kafka-reader")
+	}
 	q.Dialer = &kafka.Dialer{
 		// Timeout:   10 * time.Second,
-		DualStack: true,
-		ClientID:  p.Instance_id + "-" + hostname + "-" + q.Conf.Group + "-reader",
-		//TLS: tls.Config
+		DualStack:     true,
+		ClientID:      p.Instance_id + "-" + hostname + "-" + q.Conf.Group + "-reader",
+		TLS:           tlsConfig,
+		SASLMechanism: mechanism,
 	}
+
 	addrs := strings.Split(q.Conf.Servers, ",")
 	q.Reader = kafka.NewReader(kafka.ReaderConfig{
 		Brokers:        addrs,
@@ -65,6 +108,7 @@ func (q *KafkaReader) Init(p *processor.Processor) error {
 		MaxBytes:       10e6, // 10MB
 		Dialer:         q.Dialer,
 		CommitInterval: time.Second, // flushes commits to Kafka every second
+		ErrorLogger:    kafka.LoggerFunc(logf),
 	})
 
 	log.Infoc(q.CtxS, "connected to kafka servers as consumer", "servers", q.Conf.Servers, "topic", q.Conf.Topic)

@@ -121,7 +121,7 @@ integration-test:
     key: GO
   coverage: "/\\(statements\\)(?:\\s+)?(\\d+(?:\\.\\d+)?%)/"
   script:
-    - ./scripts/run-integration-test-docker.sh reset
+    - ./scripts/run-integration-test-docker.sh
   artifacts:
     when: always
     paths:

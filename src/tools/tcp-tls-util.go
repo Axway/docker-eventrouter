@@ -6,8 +6,8 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
+	"os"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -48,7 +48,7 @@ func tlsCAConfig(ctx, caFilenames string) (clientCertPool *x509.CertPool, insecu
 	} else if caFilenames != "" {
 		clientCertPool = x509.NewCertPool()
 		for _, caFilename := range strings.Split(caFilenames, ",") {
-			clientCACert, err := ioutil.ReadFile(caFilename)
+			clientCACert, err := os.ReadFile(caFilename)
 			if err != nil {
 				log.Infoc(ctx, "Unable to open ca", caFilename, err)
 				return nil, false, err
@@ -65,15 +65,12 @@ func tlsCAConfig(ctx, caFilenames string) (clientCertPool *x509.CertPool, insecu
 	return clientCertPool, insecureSkipVerify, nil
 }
 
-func TlsConnect(
-	addr string,
+func TlsClientConfig(
 	caFilenames string,
 	certFilename string,
 	keyFilename string,
 	prefix string,
-) (net.Conn, string, error) {
-	ctx := fmt.Sprint("["+prefix+"-", getSessionId(), "]")
-
+) *tls.Config {
 	// Load our TLS key pair to use for mutual-authentication
 	var certs []tls.Certificate
 	if certFilename != "" {
@@ -90,10 +87,8 @@ func TlsConnect(
 		log.Fatalc(prefix, "Unable to open ca", caFilenames, err)
 	}
 
-	tlsConfig := &tls.Config{
-		MinVersion: tls.VersionTLS12, // FIXME should we be able do force only 1.2 ? MaxVersion
-		// Need to test if when we allow 1.3, can we runcheck with someone that doesn't understand 1.3, like ER?
-		// when I allow 1.2, how do I runcheck with someone that uses 1.3? Will I only use 1.3?
+	return &tls.Config{
+		MinVersion: tls.VersionTLS12,
 		CipherSuites: []uint16{
 			// TLS 1.2 cipher suites.
 			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
@@ -108,6 +103,18 @@ func TlsConnect(
 		RootCAs:            serverCertPool,
 		InsecureSkipVerify: insecureSkipVerify,
 	}
+}
+
+func TlsConnect(
+	addr string,
+	caFilenames string,
+	certFilename string,
+	keyFilename string,
+	prefix string,
+) (net.Conn, string, error) {
+	ctx := fmt.Sprint("["+prefix+"-", getSessionId(), "]")
+
+	tlsConfig := TlsClientConfig(caFilenames, certFilename, keyFilename, prefix)
 
 	tlsConfig.BuildNameToCertificate()
 
