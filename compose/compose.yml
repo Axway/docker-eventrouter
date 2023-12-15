@@ -13,6 +13,7 @@ services:
     ports:
     - "1325:1325" # same ports as the ones configured as input in yml
                   # configuration file
+    - "80:80"     # port used for metrics
 
     volumes:
       - eventrouter_data:/data
