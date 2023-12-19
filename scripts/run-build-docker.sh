@@ -9,7 +9,7 @@ CONTAINER=$COMPOSE_PROJECT_NAME-$NAME
 
 run() {
     docker rm -f $CONTAINER || true
-    docker build -f Dockerfile.glibc -t event_router_build_glibc .
+    docker build -f docker/Dockerfile.glibc -t event_router_build_glibc .
     docker run --name $CONTAINER event_router_build_glibc $NAME version
     docker cp $CONTAINER:/usr/bin/$NAME .
     docker rm -f $CONTAINER || true 

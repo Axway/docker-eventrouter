@@ -81,7 +81,7 @@ docker-run:
 	docker-compose up
 
 docker:
-	docker build -t $(IMAGE) .
+	docker build -t $(IMAGE) docker
 
 docker-publish-all: docker-publish docker-publish-version
 

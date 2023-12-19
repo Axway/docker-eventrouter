@@ -2,21 +2,21 @@
 services:
   build:
     build:
-      dockerfile: ./Dockerfile.glibc
+      dockerfile: ./docker/Dockerfile.glibc
     command: ls
     volumes:
       - go_build:/root/.cache/go-build
   
   sut-unit:
     build:
-      dockerfile: ./Dockerfile.test
+      dockerfile: ./docker/Dockerfile.test
     command: sh -c "ls ; make test-unit"
     volumes:
       - go_build:/root/.cache/go-build
 
   sut:
     build:
-      dockerfile: ./Dockerfile.test
+      dockerfile: ./docker/Dockerfile.test
     command: sh -c "ls ; make test-integration"
     environment:
       KAFKA: kafka:9092 #9092

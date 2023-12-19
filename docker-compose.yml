@@ -1,7 +1,7 @@
 version: '2.2'
 services:
   qlt:
-    build: .
+    build: docker
     tty: true
     environment:
       #SENTINEL_ADDRS: "ingestion-lumberjack.branch2.trcblt.com:80"

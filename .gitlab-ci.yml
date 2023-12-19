@@ -91,7 +91,7 @@ build-docker:
     - version
     - unit-test
   script:
-    - docker build --pull -f ./Dockerfile -t $DOCKER_IMAGE .
+    - docker build --pull -f ./docker/Dockerfile -t $DOCKER_IMAGE .
     - docker run --rm $DOCKER_IMAGE $NAME version
 
 integration-test-reset:
@@ -181,7 +181,7 @@ docker-snapshot:
     - echo using image $DOCKER_IMAGE
   script:
     - echo $VERSION
-    - docker build --pull -f ./Dockerfile -t $DOCKER_IMAGE .
+    - docker build --pull -f ./docker/Dockerfile -t $DOCKER_IMAGE .
     - docker push $DOCKER_IMAGE
 
 fortify:

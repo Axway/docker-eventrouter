@@ -6,6 +6,9 @@ RUN --mount=type=cache,target=/go/pkg/mod go install gotest.tools/gotestsum@late
 ENV PATH="/root/go/bin:${PATH}"
 RUN --mount=type=cache,target=/go/pkg/mod go install github.com/nikolaydubina/go-cover-treemap@latest
 RUN --mount=type=cache,target=/go/pkg/mod go get github.com/boumenot/gocover-cobertura
+RUN mkdir -p /opt/axway && \
+    adduser --disabled-password --gecos '' --home /opt/axway --no-create-home --uid 1000 --gid 0 axway && \
+    chown -R axway:0 /opt/axway
 
 COPY .git/ .env Makefile ./
 COPY ./src/ ./src/
@@ -13,14 +16,30 @@ COPY ./src/ ./src/
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     make build-glibc
+
+USER 1000
+ENV LANG=C.UTF-8
+COPY --chown=axway:0 ./docker/uid_entrypoint /opt/axway
+
 RUN /app/src/event-router version
 
 FROM debian:bookworm-slim
 RUN apt update && \
     apt install -y ca-certificates && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    adduser --disabled-password --gecos '' --home /opt/axway --no-create-home --uid 1000 --gid 0 axway && \
+    mkdir -p /opt/axway && \
+    chown -R axway:0 /opt/axway && \
+    chmod -R u+x /opt/axway && \
+    chmod -R g=u /opt/axway /etc/passwd
 
 COPY --from=build /app/src/event-router /usr/bin/event-router
+COPY --chown=axway:0 --from=build /opt/axway /opt/axway
 
+USER 1000
+ENV LANG=C.UTF-8
+ENV HOME=/opt/axway
+
+ENTRYPOINT [ "/opt/axway/uid_entrypoint" ]
 CMD [ "event-router" ]
