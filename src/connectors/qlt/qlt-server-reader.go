@@ -136,11 +136,16 @@ func (m *QLTServerReaderConnection) Read() ([]processor.AckableEvent, error) {
 }
 
 func (m *QLTServerReaderConnection) Close() error {
+	if m.Qlt == nil {
+		log.Warnc(m.CtxS, "already closed")
+		return nil
+	}
 	err := m.Qlt.Close()
 	if err != nil {
 		log.Errorc(m.CtxS, "close error", "err", err)
 	} else {
-		log.Debugc(m.CtxS, "close")
+		log.Debugc(m.CtxS, "close OK")
 	}
+	m.Qlt = nil
 	return err
 }

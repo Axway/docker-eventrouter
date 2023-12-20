@@ -123,7 +123,7 @@ func (c *QLTClientReaderConnection) Read() ([]processor.AckableEvent, error) {
 		err := client.Connect(qltClientConnectTimeout)
 		if err != nil {
 			log.Errorc(c.CtxS, "failed to connect", "addr", c.Addr, "queue", c.Conf.QueueName, "err", err)
-			return nil, err
+			return nil, nil
 		} else {
 			c.Qlt = client
 		}
@@ -134,8 +134,8 @@ func (c *QLTClientReaderConnection) Read() ([]processor.AckableEvent, error) {
 		if errors.Is(err, os.ErrDeadlineExceeded) {
 			return nil, err
 		}
-
-		return nil, err
+		log.Warnc(c.CtxS, "Reading error ", "err", err)
+		return nil, nil
 	}
 	c.MsgId += 1
 	events[0] = processor.AckableEvent{c, c.MsgId, msg, nil}

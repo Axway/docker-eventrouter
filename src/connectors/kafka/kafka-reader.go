@@ -139,7 +139,7 @@ func (q *KafkaReader) Read() ([]processor.AckableEvent, error) {
 	if err != nil {
 		// The client will automatically try to recover from all errors.
 		log.Errorc(q.CtxS, "reader error", "err", err, "msg", fmt.Sprintf("%+v", msg))
-		return nil, err
+		return nil, nil
 	}
 
 	var c TopicPartition

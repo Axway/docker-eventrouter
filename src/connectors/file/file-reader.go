@@ -88,14 +88,34 @@ func (q *FileStoreRawReader) Init(p *processor.Processor) error {
 	q.file = f
 
 	/* Go to correct offset */
-	//log.Infoc(q.CtxS, "Seeking position", "offset", strconv.FormatInt(q.Offset,10))
+	log.Infoc(q.CtxS, "Seeking position", "offset", strconv.FormatInt(q.Offset,10))
 	q.file.Seek(q.Offset, io.SeekStart)
 
 	return nil
 }
 
+func (q *FileStoreRawReader) Switch(newFilename string) (error) {
+	log.Infoc(q.CtxS, "Closing file", "filename", q.Filename)
+	q.file.Close()
+	q.AckOffset = 0
+	q.Offset = 0
+	q.Pos = 0
+
+	log.Infoc(q.CtxS, "Opening file", "filename", newFilename)
+	f, err := os.OpenFile(newFilename, os.O_RDONLY, 0o644)
+	if err != nil {
+		log.Errorc(q.CtxS, "Error opening file for reading", "filename", newFilename, "err", err)
+		return err
+	}
+	q.Filename = newFilename
+	q.file = f
+	return nil
+}
+
 func (q *FileStoreRawReader) Read() ([]processor.AckableEvent, error) {
 	n, err := q.file.Read(q.b[q.Pos:q.Size])
+	log.Tracec(q.CtxS, "Read", "file", q.file, "nread", n)
+
 	if err != nil && !errors.Is(err, io.EOF) {
 		return nil, err
 	}
@@ -103,39 +123,26 @@ func (q *FileStoreRawReader) Read() ([]processor.AckableEvent, error) {
 	if n == 0 || (err != nil && q.Pos == 0) {
 		/* Only oppening next file if all messages acked in current file */
 		if errors.Is(err, io.EOF) && q.AckOffset < (q.Offset-1) {
-			return nil, err
+			return nil, nil
 		}
-
+		// FIXME avoid calling nextFile (ReadDir) so often
 		filename, _ := tools.NextFile(q.CtxS, q.conf.FilenamePrefix, q.conf.FilenameSuffix, q.Filename)
 		if filename != q.Filename {
-			q.file.Close()
-			q.Filename = filename
-			q.AckOffset = 0
-			q.Offset = 0
-			q.Pos = 0
-
-			f, err := os.OpenFile(q.Filename, os.O_RDONLY, 0o644)
-			if err != nil {
-				log.Errorc(q.CtxS, "Error opening file for reading", "filename", q.Filename, "err", err)
-				return nil, err
-			}
-			q.file = f
-			n, err = q.file.Read(q.b[q.Pos:q.Size])
+			err = q.Switch(filename)
 			if err != nil {
 				return nil, err
 			}
-		} else {
-			return nil, err
 		}
+		return nil, nil
 	}
 
 	q.Pos += n
 
-	// log.Debugln(q.ctx, "Buffer", "size", q.pos, "content", string(q.b[0:q.pos]))
+	// log.Debugc(q.CtxS, "Buffer", "size", q.Pos, "content", string(q.b[0:q.Pos]))
 	s := string(q.b[0:q.Pos])
 	arr := strings.Split(s, "\n")
 	msgCount := len(arr)
-	// log.Debugln(q.ctx, "Buffer", "msgCount", msgCount, "msgs", arr)
+	// log.Debugc(q.CtxS, "Buffer", "msgCount", msgCount, "msgs", arr)
 	if q.b[q.Pos-1] != '\n' {
 		lastSize := len(arr[msgCount-1])
 		// log.Debugln(q.ctx, "Buffer", "lastsize", lastSize, "lastbuf", string(q.b[q.pos-lastSize:q.pos]))
@@ -153,12 +160,12 @@ func (q *FileStoreRawReader) Read() ([]processor.AckableEvent, error) {
 	for i := 0; i < msgCount; i++ {
 		msg := arr[i]
 		q.Offset += int64(len(msg)) + 1
-		// log.Debugln(q.CtxS, "Event", q.Offset, msg)
+		// log.Debugc(q.CtxS, "Read", "Event", q.Offset, "msg", msg)
 		events[i] = processor.AckableEvent{q, q.Offset, msg, nil}
 	}
 
-	// log.Debugln(q.ctx, "Buffer", "size", q.pos, "content", string(q.b[0:q.pos]))
-	// log.Debugf("%s %s %+v", q.ctx, "Events", events)
+	// log.Debugc(q.CtxS, "Buffer", "size", q.Offset, "content", string(q.b[0:q.Pos]))
+	
 	return events, nil
 }
 

@@ -144,6 +144,7 @@ func (q *MongoReader) Read() ([]processor.AckableEvent, error) {
 		filter,
 		(&options.FindOptions{}).SetSort(bson.M{"_id": 1}).SetLimit(100))
 	if err != nil {
+		// FIXME the reader should reconnect
 		log.Errorc(q.CtxS, "read error", "err", err)
 		return nil, err
 	}

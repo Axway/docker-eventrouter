@@ -65,7 +65,6 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 	log.Infoc(ctxp, "Starting Reader Proxy Ack Loop...")
 	go func() {
 		defer p2.Close()
-		defer log.Infoc(ctxp, "Closing Acks...", "acked", acked, "sent", sent, "all_ack", p.Out_ack, "all_sent", p.Out)
 		done := false
 		var lastAcked int64 = -1
 		nextWait := ReaderAckSourceWait
@@ -86,22 +85,22 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 					nextWait = ReaderAckAllNotify
 				}
 			case <-ackDone:
-				log.Infoc(ctxp, "Closing Acks...", "acked", acked, "sent", sent)
 				done = true
 			case <-t.C:
 				if acked != sent {
 					log.Debugc(ctxp, "Waiting Ack Timeout...", "acked", acked, "sent", sent, "all_ack", p.Out_ack, "all_sent", p.Out)
-				} else if lastAcked != acked {
-					ctl <- ControlEvent{p, p2, "ACK_DONE", "" + fmt.Sprint(sent)}
-					if p.Out_ack == p.Out {
-						ctl <- ControlEvent{p, p2, "ACK_ALL_DONE", "" + fmt.Sprint(p.Out)}
-					}
-					lastAcked = acked
 				}
 			}
 			t.Stop()
+			if acked == sent && lastAcked != acked {
+				ctl <- ControlEvent{p, p2, "ACK_DONE", "" + fmt.Sprint(sent)}
+				if p.Out_ack == p.Out {
+					ctl <- ControlEvent{p, p2, "ACK_ALL_DONE", "" + fmt.Sprint(p.Out)}
+				}
+				lastAcked = acked
+			}
 		}
-		log.Infoc(ctxp, "*** Closed Acks...")
+		log.Infoc(ctxp, "Stopping Reader Proxy Ack Loop...", "acked", acked, "sent", sent, "all_ack", p.Out_ack, "all_sent", p.Out)
 	}()
 
 	// Trap reader cancellation in done variable
@@ -118,16 +117,22 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 		var lastAcked int64 = -1
 		for {
 			timeout := false
-			// log.Debugln(ctxp, "Reading messages...")
+			// log.Debugc(ctxp, "Reading messages...")
 			events, err := p2.Read()
 			if err != nil {
 				if errors.Is(err, os.ErrDeadlineExceeded) {
 					timeout = true
 					// log.Debugc(ctxp, "IO Timeout")
-				} else if !errors.Is(err, io.EOF) {
-					log.Errorc(ctxp, "Error reading", "err", err)
-					ctl <- ControlEvent{p, p2, "WARN", err.Error()}
-					// return Retry on error
+				} else if errors.Is(err, io.EOF) {
+					log.Infoc(ctxp, "No more event to read", "err", err)
+					done = true
+					ackDone <- 1
+				} else {
+					log.Errorc(ctxp, "Reading error", "err", err)
+					ctl <- ControlEvent{p, p2, "ERROR", err.Error()}
+					done = true
+					ackDone <- 1
+					break
 				}
 			}
 
@@ -161,12 +166,11 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 			}
 			lastAcked = acked
 			if done {
-				log.Infoc(ctxp, "stopping reading event")
 				ctl <- ControlEvent{p, p2, "STOPPING", ""}
 				break
 			}
 		}
-		log.Infoc(ctxp, "stopped")
+		log.Infoc(ctxp, "Stopping Reader Main Loop...")
 		ctl <- ControlEvent{p, p2, "STOPPED", ""}
 	}()
 	return p2, nil

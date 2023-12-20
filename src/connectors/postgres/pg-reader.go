@@ -81,6 +81,7 @@ func (q *PGReader) Read() ([]processor.AckableEvent, error) {
 	rows, err := pgDBRead(q.conn, 1000, int(q.offset))
 	if err != nil {
 		log.Errorc(q.ctx, "error reading db", "err", err)
+		// FIXME the reader should reconnect
 		return nil, err
 	}
 
