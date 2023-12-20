@@ -7,6 +7,7 @@ import (
 	"net"
 	"sync"
 	"testing"
+	"reflect"
 
 	"axway.com/qlt-router/src/connectors/mem"
 	"axway.com/qlt-router/src/log"
@@ -59,6 +60,15 @@ func randI(min, max int) int {
 		n = min + int(rand.Int31n(int32(max-min)))
 	}
 	return n
+}
+
+func Contains[T comparable](slice []T, el T) bool {
+	for _, v := range slice {
+		if v == el {
+			return true
+		}
+	}
+	return false
 }
 
 func MessageGenerator(minReaders, maxReaders, minMessages, maxMessages, minMsgSize, maxMsgSize int) ([][]string, int) {
@@ -138,14 +148,18 @@ func TestConnector(t *testing.T, writer, reader processor.Connector) {
 	processors := []*processor.Processor{connectorReader, wp, rp, connectorWriter}
 	c := []*processor.Channel{nil, c2, nil, c1, nil}
 	rProcessors := []processor.ConnectorRuntime{}
+	servers := []string{"*qlt.QLTServerWriterConf", "*qlt.QLTServerReaderConf"}
 
-	log.Infoc("testconnector", "Starting connectors...")
+	log.Infoc("testconnector", "Starting server connectors...")
 	errorCount := 0
-	var wg sync.WaitGroup
+	var wgs sync.WaitGroup
 	for i, p2 := range processors {
-		wg.Add(1)
+		if !Contains(servers, reflect.TypeOf(p2.Conf).String()) {
+			continue
+		}
+		wgs.Add(1)
 		go func(i int, p2 *processor.Processor) {
-			defer wg.Done()
+			defer wgs.Done()
 			p, err := p2.Start(context.Background(), ctl, c[i], c[i+1])
 			if err != nil {
 				t.Error("Error starting connector'"+p.Ctx()+"'", err)
@@ -154,11 +168,37 @@ func TestConnector(t *testing.T, writer, reader processor.Connector) {
 			rProcessors = append(rProcessors, p)
 		}(i, p2)
 	}
-	wg.Wait()
+	wgs.Wait()
 	if errorCount > 0 {
 		return
 	}
-	log.Infoc("test", "All connectors started")
+	log.Infoc("testconnector", "Server connectors started")
+
+	log.Infoc("testconnector", "Starting client connectors...")
+	errorCount = 0
+	var wgc sync.WaitGroup
+	for i, p2 := range processors {
+		if Contains(servers, reflect.TypeOf(p2.Conf).String()) {
+			continue
+		}
+		wgc.Add(1)
+		go func(i int, p2 *processor.Processor) {
+			defer wgc.Done()
+			p, err := p2.Start(context.Background(), ctl, c[i], c[i+1])
+			if err != nil {
+				t.Error("Error starting connector'"+p.Ctx()+"'", err)
+				errorCount++
+			}
+			rProcessors = append(rProcessors, p)
+		}(i, p2)
+	}
+	wgc.Wait()
+	if errorCount > 0 {
+		return
+	}
+	log.Infoc("testconnector", "Client connectors started")
+	log.Infoc("testconnector", "All connectors started")
+
 	cond1 := false
 	cond2 := false
 	for !cond1 || !cond2 {
