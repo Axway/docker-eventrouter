@@ -66,12 +66,12 @@ func (f *FlowStep) UnmarshalYAML(n *yaml.Node) error {
 }
 
 func (flow *Flow) Start(ctx context.Context, readerContext context.Context, instance_id string, all bool, ctl chan ControlEvent, channels *Channels, processors *Processors) ([]*Processor, error) {
-	ctxS := "flow"
+	ctxS := "stream"
 	if flow.Disable && !all {
-		log.Warnc(ctxS, "flow disabled", "name", flow.Name)
+		log.Warnc(ctxS, "disabled", "name", flow.Name)
 		return nil, nil
 	}
-	log.Infoc(ctxS, "flow starting...", "name", flow.Name)
+	log.Infoc(ctxS, "starting...", "name", flow.Name)
 	var in *Channel
 	var out *Channel
 	flowtxt := ""
@@ -104,7 +104,7 @@ func (flow *Flow) Start(ctx context.Context, readerContext context.Context, inst
 		p.Instance_id = instance_id
 
 		if p == nil { // FIXME: cannot be nil : already checked when loading configuration
-			log.Errorc(ctxS, "Processor not found", "name", flow.Name+"/"+step.Type)
+			log.Errorc(ctxS, "processor not found", "name", flow.Name+"/"+step.Type)
 			closest := (*processors)[0].Name
 			closest_d := tools.Levenshtein(step.Type, closest)
 			for _, p := range *processors {
@@ -113,7 +113,7 @@ func (flow *Flow) Start(ctx context.Context, readerContext context.Context, inst
 					closest = p.Name
 				}
 			}
-			log.Errorc(ctxS, "Processor not found", "name", flow.Name+"/"+step.Type, "closest", closest)
+			log.Errorc(ctxS, "processor not found", "name", flow.Name+"/"+step.Type, "closest", closest)
 			return nil, fmt.Errorf("Processor " + flow.Name + "/" + step.Type + " not found, maybe " + closest)
 		} else {
 			ctx2 := ctx
@@ -179,7 +179,7 @@ func (flow *Flow) Start(ctx context.Context, readerContext context.Context, inst
 
 			runtimeProcessor = append(runtimeProcessor, p)
 
-			log.Infoc(ctxS, "flow", "name", flow.Name, "processorName", p.Name, "conf", fmt.Sprintf("%+v", p.Conf))
+			log.Infoc(ctxS, "info", "name", flow.Name, "processorName", p.Name, "conf", fmt.Sprintf("%+v", p.Conf))
 			if step.Scale > 0 {
 				ParallelOrdered(ctx, channelName+"-scale", step.Scale, ctl, in.C, out.C, channels, p)
 				/*} else if step.ScaleUnordered > 0 {
@@ -188,7 +188,7 @@ func (flow *Flow) Start(ctx context.Context, readerContext context.Context, inst
 			} else {
 				r, err := p.Conf.Start(ctx2, p, ctl, in.GetC(), out.GetC())
 				if err != nil {
-					log.Fatalc(ctxS, "flow failed to start", "name", flow.Name+"/"+step.Type, "err", err)
+					log.Fatalc(ctxS, "failed to start", "name", flow.Name+"/"+step.Type, "err", err)
 					os.Exit(1)
 				}
 				p.Runtime = r
@@ -199,6 +199,6 @@ func (flow *Flow) Start(ctx context.Context, readerContext context.Context, inst
 		}
 		in = out
 	}
-	log.Infoc(ctxS, "flow", "name", flow.Name, "desc", flowtxt)
+	log.Infoc(ctxS, "started", "name", flow.Name, "desc", flowtxt)
 	return runtimeProcessor, nil
 }
