@@ -96,6 +96,7 @@ func (q *KafkaWriter) Init(p *processor.Processor) error {
 			SASL: mechanism,
 		},
 		ErrorLogger: kafka.LoggerFunc(logf),
+		BatchSize: 1,
 	}
 
 	log.Infoc(q.CtxS, "connected to kafka servers as producer", "servers", q.Conf.Servers, "topic", q.Conf.Topic)
