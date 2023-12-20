@@ -20,7 +20,7 @@ var (
 )
 
 type KafkaWriterConf struct {
-	Servers           string
+	Addresses         string
 	Topic             string
 	Cert, CertKey, Ca string
 	User, Password    string
@@ -83,7 +83,7 @@ func (q *KafkaWriter) Init(p *processor.Processor) error {
 
 		tlsConfig = tools.TlsClientConfig(q.Conf.Ca, q.Conf.Cert, q.Conf.CertKey, "kafka-writer")
 	}
-	addrs := strings.Split(q.Conf.Servers, ",")
+	addrs := strings.Split(q.Conf.Addresses, ",")
 	q.Writer = &kafka.Writer{
 		Addr:                   kafka.TCP(addrs...),
 		Topic:                  q.Conf.Topic,
@@ -99,7 +99,7 @@ func (q *KafkaWriter) Init(p *processor.Processor) error {
 		BatchSize: 1,
 	}
 
-	log.Infoc(q.CtxS, "connected to kafka servers as producer", "servers", q.Conf.Servers, "topic", q.Conf.Topic)
+	log.Infoc(q.CtxS, "connected to kafka servers as producer", "servers", q.Conf.Addresses, "topic", q.Conf.Topic)
 	return nil
 }
 

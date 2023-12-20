@@ -24,7 +24,7 @@ type TopicPartition struct {
 }
 
 type KafkaReaderConf struct {
-	Servers           string
+	Addresses         string
 	Topic             string
 	Group             string
 	Cert, CertKey, Ca string
@@ -100,7 +100,7 @@ func (q *KafkaReader) Init(p *processor.Processor) error {
 		SASLMechanism: mechanism,
 	}
 
-	addrs := strings.Split(q.Conf.Servers, ",")
+	addrs := strings.Split(q.Conf.Addresses, ",")
 	q.Reader = kafka.NewReader(kafka.ReaderConfig{
 		Brokers:        addrs,
 		GroupID:        q.Conf.Group,
@@ -111,7 +111,7 @@ func (q *KafkaReader) Init(p *processor.Processor) error {
 		ErrorLogger:    kafka.LoggerFunc(logf),
 	})
 
-	log.Infoc(q.CtxS, "connected to kafka servers as consumer", "servers", q.Conf.Servers, "topic", q.Conf.Topic)
+	log.Infoc(q.CtxS, "connected to kafka servers as consumer", "servers", q.Conf.Addresses, "topic", q.Conf.Topic)
 	return err
 }
 
