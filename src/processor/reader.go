@@ -65,6 +65,7 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 	log.Infoc(ctxp, "Starting Reader Proxy Ack Loop...")
 	go func() {
 		defer p2.Close()
+		defer p.RemoveReader(p2)
 		done := false
 		var lastAcked int64 = -1
 		nextWait := ReaderAckSourceWait
@@ -86,6 +87,8 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 				}
 			case <-ackDone:
 				done = true
+			case <-ctxz.Done():
+				done = true
 			case <-t.C:
 				if acked != sent {
 					log.Debugc(ctxp, "Waiting Ack Timeout...", "acked", acked, "sent", sent, "all_ack", p.Out_ack, "all_sent", p.Out)
@@ -103,16 +106,9 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 		log.Infoc(ctxp, "Stopping Reader Proxy Ack Loop...", "acked", acked, "sent", sent, "all_ack", p.Out_ack, "all_sent", p.Out)
 	}()
 
-	// Trap reader cancellation in done variable
-	done := false
-	go func() {
-		<-ctxz.Done()
-		done = true
-		log.Debugc(ctxp, "done")
-	}()
-
 	log.Infoc(ctxp, "Starting Reader Main Loop...")
 	go func() {
+		done := false
 		ctl <- ControlEvent{p, p2, "RUNNING", ""}
 		var lastAcked int64 = -1
 		for {

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"sync"
+	"reflect"
 
 	log "axway.com/qlt-router/src/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -46,6 +48,7 @@ type Processor struct {
 	Cin  *Channel
 	Cout *Channel
 	Ctl  chan ControlEvent `json:"-"`
+	mutex sync.Mutex
 }
 
 /*func (p *Processor) Stop() {
@@ -87,14 +90,43 @@ func (p *Processor) InitializePrometheusCounters() {
 }
 
 func (p *Processor) AddReader(reader Connector) (ConnectorRuntime, error) {
-	log.Debugc(p.Name, "Starting AddReader!!!!*************************")
+	log.Debugc(p.Name, "Adding runtime...")
 	runtime, err := reader.Start(p.Context, p, p.Ctl, p.Cin.GetC(), p.Cout.GetC())
 	if err != nil {
 		p.Ctl <- ControlEvent{p, runtime, "ERROR", fmt.Sprint("connector start error: ", "err ", err)}
 	}
 	// log.Debugln(p.Name, "Started AddReader!!!!*************************")
 	p.Runtimes = append(p.Runtimes, runtime)
+	log.Debugc(p.Name, "Runtime added", "runtime", runtime.Ctx())
 	return runtime, err
+}
+
+func (p *Processor) RemoveReader(runtime ConnectorRuntime) {
+	if len(p.Runtimes) == 0 {
+		return
+	}
+	if (reflect.TypeOf(runtime).String() == "*mem.MemReadersSource") {
+		// FIXME - so uggly, mem reader runtime is required after execution for testing purpose
+		return
+	}
+
+	log.Debugc(p.Name, "Removing runtime", "runtime", runtime.Ctx())
+
+	found := false
+
+	p.mutex.Lock()
+	for i, p2 := range p.Runtimes {
+		if (p2 == runtime) {
+			found = true
+			p.Runtimes = append(p.Runtimes[:i], p.Runtimes[i+1:]...)
+			log.Debugc(p.Name, "Runtime removed", "runtime", runtime.Ctx())
+		}
+	}
+	p.mutex.Unlock()
+
+	if !found {
+		log.Debugc(p.Name, "Removing reader failed, not found", "reader", runtime.Ctx())
+	}
 }
 
 func (p *Processor) Start(ctx context.Context, ctl chan ControlEvent, cin *Channel, cout *Channel) (ConnectorRuntime, error) {
