@@ -8,10 +8,10 @@ version: "3.5"
 
 services:
   eventrouter:
-    # image: eventrouter/eventrouter:3.0.
-    image: erdraft:latest
+    image: eventrouter/eventrouter:3.0
 
     environment:
+      ER_INSTANCE_ID: "eventrouter-1"
       ER_QLT_SERVER_CERT: /run/secrets/qlt_server_cert.pem
       ER_QLT_SERVER_KEY: /run/secrets/qlt_server_key.pem
       ER_QLT_SERVER_CA: /run/secrets/qlt_server_ca.pem

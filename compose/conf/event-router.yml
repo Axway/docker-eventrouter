@@ -1,4 +1,4 @@
-instance_id: "event_router_1"
+instance_id: "$ER_INSTANCE_ID"
 streams:
   - name: "QLT_input"
     disable: false
@@ -8,8 +8,8 @@ streams:
       type: qlt-server-reader
       conf:
         port: 1325
-        # cert: $ER_QLT_SERVER_CERT
-        # certKey: $ER_QLT_SERVER_KEY
+        cert: $ER_QLT_SERVER_CERT
+        certKey: $ER_QLT_SERVER_KEY
     writer:
       type: file-writer
       conf:
