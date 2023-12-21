@@ -2,7 +2,7 @@
 #
 
 if [ "${VERSION:-}" = ""  ]; then
-    VERSION="1.0.$(date +'%Y%m%d')"    
+    VERSION="3.0.$(date +'%Y%m%d')"
 fi
 sed -i "s/VERSION=.*/VERSION=$VERSION/" .env
 
