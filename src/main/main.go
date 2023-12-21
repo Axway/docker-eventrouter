@@ -195,7 +195,7 @@ func main() {
 		log.Fatalc(ctxS, "Cannot open config file", "err", fmt.Sprint(err))
 	}
 	if len(conf.Streams) == 0 {
-		log.Fatalc(ctxS, "Not configured flows")
+		log.Fatalc(ctxS, "No stream configured")
 	}
 	log.Infoc(ctxS, "config [internal]", "streams", conf.Streams)
 	b, _ := yaml.Marshal(conf)
@@ -223,7 +223,7 @@ func main() {
 				}
 				if !found {
 					count++
-					log.Errorc(ctxS, "Upstream flow not found", "flow", flow.Name, "upstream", flow.Upstream)
+					log.Errorc(ctxS, "Upstream not found", "stream", flow.Name, "upstream", flow.Upstream)
 				}
 			}
 		}
@@ -266,7 +266,7 @@ func main() {
 	}
 
 	if errors > 0 {
-		log.Fatalc(ctxS, "error configuring flows")
+		log.Fatalc(ctxS, "Error occurs while starting streams")
 		os.Exit(1)
 	}
 
