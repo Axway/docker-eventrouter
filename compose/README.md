@@ -37,12 +37,12 @@ You should get an output like:
 ```console
 
 REPOSITORY                TAG                 IMAGE ID            CREATED             SIZE
-eventrouter/eventrouter   3.0.XXXXXXXX           27a34f72a7a4        18 hours ago        29.3MB
+eventrouter/eventrouter   3.0.XXXXXXXX        27a34f72a7a4        18 hours ago        29.3MB
 ```
 
 ### Configuring Axway Event Router
 
-All the configuration of the Axway Event Router is done via the file qlt-router.yml.
+All the configuration of the Axway Event Router is done via the file ./conf/event-router.yml.
 Information on how to write this file can be found in the Axway Event Router's documentation.
 
 ### How to manage the Axway Event Router service from your compose.yml file
@@ -62,22 +62,16 @@ The Axway Event Router compose.yml file defines a volume as a mechanism for pers
 You can change the volume configuration to use a previously created volume, as described in [Volumes configuration reference](https://docs.docker.com/compose/compose-file/#volume-configuration-reference) and [Create and manage volumes](https://docs.docker.com/storage/volumes/#create-and-manage-volumes).
 
 
-#### 3. Create and start the Axway Event Router service
+#### 3. Create and run the Axway Event Router service
 
 From the folder where the compose.yml file is located, run the command:
 
 ```console
-docker compose up
+docker compose up -d
 ```
 
 The `up` command builds (if needed), recreates, starts, and attaches to a container for services.
 Unless they are already running, this command also starts any linked services.
-
-You can use the -d option to run containers in the background.
-
-```console
-docker compose up -d
-```
 
 You can use the -V option to recreate anonymous volumes instead of retrieving data from the previous containers.
 
@@ -91,6 +85,28 @@ Run the `docker ps` command to see the running containers.
 docker ps
 ```
 
+Run the `docker compose logs` command to see the container logs.
+
+```console
+docker compose logs
+```
+
+#### 4. Stop Axway Event Router service
+
+From the folder where the compose.yml file is located, you can stop the containers using the command:
+
+```console
+docker compose stop
+```
+
+#### 5. Start the Axway Event Router service
+
+From the folder where the compose.yml file is located, you can start the Axway Event Router service using `start` if it was stopped using `stop`.
+
+```console
+docker compose start
+```
+
 #### 4. Stop and remove the Axway Event Router service
 
 From the folder where the compose.yml file is located, you can stop the containers using the command:
@@ -102,21 +118,6 @@ docker compose down
 The `down` command stops containers, and removes containers, networks, anonymous volumes, and images created by `up`.
 You can use the -v option to remove named volumes declared in the `volumes` section of the Compose file, and anonymous volumes attached to containers.
 
-#### 5. Start the Axway Event Router service
-
-From the folder where the compose.yml file is located, you can start the Axway Event Router service using `start` if it was stopped using `stop`.
-
-```console
-docker compose start
-```
-
-#### 6. Stop Axway Event Router service
-
-From the folder where the compose.yml file is located, you can stop the containers using the command:
-
-```console
-docker compose stop
-```
 
 ## Copyright
 
