@@ -38,8 +38,9 @@ COPY --from=build /app/src/event-router /usr/bin/event-router
 COPY --chown=axway:0 --from=build /opt/axway /opt/axway
 
 USER 1000
-ENV LANG=C.UTF-8
+WORKDIR /opt/axway
 ENV HOME=/opt/axway
+ENV LANG=C.UTF-8
 
 ENTRYPOINT [ "/opt/axway/uid_entrypoint" ]
 CMD [ "event-router" ]
