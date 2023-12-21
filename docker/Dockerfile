@@ -33,5 +33,18 @@ WORKDIR /opt/axway
 ENV HOME=/opt/axway
 ENV LANG=C.UTF-8
 
+ARG BUILD_DATE
+ARG VERSION="3.0"
+
+LABEL title="Axway Event Router"
+LABEL version="${VERSION:-}"
+LABEL created="${BUILD_DATE:-}"
+LABEL vendor="Axway"
+LABEL url="https://www.axway.com"
+LABEL maintainer="support@axway.com"
+
+EXPOSE 1325
+EXPOSE 8080
+
 ENTRYPOINT [ "/opt/axway/uid_entrypoint" ]
 CMD [ "event-router" ]

@@ -91,6 +91,7 @@ build-docker:
     - version
     - unit-test
   script:
+    - . ./.env
     - docker build --pull -f ./docker/Dockerfile -t $DOCKER_IMAGE .
     - docker run --rm $DOCKER_IMAGE $NAME version
 
@@ -176,12 +177,13 @@ docker-snapshot:
   before_script:
     - docker login -u $ARTIFACTORY_USER -p $ARTIFACTORY_TOKEN $DOCKER_REPO
     - . ./.env
+    - eval export BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
     - eval export CI_COMMIT_BRANCH=$(echo "$CI_COMMIT_BRANCH" | tr '[:upper:]' '[:lower:]')
     - eval export DOCKER_IMAGE=$DOCKER_REPO/$NAME:$CI_COMMIT_BRANCH
     - echo using image $DOCKER_IMAGE
   script:
     - echo $VERSION
-    - docker build --pull -f ./docker/Dockerfile -t $DOCKER_IMAGE .
+    - docker build --pull -f ./docker/Dockerfile -t $DOCKER_IMAGE --build-arg BUILD_DATE=$BUILD_DATE --build-arg VERSION=$VERSION .
     - docker push $DOCKER_IMAGE
 
 fortify:
