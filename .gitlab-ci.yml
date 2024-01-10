@@ -9,7 +9,8 @@ variables:
   WHITESOURCE_DOCKER_IMAGE: psg-docker-release.artifactory-ptx.ecd.axway.int/whitesource:latest
   FORTIFY_DOCKER_IMAGE: psg-docker-release.artifactory-ptx.ecd.axway.int/fortify/fortify-mvn-jdk-8:latest
   TWISTLOCK_IMAGE: psg-docker-release.artifactory-ptx.ecd.axway.int/psg-tools/docker:latest
-
+  BLACK_DUCK_PROJECT_NAME: "MFT - Sentinel Event Router"
+  BLACK_DUCK_PROJECT_VERSION: "SNAPSHOT"
 #include:
 #  - template: Code-Quality.gitlab-ci.yml
 
@@ -223,3 +224,28 @@ twistlock:
     - "curl --insecure -H \"Authorization: APIKEY $THREADFIX_APIKEY\" -H \"Accept: application/json\" -X POST --form \"file=@analysis.json\" https://vulnmgt.psg.axway.int/threadfix/rest/v2.5/applications/$THREADFIX_APPID/upload"
     # Remove scan results.
     - rm -f analysis.json
+
+blackduck:
+  image: $WHITESOURCE_DOCKER_IMAGE
+  stage: security
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: always
+    - when: manual
+  before_script:
+    - apt-get update -y
+    - apt-get install build-essential make git unzip wget -y
+    - wget https://go.dev/dl/go1.21.3.linux-amd64.tar.gz
+    - rm -rf /usr/local/go && tar -C /usr/local -xzf go1.21.3.linux-amd64.tar.gz
+    - export PATH=/usr/local/go/bin:$PATH
+    - go version
+  script:
+    - git clone https://cft_read:$GIT_CFT_READ_TOKEN@git.ecd.axway.org/cft/qlt-router.git qlt-router
+    - cd qlt-router
+    - git checkout master
+    - make
+    - cd ..
+    - wget https://artifactory-ptx.ecd.axway.int/artifactory/psg-generic-release/blackduck/synopsys-detect.zip
+    - unzip synopsys-detect.zip -d synopsys-detect
+    - java -jar synopsys-detect/synopsys-detect.jar --blackduck.url=$BLACK_DUCK_URL --blackduck.api.token=$BLACK_DUCK_TOKEN --detect.project.name="$BLACK_DUCK_PROJECT_NAME" --detect.project.version.name=$BLACK_DUCK_PROJECT_VERSION --detect.source.path=qlt-router/ --detect.go.path=`which go` --detect.go.mod.dependency.types.excluded=UNUSED --detect.output.path="/blackduck/output" --detect.status.json.output.path="/blackduck/status"
