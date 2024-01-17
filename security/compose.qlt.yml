@@ -1,0 +1,24 @@
+version: '2.2'
+services:
+  qlt:
+    image: $DOCKER_IMAGE
+    tty: true
+    environment:
+      ER_INSTANCE_ID: "eventrouter-1"
+      ER_QLT_SERVER_CERT: /certs/server.pem
+      ER_QLT_SERVER_KEY: /certs/server.key
+      ER_QLT_SERVER_CA: /certs/server.pem
+
+    volumes:
+      # volume used to persist file readers and writers data.
+      - eventrouter_data:/opt/axway/data
+      - "./qlt-router.yml:/event-router.yml"
+      - "../certs:/certs"
+
+    ports:
+      - "1325:1325" # same ports as the ones configured as input in event-router.yml configuration
+      - "8080:8080" # port used to expose Prometheus metrics: http://host:8080/metrics
+
+volumes:
+  eventrouter_data:
+    driver: local

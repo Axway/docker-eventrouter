@@ -9,8 +9,10 @@ variables:
   WHITESOURCE_DOCKER_IMAGE: psg-docker-release.artifactory-ptx.ecd.axway.int/whitesource:latest
   FORTIFY_DOCKER_IMAGE: psg-docker-release.artifactory-ptx.ecd.axway.int/fortify/fortify-mvn-jdk-8:latest
   TWISTLOCK_IMAGE: psg-docker-release.artifactory-ptx.ecd.axway.int/psg-tools/docker:latest
+  INSIGHTVM_IMAGE: psg-docker-release.artifactory-ptx.ecd.axway.int/insightvm:latest
   BLACK_DUCK_PROJECT_NAME: "MFT - Sentinel Event Router"
   BLACK_DUCK_PROJECT_VERSION: "SNAPSHOT"
+  INSIGHTVMTARGET: "SL1RDAPP7856.pcloud.axway.int"
 #include:
 #  - template: Code-Quality.gitlab-ci.yml
 
@@ -29,7 +31,9 @@ stages:
   - pack
   - test
   - deploy
+  - preparesecurity
   - security
+  - cleansecurity
 
 version:
   image: davinci1976/docker-ci:unstable
@@ -187,14 +191,17 @@ docker-snapshot:
     - docker build --pull -f ./docker/Dockerfile -t $DOCKER_IMAGE --build-arg BUILD_DATE=$BUILD_DATE --build-arg VERSION=$VERSION .
     - docker push $DOCKER_IMAGE
 
-fortify:
-  image: $FORTIFY_DOCKER_IMAGE
+.security:
   stage: security
   allow_failure: true
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: always
     - when: manual
+
+fortify:
+  image: $FORTIFY_DOCKER_IMAGE
+  extends: .security
   before_script:
     - apt-get update -y
     - apt-get install git -y
@@ -207,12 +214,7 @@ fortify:
 
 twistlock:
   image: $TWISTLOCK_IMAGE
-  stage: security
-  allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-      when: always
-    - when: manual
+  extends: .security
   script:
     - out=`twistcli images scan -u $TWISTLOCK_USER -p "$TWISTLOCK_PASSWORD" --address $TWISTLOCK_URL $DOCKER_IMAGE`
     - echo $out
@@ -227,12 +229,7 @@ twistlock:
 
 blackduck:
   image: $WHITESOURCE_DOCKER_IMAGE
-  stage: security
-  allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-      when: always
-    - when: manual
+  extends: .security
   before_script:
     - apt-get update -y
     - apt-get install build-essential make git unzip wget -y
@@ -249,3 +246,41 @@ blackduck:
     - wget https://artifactory-ptx.ecd.axway.int/artifactory/psg-generic-release/blackduck/synopsys-detect.zip
     - unzip synopsys-detect.zip -d synopsys-detect
     - java -jar synopsys-detect/synopsys-detect.jar --blackduck.url=$BLACK_DUCK_URL --blackduck.api.token=$BLACK_DUCK_TOKEN --detect.project.name="$BLACK_DUCK_PROJECT_NAME" --detect.project.version.name=$BLACK_DUCK_PROJECT_VERSION --detect.source.path=qlt-router/ --detect.go.path=`which go` --detect.go.mod.dependency.types.excluded=UNUSED --detect.output.path="/blackduck/output" --detect.status.json.output.path="/blackduck/status"
+
+deploy-ser:
+  tags:
+    - docker-ex
+  stage: preparesecurity
+  allow_failure: false
+  script:
+    - cd security
+    - docker compose -f compose.qlt.yml up -d
+
+cleanup-ser:
+  tags:
+    - docker-ex
+  stage: cleansecurity
+  allow_failure: false
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: always
+    - when: manual
+  dependencies:
+    - deploy-ser
+  script:
+    - cd security
+    - docker compose -f compose.qlt.yml down -v
+
+insightvm:
+  image:
+    name: $INSIGHTVM_IMAGE
+    entrypoint: [""] 
+  extends: .security
+  dependencies:
+    - deploy-ser
+  before_script:
+  script:
+    - cd /home/axway
+    - wget --no-check-certificate https://artifactory-ptx.ecd.axway.int/artifactory/psg-generic-release-ptx/utils/axway.int.crt
+    - python InsightVMStartScript.py -u $INSIGHTVMSERVICEACCOUNT -p $INSIGHTVMPASSWORD -s $INSIGHTVMSITE -t $INSIGHTVMTARGET -tfkey $THREADFIX_APIKEY -tfid $THREADFIX_APPID
+

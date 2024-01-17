@@ -1,0 +1,32 @@
+streams:
+  - name: "qlt-to-file"
+    disable: false
+    description: ""
+    reader:
+      type: "qlt-server-reader"
+      conf:
+        port: 1325
+        cert: $ER_QLT_SERVER_CERT
+        certKey: $ER_QLT_SERVER_KEY
+    writer:
+      type: "file-writer"
+      conf:
+        filenamePrefix: "./data/qlt-messages"
+        filenameSuffix: "xml"
+  - name: "file-to-qlt"
+    upstream: "qlt-to-file"
+    disable: false
+    description: ""
+    reader:
+      type: "file-reader"
+      conf:
+        filenamePrefix: "./data/qlt-messages"
+        filenameSuffix: "xml"
+        readerFilename: "data/qlt-messages.QLT_out_ER.cursor"
+    writer:
+      type: "qlt-client-writer"
+      conf:
+        addresses: "dummy:1305"
+        synchronous: true
+        ca: $ER_QLT_SERVER_CA
+        cnx: 1
