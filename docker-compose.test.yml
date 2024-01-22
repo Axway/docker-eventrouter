@@ -33,14 +33,21 @@ services:
     extends:
       file: docker-compose.external.yml
       service: kafka
+    ports:
+      - '9092:9092'
+      - '9094:9094'
   mongo:
     extends:
       file: docker-compose.external.yml
       service: mongo
+    ports:
+      - 27017:27017
   postgres:
     extends:
       file: docker-compose.external.yml
       service: postgres
+    ports:
+      - 5432:5432
 
 networks:
   traefik_default:
