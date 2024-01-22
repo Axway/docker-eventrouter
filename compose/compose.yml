@@ -31,32 +31,32 @@ services:
       - eventrouter_data:/opt/axway/data
 
     # Uncomment the following lines to enable the necessary secrets
-    # secrets:
-    # - qlt_server_cert.pem
-    # - qlt_server_key.pem
-    # - qlt_server_ca.pem
-    # - sentinel_ca.pem
-    # - kafka_server_ca.pem
-    # - kafka_client_cert.pem
-    # - kafka_client_key.pem
+    #secrets:
+    #- qlt_server_cert.pem
+    #- qlt_server_key.pem
+    #- qlt_server_ca.pem
+    #- sentinel_ca.pem
+    #- kafka_server_ca.pem
+    #- kafka_client_cert.pem
+    #- kafka_client_key.pem
 
 volumes:
   eventrouter_data:
     driver: local
 
 # Uncomment the following lines to map the necessary certificates as secrets.
-# secrets:
-  # qlt_server_cert.pem:
-  #   file: ./conf/qlt_server_cert.pem
-  # qlt_server_key.pem:
-  #   file: ./conf/qlt_server_key.pem
-  # - qlt_server_ca.pem:
-  #   file: ./conf/qlt_server_ca.pem
-  # - sentinel_ca.pem:
-  #   file: ./conf/sentinel_ca.pem
-  # - kafka_server_ca.pem:
-  #   file: ./conf/kafka_ca.pem
-  # - kafka_client_cert.pem:
-  #   file: ./conf/kafka_client_cert.pem
-  # - kafka_client_key.pem:
-  #   file: ./conf/kafka_client_key.pem
+#secrets:
+  #qlt_server_cert.pem:
+  #  file: ./conf/qlt_server_cert.pem
+  #qlt_server_key.pem:
+  #  file: ./conf/qlt_server_key.pem
+  #qlt_server_ca.pem:
+  #  file: ./conf/qlt_server_ca.pem
+  #sentinel_ca.pem:
+  #  file: ./conf/sentinel_ca.pem
+  #kafka_server_ca.pem:
+  #  file: ./conf/kafka_ca.pem
+  #kafka_client_cert.pem:
+  #  file: ./conf/kafka_client_cert.pem
+  #kafka_client_key.pem:
+  #  file: ./conf/kafka_client_key.pem
