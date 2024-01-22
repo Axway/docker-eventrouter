@@ -251,7 +251,17 @@ deploy-ser:
   tags:
     - docker-ex
   stage: preparesecurity
-  allow_failure: false
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: always
+    - when: manual
+  before_script:
+    - eval export CI_COMMIT_BRANCH=$(echo "$CI_COMMIT_BRANCH" | tr '[:upper:]' '[:lower:]')
+    - CI_COMMIT_BRANCH="${CI_COMMIT_BRANCH:-master}"
+    - echo using commit $CI_COMMIT_BRANCH
+    - eval export DOCKER_IMAGE=$DOCKER_REPO/$NAME:$CI_COMMIT_BRANCH
+    - echo using image $DOCKER_IMAGE
   script:
     - cd security
     - docker compose -f compose.qlt.yml up -d
@@ -260,12 +270,12 @@ cleanup-ser:
   tags:
     - docker-ex
   stage: cleansecurity
-  allow_failure: false
+  allow_failure: true
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: always
     - when: manual
-  dependencies:
+  needs:
     - deploy-ser
   script:
     - cd security
@@ -276,9 +286,8 @@ insightvm:
     name: $INSIGHTVM_IMAGE
     entrypoint: [""] 
   extends: .security
-  dependencies:
+  needs:
     - deploy-ser
-  before_script:
   script:
     - cd /home/axway
     - wget --no-check-certificate https://artifactory-ptx.ecd.axway.int/artifactory/psg-generic-release-ptx/utils/axway.int.crt
