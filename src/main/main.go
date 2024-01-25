@@ -29,7 +29,6 @@ import (
 	"axway.com/qlt-router/src/processor"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gopkg.in/natefinch/lumberjack.v2"
-	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -198,9 +197,10 @@ func main() {
 		log.Fatalc(ctxS, "No stream configured")
 	}
 	log.Infoc(ctxS, "config [internal]", "streams", conf.Streams)
-	b, _ := yaml.Marshal(conf)
+	// Avoid pring paswords
+	/*b, _ := yaml.Marshal(conf)
 
-	log.Infoc(ctxS, "config [yaml]:", "marshall", string(b))
+	log.Infoc(ctxS, "config [yaml]:", "marshall", string(b))*/
 
 	// Verify that Clone is properly implemented
 	for _, p := range connectors.All() {

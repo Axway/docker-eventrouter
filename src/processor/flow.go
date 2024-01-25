@@ -43,8 +43,9 @@ func (f *FlowStep) UnmarshalYAML(n *yaml.Node) error {
 	if err := tools.YamlParseVerify("connector", obj, n); err != nil {
 		return err
 	}
-	ctx := "Flowstep"
-	log.Debugc(ctx, "unmarshal", "obj", fmt.Sprintf("%+v", *obj))
+	// Avoid pring paswords
+	/*ctx := "Flowstep"
+	log.Debugc(ctx, "unmarshal", "obj", fmt.Sprintf("%+v", *obj))*/
 
 	p := RegisteredProcessors.Get(obj.Type)
 	if p == nil {
@@ -61,7 +62,8 @@ func (f *FlowStep) UnmarshalYAML(n *yaml.Node) error {
 	err := tools.YamlParseVerify(obj.Type, f.Conf, &obj.Conf)
 	// err := obj.Conf.Decode(f.Conf)
 
-	log.Debugc(ctx, "Unmarshal yaml: values", "name", obj.Type, "v", fmt.Sprintf("%+v", f.Conf))
+	// Avoid pring paswords
+	/*log.Debugc(ctx, "Unmarshal yaml: values", "name", obj.Type, "v", fmt.Sprintf("%+v", f.Conf))*/
 	return err
 }
 
@@ -179,7 +181,8 @@ func (flow *Flow) Start(ctx context.Context, readerContext context.Context, inst
 
 			runtimeProcessor = append(runtimeProcessor, p)
 
-			log.Infoc(ctxS, "info", "name", flow.Name, "processorName", p.Name, "conf", fmt.Sprintf("%+v", p.Conf))
+			// Avoid pring paswords
+			log.Infoc(ctxS, "info", "name", flow.Name, "processorName", p.Name) //, "conf", fmt.Sprintf("%+v", p.Conf))
 			if step.Scale > 0 {
 				ParallelOrdered(ctx, channelName+"-scale", step.Scale, ctl, in.C, out.C, channels, p)
 				/*} else if step.ScaleUnordered > 0 {

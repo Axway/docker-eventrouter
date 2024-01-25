@@ -22,7 +22,8 @@ func ParseConfigFile(ctx, filename string) (*Config, error) {
 		log.Errorc(ctx, "Failed to open ", "filename", filename, "err", err)
 		return nil, err
 	}
-	log.Debugc(ctx, "config file raw", "filename", filename, "data", string(data))
+	// Avoid pring paswords
+	/*log.Debugc(ctx, "config file raw", "filename", filename, "data", string(data))*/
 	return ParseConfigRawData(data)
 }
 
