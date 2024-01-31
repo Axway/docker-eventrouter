@@ -131,13 +131,6 @@ func (q *QLTServerWriterConnection) DrainAcks() {
 
 func (q *QLTServerWriterConnection) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {
 	for {
-		// log.Debugln(q.CtxS, "waiting msg to ack")
-		event, ok := <-q.acks
-		if !ok {
-			log.Infoc(q.CtxS, "close ack loop")
-			return
-		}
-
 		if q.Qlt == nil {
 			log.Warnc(q.CtxS, "close warn not opened: sleeping")
 			q.DrainAcks()
@@ -146,8 +139,22 @@ func (q *QLTServerWriterConnection) ProcessAcks(ctx context.Context, acks chan p
 
 		err := q.Qlt.WaitAck(qltWriterAckTimeout)
 		if err != nil {
-			log.Errorc(q.CtxS, "error waiting ack: close ack loop", "err", err)
-			q.DrainAcks()
+			select {
+			case <-ctx.Done():
+				log.Infoc(q.CtxS, "close ack loop")
+				return
+			default:
+				if len(q.acks) > 0 {
+					log.Errorc(q.CtxS, "error waiting ack", "err", err)
+				}
+				continue
+			}
+		}
+
+		// log.Debugln(q.CtxS, "waiting msg to ack")
+		event, ok := <-q.acks
+		if !ok {
+			log.Infoc(q.CtxS, "close ack loop")
 			return
 		}
 
