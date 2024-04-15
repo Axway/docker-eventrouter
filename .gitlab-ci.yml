@@ -9,10 +9,8 @@ variables:
   WHITESOURCE_DOCKER_IMAGE: psg-docker-release.artifactory-ptx.ecd.axway.int/whitesource:latest
   FORTIFY_DOCKER_IMAGE: psg-docker-release.artifactory-ptx.ecd.axway.int/fortify/fortify-mvn-jdk-8:latest
   TWISTLOCK_IMAGE: psg-docker-release.artifactory-ptx.ecd.axway.int/psg-tools/docker:latest
-  INSIGHTVM_IMAGE: psg-docker-release.artifactory-ptx.ecd.axway.int/insightvm:latest
   BLACK_DUCK_PROJECT_NAME: "MFT - Sentinel Event Router"
   BLACK_DUCK_PROJECT_VERSION: "SNAPSHOT"
-  INSIGHTVMTARGET: "SL1RDAPP7856.pcloud.axway.int"
 #include:
 #  - template: Code-Quality.gitlab-ci.yml
 
@@ -216,14 +214,9 @@ twistlock:
   image: $TWISTLOCK_IMAGE
   extends: .security
   script:
-    - out=`twistcli images scan -u $TWISTLOCK_USER -p "$TWISTLOCK_PASSWORD" --address $TWISTLOCK_URL $DOCKER_IMAGE`
-    - echo $out
-    - eval export SEARCHING=`echo $out | cut -d ' ' -f 5 | cut -d '/' -f 2`
-    - echo get scan result for image=$SEARCHING
-    # Retrieve the scan result
-    - "curl --insecure -u$TWISTLOCK_USER:$TWISTLOCK_PASSWORD -H \"Content-Type: application/json\" -X GET $TWISTLOCK_URL\"api/v1/scans?search=$SEARCHING&sort=time&reverse=true&limit=1&type=ciImage\" >analysis.json"
-    # Upload the scan result to ThreadFix
-    - "curl --insecure -H \"Authorization: APIKEY $THREADFIX_APIKEY\" -H \"Accept: application/json\" -X POST --form \"file=@analysis.json\" https://vulnmgt.psg.axway.int/threadfix/rest/v2.5/applications/$THREADFIX_APPID/upload"
+    - twistcli images scan -u $TWISTLOCK_USER -p "$TWISTLOCK_PASSWORD" --address $TWISTLOCK_URL --details --output-file analysis.json $DOCKER_IMAGE
+    # Upload the scan result to SRM
+    - "curl --insecure -H \"Authorization: Bearer ${SRM_APIKEY}\" -H \"Accept: application/json\" -X POST --form \"file=@analysis.json\" https://asoc.ssg.axway.int/srm/api/projects/${SRM_PROJECTID}/analysis"
     # Remove scan results.
     - rm -f analysis.json
 
@@ -280,16 +273,3 @@ cleanup-ser:
   script:
     - cd security
     - docker compose -f compose.qlt.yml down -v
-
-insightvm:
-  image:
-    name: $INSIGHTVM_IMAGE
-    entrypoint: [""] 
-  extends: .security
-  needs:
-    - deploy-ser
-  script:
-    - cd /home/axway
-    - wget --no-check-certificate https://artifactory-ptx.ecd.axway.int/artifactory/psg-generic-release-ptx/utils/axway.int.crt
-    - python InsightVMStartScript.py -u $INSIGHTVMSERVICEACCOUNT -p $INSIGHTVMPASSWORD -s $INSIGHTVMSITE -t $INSIGHTVMTARGET -tfkey $THREADFIX_APIKEY -tfid $THREADFIX_APPID
-
