@@ -168,7 +168,7 @@ func (q *QLTClientWriterConnection) DrainAcks() {
 	}
 }
 
-func (q *QLTClientWriterConnection) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {
+func (q *QLTClientWriterConnection) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent, errs chan error) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -192,6 +192,7 @@ func (q *QLTClientWriterConnection) ProcessAcks(ctx context.Context, acks chan p
 				log.Infoc(q.CtxS, "error waiting ack: draining", "err", err)
 				q.DrainAcks()
 				q.Close()
+				errs <- err
 				continue
 			}
 

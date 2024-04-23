@@ -55,6 +55,87 @@ func (q *KafkaWriter) Init(p *processor.Processor) error {
 	q.acksCh = make(chan kafka.Message, kafkaAckQueueSize)
 	q.errorCh = make(chan error, kafkaAckQueueSize)
 
+	return nil
+}
+
+func (q *KafkaWriter) KafkaCompletion(messages []kafka.Message, err error) {
+	for _, message := range messages {
+		if err != nil {
+			q.errorCh <- err
+		} else {
+			q.acksCh <- message
+		}
+	}
+}
+
+func (q *KafkaWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent, errs chan error) {
+	// Delivery report handler for produced messages
+	// events := q.k.Events()
+	done := ctx.Done()
+	defer log.Infoc(q.CtxS, "Stopped processing acks")
+loop:
+	for {
+		// log.Debugc(q.CtxS, "Starting processing ack")
+		var event processor.AckableEvent
+		var ok bool
+		select {
+		case event, ok = <-q.sentMess.C:
+			// log.Debugc(q.CtxS, "Event waiting for Ack")
+			if !ok {
+				log.Infoc(q.CtxS, "close ack loop")
+				return
+			}
+		case <-done:
+			break loop
+		}
+
+		select {
+		case err := <-q.errorCh:
+			log.Errorc(q.CtxS, "err returned by kafka", "err", err)
+			q.Close()
+			errs <- err
+		case <-q.acksCh:
+			// log.Debugc(q.CtxS, "Received Ack")
+			acks <- event
+		case <-done:
+			break loop
+		}
+
+	}
+}
+
+func (q *KafkaWriter) Close() error {
+	log.Infoc(q.CtxS, "Closing...")
+	if q.Writer != nil {
+		q.Writer.Close()
+		q.Writer = nil
+	}
+	log.Infoc(q.CtxS, "Closed")
+	return nil
+}
+
+/*func (q *KafkaConsumer) AckMsg(msgid int64) {
+	return
+}*/
+
+func (q *KafkaWriter) Ctx() string {
+	return q.CtxS
+}
+
+func (q *KafkaWriter) IsAckAsync() bool {
+	return true
+}
+
+func (q *KafkaWriter) IsActive() bool {
+	return q.Writer != nil
+}
+
+/*func (q *KafkaWriter) PrepareEvent(event *processor.AckableEvent) (string, error) {
+	msg := event.Msg.([]byte)
+	return string(msg), nil
+}*/
+
+func (q *KafkaWriter) InitializeKafka() {
 	var mechanism sasl.Mechanism
 	var err error
 	if q.Conf.User != "" && q.Conf.Password != "" {
@@ -90,99 +171,36 @@ func (q *KafkaWriter) Init(p *processor.Processor) error {
 		RequiredAcks:           kafka.RequireAll,
 		AllowAutoTopicCreation: true,
 		Async:                  true,
-		Completion:             q.kafkaCompletion,
+		MaxAttempts:            1,
+		Completion:             q.KafkaCompletion,
 		Transport: &kafka.Transport{
 			TLS:  tlsConfig,
 			SASL: mechanism,
 		},
 		ErrorLogger: kafka.LoggerFunc(logf),
-		BatchSize: 1,
+		BatchSize:   1,
 	}
-
 	log.Infoc(q.CtxS, "connected to kafka servers as producer", "servers", q.Conf.Addresses, "topic", q.Conf.Topic)
-	return nil
 }
-
-func (q *KafkaWriter) kafkaCompletion(messages []kafka.Message, err error) {
-	if err != nil {
-		q.errorCh <- err
-	}
-	for _, message := range messages {
-		q.acksCh <- message
-	}
-}
-
-func (q *KafkaWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {
-	// Delivery report handler for produced messages
-	// events := q.k.Events()
-	done := ctx.Done()
-	defer log.Infoc(q.CtxS, "Stopped processing acks")
-loop:
-	for {
-		// log.Debugc(q.CtxS, "Starting processing ack")
-		var event processor.AckableEvent
-		var ok bool
-		select {
-		case event, ok = <-q.sentMess.C:
-			// log.Debugc(q.CtxS, "Event waiting for Ack")
-			if !ok {
-				log.Infoc(q.CtxS, "close ack loop")
-				return
-			}
-		case <-done:
-			break loop
-		}
-
-		select {
-		case err := <-q.errorCh:
-			log.Infoc(q.CtxS, "err returned by kafka", "err", err)
-			break loop
-		case <-q.acksCh:
-			// log.Debugc(q.CtxS, "Received Ack")
-			acks <- event
-		case <-done:
-			break loop
-		}
-
-	}
-}
-
-func (q *KafkaWriter) Close() error {
-	log.Infoc(q.CtxS, "Closing...")
-	q.Writer.Close()
-	log.Infoc(q.CtxS, "Closed")
-	return nil
-}
-
-/*func (q *KafkaConsumer) AckMsg(msgid int64) {
-	return
-}*/
-
-func (q *KafkaWriter) Ctx() string {
-	return q.CtxS
-}
-
-func (q *KafkaWriter) IsAckAsync() bool {
-	return true
-}
-
-func (q *KafkaWriter) IsActive() bool {
-	return true
-}
-
-/*func (q *KafkaWriter) PrepareEvent(event *processor.AckableEvent) (string, error) {
-	msg := event.Msg.([]byte)
-	return string(msg), nil
-}*/
 
 func (q *KafkaWriter) Write(events []processor.AckableEvent) (int, error) {
-	// datas := processor.PrepareEvents(q, events)
-	// log.Debugln(q.CtxS, "Writing Events")
+
+	if q.Writer == nil {
+		q.InitializeKafka()
+	}
+
 	n := 0
 	for _, event := range events {
 		data := []byte(event.Msg.(string))
+
+		if q.Writer == nil {
+			log.Warnc(q.CtxS, "")
+			return n, nil
+		}
 		if err := q.Writer.WriteMessages(context.Background(), kafka.Message{Value: data}); err != nil {
+			//Shouldn't happen since we are async
 			log.Errorc(q.CtxS, "error writing event", "err", err)
+			q.Close()
 			return n, err
 		}
 		log.Tracec(q.CtxS, "Wrote Event", "topic", q.Conf.Topic, "msg", event.Msg.(string))

@@ -140,7 +140,7 @@ func (q *FileStoreRawWriter) IsActive() bool {
 	return true
 }
 
-func (q *FileStoreRawWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {
+func (q *FileStoreRawWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent, errs chan error) {
 	log.Fatalc(q.CtxS, "Not supported")
 }
 

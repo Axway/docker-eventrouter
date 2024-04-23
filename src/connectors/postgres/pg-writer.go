@@ -166,7 +166,7 @@ func (q *PGWriter) Write(msgs []processor.AckableEvent) (int, error) {
 	return len(msgs), nil
 }
 
-func (q *PGWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {
+func (q *PGWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent, errs chan error) {
 	log.Fatalc(q.ctx, "Not supported")
 }
 

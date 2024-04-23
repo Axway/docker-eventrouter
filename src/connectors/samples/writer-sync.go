@@ -55,7 +55,7 @@ func (q *SampleWriterSync) IsActive() bool {
 	return true
 }
 
-func (q *SampleWriterSync) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {
+func (q *SampleWriterSync) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent, errs chan error) {
 	log.Fatalc(q.CtxS, "Not supported")
 }
 

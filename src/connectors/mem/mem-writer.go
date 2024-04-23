@@ -69,7 +69,7 @@ func (q *MemWriter) IsActive() bool {
 	return true
 }
 
-func (q *MemWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {
+func (q *MemWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent, errs chan error) {
 	log.Fatalc(q.CtxS, "Not supported")
 }
 

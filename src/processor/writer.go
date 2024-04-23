@@ -2,6 +2,7 @@ package processor
 
 import (
 	"context"
+	"errors"
 	"sync/atomic"
 	"time"
 
@@ -10,15 +11,16 @@ import (
 )
 
 var WriterBatchSize = config.DeclareInt("processor.writerBatchSize", 10, "Size of the Batch to writer connector")
+var WriterWait = config.DeclareDuration("processor.WriterWait", "30s", "Duration to wait before waiting ack message")
 
 type ConnectorRuntimeWriter interface {
-	Ctx() string                                             // Context string mostly for logs
-	Init(p *Processor) error                                 // Initialization before main runtime, when complet message are ready to be sent
-	Write(event []AckableEvent) (int, error)                 // Flush Batched Data to be consumed
-	IsAckAsync() bool                                        // Whether acks can be processed asynchronously
-	IsActive() bool                                          // Whether the connector is in an active state
-	ProcessAcks(ctx context.Context, acks chan AckableEvent) // When write acks are asynchronous, acked event are sent through this channel
-	Close() error                                            // Close EventConnector (only when init is successful)
+	Ctx() string                                                              // Context string mostly for logs
+	Init(p *Processor) error                                                  // Initialization before main runtime, when complet message are ready to be sent
+	Write(event []AckableEvent) (int, error)                                  // Flush Batched Data to be consumed
+	IsAckAsync() bool                                                         // Whether acks can be processed asynchronously
+	IsActive() bool                                                           // Whether the connector is in an active state
+	ProcessAcks(ctx context.Context, acks chan AckableEvent, errs chan error) // When write acks are asynchronous, acked event are sent through this channel
+	Close() error                                                             // Close EventConnector (only when init is successful)
 }
 
 func removeAckableFromList(l []AckableEvent, e AckableEvent) []AckableEvent {
@@ -47,6 +49,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 	var ackPendingEvents []AckableEvent
 
 	acksReceived := p.Chans.Create(ctxp+"WriterAcks", 1000)
+	errCh := make(chan error, 500)
 
 	log.Infoc(ctxp, "Initializing Writer...")
 	ctl <- ControlEvent{p, p2, "STARTING", "Writer"}
@@ -62,12 +65,19 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 	if p2.IsAckAsync() {
 		log.Infoc(ctxp, "Starting Writer Ack Loops (async writer)...")
 		acks := p.Chans.Create(ctxp+"WriterAsyncAck", 1000)
-		// acks := make(chan AckableEvent, 1000)
 
-		go p2.ProcessAcks(ctx, acks.C)
+		go p2.ProcessAcks(ctx, acks.C, errCh)
 		go func() {
 			defer close(acks.C)
+			t := time.NewTimer(WriterWait)
+			timer_set := true
+
 			for {
+				if !timer_set {
+					t.Reset(WriterWait)
+					timer_set = true
+				}
+
 				select {
 				case event := <-acks.C:
 					// log.Debugln(ctxp, "Ack Event:", event)
@@ -85,9 +95,19 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 							ctl <- ControlEvent{p, p2, "ACK_ALL_DONE", ""}
 						}
 					}*/
+				case <-t.C:
+					log.Infoc(ctxp, "Waiting ACKs Timeout...")
+					errCh <- errors.New("timeout")
 				case <-ctx.Done():
 					log.Infoc(ctxp, "Done")
 					return
+				}
+				timer_set = false
+				if !t.Stop() {
+					select {
+					case <-t.C:
+					default:
+					}
 				}
 			}
 		}()
@@ -120,11 +140,14 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 			}
 
 			if len(events) == 0 {
-				// No event bached, wait for new events (or termination)
+				// No event bached, wait for new events, timeout or termination
 				select {
 				case event := <-acksReceived.C:
 					/* Remove element from the waiting for Ack list */
 					ackPendingEvents = removeAckableFromList(ackPendingEvents, event)
+				case err := <-errCh:
+					log.Debugc(ctxp, "error detected", "err", err)
+					continue
 				case event := <-in:
 					// data, _ := p2.PrepareEvent(&event)
 					events = append(events, event)
@@ -140,6 +163,9 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 				case event := <-acksReceived.C:
 					/* Remove element from the waiting for Ack list */
 					ackPendingEvents = removeAckableFromList(ackPendingEvents, event)
+				case err := <-errCh:
+					log.Debugc(ctxp, "error detected", "err", err)
+					continue
 				case event := <-in:
 					// data, _ := p2.PrepareEvent(&event)
 					events = append(events, event)

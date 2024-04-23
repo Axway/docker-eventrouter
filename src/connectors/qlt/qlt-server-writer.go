@@ -129,7 +129,7 @@ func (q *QLTServerWriterConnection) DrainAcks() {
 	}
 }
 
-func (q *QLTServerWriterConnection) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {
+func (q *QLTServerWriterConnection) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent, errs chan error) {
 	for {
 		// log.Debugln(q.CtxS, "waiting msg to ack")
 		event, ok := <-q.acks

@@ -91,7 +91,7 @@ func (q *AwsSQSWriter) IsActive() bool {
 	return true
 }
 
-func (q *AwsSQSWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {
+func (q *AwsSQSWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent, errs chan error) {
 	log.Fatalc(q.CtxS, "Not supported")
 }
 

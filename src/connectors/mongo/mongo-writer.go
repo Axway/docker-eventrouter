@@ -111,7 +111,7 @@ func (q *MongoWriter) IsActive() bool {
 	return true
 }
 
-func (q *MongoWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent) {
+func (q *MongoWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent, errs chan error) {
 	log.Fatalc(q.CtxS, "Not supported")
 }
 
