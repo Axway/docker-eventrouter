@@ -65,10 +65,16 @@ type trkAttr struct {
 
 func convert1(data string) (string, error) {
 	var c trkDescriptor
-	err := xml.Unmarshal([]byte(data), &c)
+
+	reader := strings.NewReader(data)
+	decoder := xml.NewDecoder(reader)
+	decoder.CharsetReader = charset.NewReaderLabel
+
+	err := decoder.Decode(&c)
 	if err != nil {
 		return "", err
 	}
+
 	// fmt.Println(c.TrkObject)
 	a := make([]string, 0) // FIXME: site is duplicated
 	a = append(a, fmt.Sprintf(`"qlttype": "%s" `, c.TrkObject.TrkIdentifier.Type))
@@ -85,8 +91,6 @@ func convert1(data string) (string, error) {
 
 func convertToMap(data string) (map[string]string, error) {
 	var c trkDescriptor
-
-	// err := xml.Unmarshal([]byte(data), &c)
 
 	// Escape invalid '<' in attribute value
 	r := regexp.MustCompile("=[ ]*\"([^\"]*)<([^\"]*)\"")

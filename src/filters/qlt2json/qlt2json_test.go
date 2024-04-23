@@ -83,6 +83,13 @@ func TestConvertToMapISO8859(t *testing.T) {
 	}
 }
 
+func TestConvert1ISO8859(t *testing.T) {
+	_, err := convert1(dataISO8859)
+	if err != nil {
+		t.Error(err)
+	}
+}
+
 func TestConvertToMapInvalidXML(t *testing.T) {
 	_, err := convertToMap(dataInvalidXML)
 	if err != nil {
