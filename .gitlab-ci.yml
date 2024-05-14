@@ -6,7 +6,8 @@ variables:
   CURL_AXWAY: "curl --cacert ./AxwayRootCA.cer"
 
   # Security images
-  WHITESOURCE_DOCKER_IMAGE: psg-docker-release.artifactory-ptx.ecd.axway.int/whitesource:latest
+  #BLACKDUCK_DOCKER_IMAGE: psg-docker-release.artifactory-ptx.ecd.axway.int/blackduck:latest # impossible to add packages to this image
+  BLACKDUCK_DOCKER_IMAGE: openjdk:23-slim-bullseye
   FORTIFY_DOCKER_IMAGE: psg-docker-release.artifactory-ptx.ecd.axway.int/fortify/fortify-mvn-jdk-8:latest
   TWISTLOCK_IMAGE: psg-docker-release.artifactory-ptx.ecd.axway.int/psg-tools/docker:latest
   BLACK_DUCK_PROJECT_NAME: "MFT - Sentinel Event Router"
@@ -221,22 +222,24 @@ twistlock:
     - rm -f analysis.json
 
 blackduck:
-  image: $WHITESOURCE_DOCKER_IMAGE
+  image: $BLACKDUCK_DOCKER_IMAGE
   extends: .security
   before_script:
-    - apt-get update -y
-    - apt-get install build-essential make git unzip wget -y
-    - wget https://go.dev/dl/go1.21.3.linux-amd64.tar.gz
-    - rm -rf /usr/local/go && tar -C /usr/local -xzf go1.21.3.linux-amd64.tar.gz
+    - apt-get --allow-releaseinfo-change update
+    - apt-get install build-essential make git unzip wget -y --fix-missing
+    - wget https://go.dev/dl/go1.22.3.linux-amd64.tar.gz
+    - rm -rf /usr/local/go && tar -C /usr/local -xzf go1.22.3.linux-amd64.tar.gz
     - export PATH=/usr/local/go/bin:$PATH
     - go version
   script:
+    - CI_COMMIT_BRANCH="${CI_COMMIT_BRANCH:-master}"
+    - echo using commit $CI_COMMIT_BRANCH
     - git clone https://cft_read:$GIT_CFT_READ_TOKEN@git.ecd.axway.org/cft/qlt-router.git qlt-router
     - cd qlt-router
-    - git checkout master
+    - git checkout $CI_COMMIT_BRANCH
     - make
     - cd ..
-    - wget https://artifactory-ptx.ecd.axway.int/artifactory/psg-generic-release/blackduck/synopsys-detect.zip
+    - wget --no-check-certificate https://artifactory-ptx.ecd.axway.int/artifactory/psg-generic-release/blackduck/synopsys-detect.zip
     - unzip synopsys-detect.zip -d synopsys-detect
     - java -jar synopsys-detect/synopsys-detect.jar --blackduck.url=$BLACK_DUCK_URL --blackduck.api.token=$BLACK_DUCK_TOKEN --detect.project.name="$BLACK_DUCK_PROJECT_NAME" --detect.project.version.name=$BLACK_DUCK_PROJECT_VERSION --detect.source.path=qlt-router/ --detect.go.path=`which go` --detect.go.mod.dependency.types.excluded=UNUSED --detect.output.path="/blackduck/output" --detect.status.json.output.path="/blackduck/status"
 
