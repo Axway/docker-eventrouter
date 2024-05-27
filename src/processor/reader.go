@@ -109,6 +109,7 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 	log.Infoc(ctxp, "Starting Reader Main Loop...")
 	go func() {
 		done := false
+		retryFactor := 1
 		ctl <- ControlEvent{p, p2, "RUNNING", ""}
 		var lastAcked int64 = -1
 		for {
@@ -133,15 +134,22 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 			}
 
 			if len(events) == 0 && !timeout {
-				// FIXME: should progressively increase from smaller value
-				// time.Sleep(ReaderReadRetryDelay)
-				t := time.NewTimer(ReaderReadRetryDelay)
+				delay := ReaderReadRetryDelay * time.Duration(retryFactor)
+				if delay >= time.Minute {
+					delay = time.Minute
+				}
+
+				t := time.NewTimer(delay)
 				select {
 				case <-ctxz.Done():
 					done = true
 				case <-t.C:
 				}
 				t.Stop()
+
+				retryFactor = retryFactor * 2
+			} else {
+				retryFactor = 1
 			}
 			for _, e := range events {
 				log.Tracec(ctxp, "reader read", "msg", e.Msg.(string))

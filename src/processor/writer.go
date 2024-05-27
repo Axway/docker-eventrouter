@@ -10,8 +10,11 @@ import (
 	log "axway.com/qlt-router/src/log"
 )
 
-var WriterBatchSize = config.DeclareInt("processor.writerBatchSize", 10, "Size of the Batch to writer connector")
-var WriterWait = config.DeclareDuration("processor.WriterWait", "30s", "Duration to wait before waiting ack message")
+var (
+	WriterBatchSize       = config.DeclareInt("processor.writerBatchSize", 10, "Size of the Batch to writer connector")
+	WriterWait            = config.DeclareDuration("processor.WriterWait", "30s", "Duration to wait before waiting ack message")
+	WriterWriteRetryDelay = config.DeclareDuration("processor.WriterWriteRetryDelay", "200ms", "Duration to wait before retrying writing")
+)
 
 type ConnectorRuntimeWriter interface {
 	Ctx() string                                                              // Context string mostly for logs
@@ -96,7 +99,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 						}
 					}*/
 				case <-t.C:
-					log.Infoc(ctxp, "Waiting ACKs Timeout...")
+					log.Debugc(ctxp, "Waiting ACKs Timeout...")
 					errCh <- errors.New("timeout")
 				case <-ctx.Done():
 					log.Infoc(ctxp, "Done")
@@ -195,11 +198,19 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 					log.Errorc(ctxp, "error writing messages...", "batch", n, "total", len(events), "err", err)
 					ctl <- ControlEvent{p, p2, "ERROR", ""}
 
-					delay := 10 * time.Millisecond * time.Duration(retryFactor)
+					delay := WriterWriteRetryDelay * time.Duration(retryFactor)
 					if delay >= time.Minute {
 						delay = time.Minute
 					}
-					time.Sleep(delay)
+					t := time.NewTimer(delay)
+					select {
+					case <-ctx.Done():
+						log.Infoc(ctxp, "stopping")
+						ctl <- ControlEvent{p, p2, "STOPPING", ""}
+						donef = true
+					case <-t.C:
+					}
+					t.Stop()
 					retryFactor = retryFactor * 2
 				}
 

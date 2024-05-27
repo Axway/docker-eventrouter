@@ -87,19 +87,6 @@ func (q *QLTClientWriterConnection) Ctx() string {
 }
 
 func (q *QLTClientWriterConnection) Init(p *processor.Processor) error {
-	/*log.Infoc(q.CtxS, "Connecting to ", "addr", q.Addr)
-	for i := 0; i < 10; i++ {
-		client := qlt.NewQltClientWriter(q.CtxS, q.Addr)
-		err := client.Connect(qltClientConnectTimeout)
-		if err != nil {
-			log.Errorc(q.CtxS, "failed to connect", "addr", q.Addr, "err", err)
-			// return err
-		} else {
-			q.Qlt = client
-			return nil
-		}
-		time.Sleep(qltClientConnectionRetryDelay)
-	}*/
 	return nil
 }
 

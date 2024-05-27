@@ -35,10 +35,10 @@ func (q *QLTClientReader) Ctx() string {
 }
 
 type QLTClientReaderConf struct {
-	QueueName string
-	Addresses string
+	QueueName         string
+	Addresses         string
 	Cert, CertKey, Ca string
-	Cnx       int
+	Cnx               int
 }
 
 func (c *QLTClientReaderConf) Start(context context.Context, p *processor.Processor, ctl chan processor.ControlEvent, inc, out chan processor.AckableEvent) (processor.ConnectorRuntime, error) {
@@ -92,29 +92,8 @@ func (q *QLTClientReaderConnection) Ctx() string {
 }
 
 func (q *QLTClientReaderConnection) Init(p *processor.Processor) error {
-	/*log.Infoc(q.CtxS, "Connecting to ", "addr", q.Addr)
-	for i := 0; i < 10; i++ {
-		client := qlt.NewQltClientReader(q.CtxS, q.Addr, q.Conf.QueueName)
-
-		err := client.Connect(qltClientConnectTimeout)
-		if err != nil {
-			log.Errorc(q.CtxS, "failed to connect", "addr", q.Addr, "err", err)
-			// return err
-		} else {
-			q.Qlt = client
-			return nil
-		}
-		time.Sleep(qltClientConnectionRetryDelay)
-	}*/
 	return nil
 }
-
-/*
-func (q *QLTClientReaderConnection) PrepareEvent(event *processor.AckableEvent) (string, error) {
-	str, _ := event.Msg.(string)
-	return str, nil
-}
-*/
 
 func (c *QLTClientReaderConnection) Read() ([]processor.AckableEvent, error) {
 	if c.Qlt == nil {
