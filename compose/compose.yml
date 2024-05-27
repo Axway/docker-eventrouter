@@ -11,6 +11,9 @@ services:
     image: eventrouter/eventrouter:3.0
 
     environment:
+      # 
+      # Parameters referenced in the template configuration
+      # 
       ER_INSTANCE_ID: "eventrouter-1"
       ER_QLT_SERVER_CERT: /run/secrets/qlt_server_cert.pem
       ER_QLT_SERVER_KEY: /run/secrets/qlt_server_key.pem
@@ -19,6 +22,14 @@ services:
       ER_KAFKA_SERVER_CA: /run/secrets/kafka_ca.pem
       ER_KAFKA_CLIENT_CERT: /run/secrets/kafka_client_cert.pem
       ER_KAFKA_CLIENT_KEY: /run/secrets/kafka_client_key.pem
+      # 
+      # General parameters
+      # 
+      ER_LOG_LEVEL: "info" # supported values: trace, debug, info, warn, error, fatal
+      #ER_CONFIG_FILE: "./event-router.yml" # path to config file
+      #ER_PORT: "8080" # http port
+      #ER_HOST: "0.0.0.0" # http host
+      #ER_LOG_USE_LOCALTIME: "false" # log uses local time
 
     ports:
     - "1325:1325" # same ports as the ones configured as input in event-router.yml configuration
@@ -26,7 +37,7 @@ services:
 
     volumes:
       # volume used to map the Event Router configuration.
-      - "./conf/event-router.yml:/opt/axway/event-router.yml"
+      - ./conf/event-router.yml:/opt/axway/event-router.yml
       # volume used to persist file readers and writers data.
       - eventrouter_data:/opt/axway/data
 

@@ -1,30 +1,29 @@
-# Axway Event Router Docker
-This document describes how to download, customize, deploy, and manage the Axway Event Router. The compose.yml describes the Axway Event Router service and allows you to manage the it.
+This page describes downloading, customizing, deploying, and managing the Axway Event Router. The compose.yml describes the Axway Event Router service and allows you to manage it.
 
 ## Prerequisites
-This document assumes a basic understanding of core Docker concepts such as containers, container images, and basic Docker commands.
-See [Get started with Docker](https://docs.docker.com/get-started/) for a primer on container basics or [Docker Compose Overview](https://docs.docker.com/compose/) for details on using Docker Compose.
-Additionally, you require:
-- Docker 17.11 or higher
-- Meet the sizing requirements:
--- Disk space for data persistence: Calculate based on the file writers configured with the maximum file size * maximum number of files
--- Memory: 128 MB
-- If you plan to use SSL/TLS, please see [Set up certificates and keys](#set up certificates and keys) 
-- Disk space for the Docker image: 30 MB
+
+This document assumes a basic understanding of core Docker concepts such as containers, container images, and basic Docker commands. See [Get started with Docker](https://docs.docker.com/get-started/) for a primer on container basics or  [Docker Compose Overview](https://docs.docker.com/compose/)  for details on using Docker Compose. Additionally, you require:
+
+*   Docker 17.11 or higher
+*   Meet the sizing requirements:
+    *   Disk space for data persistence: Calculate based on the file writers configured with the maximum file size \* maximum number of files
+    *   Memory: 128 MB
+*   If you plan to use SSL/TLS, please see [Set up certificates and keys](https://markdowntohtml.com/#set%20up%20certificates%20and%20keys)
+*   Disk space for the Docker image: 30 MB
 
 No license key is required.
 
 ## Download the Axway Event Router package
 
-1) Download the EventRouter_3.0_DockerImage_linux-x86-64.tar.gz package from [Axway Repository](https://repository.axway.com/catalog?products=a1E7S000003RwTJUA0&versions=a1F7S000001x9GGUAY).
+1.  Download the EventRouter\_3.0\_DockerImage\_linux-x86-64.tar.gz package from [Axway Repository](https://repository.axway.com/catalog?products=a1E7S000003RwTJUA0&versions=a1F7S000001x9GGUAY).
 
-2) To load the image the AxwayEventRouter_3.0.XXXXXXXX_DockerImage.tar.gz, run:
+2.  To load the image the AxwayEventRouter\_3.0.XXXXXXXX\_DockerImage.tar.gz, run:
 
     ```console
     docker image load -i AxwayEventRouter_3.0.XXXXXXXX_DockerImage.tar.gz
     ```
 
-3) Check that the image is successfully loaded:
+3.  Check that the image is successfully loaded:
 
     ```console
     docker images --filter reference=eventrouter/eventrouter
@@ -38,20 +37,28 @@ No license key is required.
     eventrouter/eventrouter   3.0.XXXXXXXX        27a34f72a7a4        18 hours ago        29.3MB
     ```
 
-## Configure the Axway Event Router
+## Configure the Event Router
 
-The ./conf/event-router.yml file is responsible for all Axway Event Router configuration. See the [Axway Event Router](https://docs.axway.com/bundle?cluster=true&exclude_metadata_filter.field=display-type&exclude_metadata_filter.value=inline&labelkey=prod-sentinel-420&rpp=20&sort.field=title&sort.value=asc) documentation for details on editing this file. 
+The ./conf/event-router.yml file is responsible for all Axway Event Router configurations. See the  [Axway Event Router](https://docs.axway.com/bundle?cluster=true&exclude_metadata_filter.field=display-type&exclude_metadata_filter.value=inline&labelkey=prod-sentinel-420&rpp=20&sort.field=title&sort.value=asc)  documentation for details on editing this file.
 
-## Deploy the Axway Event Router service using Compose
+## Deploy the Event Router service using Compose
 
 You can use the Docker Compose compose.yml file to automate application deployment and customization.
 
-1) Customize the parameters in the compose.yml. Be sure to set the image parameter to match the image you are using. For example, "image: eventrouter/eventrouter:3.0.XXXXXXXX".
+1.  Customize the parameters in the compose.yml. Be sure to set the image parameter to match the image you are using. For example, "image: eventrouter/eventrouter:3.0.XXXXXXXX".
 
-2) Set data persistence. The Axway Event Router compose.yml file defines a volume as a mechanism for persisting data generated and used by the Event Router.
-You can change the volume configuration to use a previously created volume, as described in [Volumes top-level element](https://docs.docker.com/compose/compose-file/07-volumes) and [Create and manage volumes](https://docs.docker.com/storage/volumes/#create-and-manage-volumes).
+ **Parameter**              |  **Values**  |  **Description**
+ -------------------------- | :----------: | --------------- 
+ ER_LOG_LEVEL           |  \<string>   | Defines log level. Supported values: trace, debug, info, warn, error, fatal
+ ER_CONFIG_FILE         |  \<string>   | Sets the configuration file pathname. (Default is '/opt/axway/event-router.yml')
+ ER_PORT                |  \<number>   | HTTP server port
+ ER_HOST                |  \<string>   | Host address to listen to. (Default is '0.0.0.0')
+ ER_LOG_USE_LOCALTIME   | \<boolean>   | Log uses local time
 
-3) Create and run the Axway Event Router service. From the compose.yml file location, run:
+2.  Set data persistence.  
+    The Axway Event Router compose.yml file defines a volume as a mechanism for persisting data generated and used by the Event Router. However, this volume is only needed if the Event Router uses files (file-writer and file-reader). You can change the volume configuration to use a previously created volume, as described in [Volumes top-level element](https://docs.docker.com/compose/compose-file/07-volumes) and [Create and manage volumes](https://docs.docker.com/storage/volumes/#create-and-manage-volumes).
+
+3.  Create and run the Axway Event Router service. From the compose.yml file, run:
     ```console
     docker compose up -d
     ```
@@ -95,13 +102,13 @@ From  the compose.yml file, stop the containers using the command:
 docker compose down
 ```
 
-The `down` command stops containers, and removes containers, networks, anonymous volumes, and images created by `up`.
-You can use the -v option to remove named volumes declared in the `volumes` section of the Compose file and anonymous volumes attached to containers.
+The `down` command stops and removes containers, networks, anonymous volumes, and images created by `up`. You can use the -v option to remove named volumes declared in the `volumes` section of the Compose file and anonymous volumes attached to containers.
 
 ## Set up certificates and keys
-The compose.yml mounts certificates and keys as Docker secrets and defines associated environment variables to refer to your event-router.yml configuration file.
 
-The secrets section maps the files on the host in the ./conf directory to the secrets qlt_server_cert.pem (an x509 certificate) and qlt_server_key.pem (its private key). 
+The compose.yml mounts certificates and keys as Docker secrets and defines associated environment variables that refer to your event-router.yml configuration file.
+
+The secrets section maps the files on the host in the ./conf directory to the secrets qlt\_server\_cert.pem (an x509 certificate) and qlt\_server\_key.pem (its private key).
 
 ```secrets:
   qlt_server_cert.pem:
@@ -138,6 +145,15 @@ streams:
         cert: $ER_QLT_SERVER_CERT
         certKey: $ER_QLT_SERVER_KEY
 ```
+
+## Support arbitrary user IDs
+
+The Axway Event Router image is compatible with OpenShift, which means it can be run with a random user ID (UID). When OpenShift starts the container, it automatically assigns a random UID but always uses a group ID (GID) of 0 (the root group). If you want to run the container with a specific user instead of the default `axway` user (UID=1000), you must set the GID to 0. Attempting to use a different GID will result in the container exiting with an error.
+
+In OpenShift, the container typically uses a random UID for security reasons. However, if you need the container to run with a specific UID, for example, to mount folders from the host system on Linux, you can configure it manually to match your host user’s UID.
+
+In a **Docker Compose** environment, you can modify the user running the container by setting the `user` directive in your `docker-compose.yml` file. For example, you can set the `user` entry to use a specific UID and GID, or leave it as the default to have it run with the image’s default UID (1000). If you change the UID, ensure the GID is still set to 0. If the UID is not `1000` (the default `axway` user), Docker automatically creates the user in the container.
+
 ## Copyright
 
 Copyright (c) 2024 Axway Software SA and its affiliates. All rights reserved.
