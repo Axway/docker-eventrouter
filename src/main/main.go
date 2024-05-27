@@ -69,7 +69,31 @@ func main() {
 	logMaxAge := flag.Int("log-max-age", 31, "log file max age (days)")
 	// logExclude := flag.String("log-exclude", "", "regex to exclude log messages from output")
 	logLocatime := flag.Bool("log-localtime", false, "log file max age (days)")
-	logLevelStr := flag.String("log-level", "debug", "log level (trace, debug, info, warn)")
+
+	var logLevelDefault string
+	logLevelEnvVar := os.Getenv("ER_LOG_LEVEL")
+	if logLevelEnvVar != "" {
+		switch strings.ToLower(logLevelEnvVar) {
+		case "trace":
+			logLevelDefault = "trace"
+		case "debug":
+			logLevelDefault = "debug"
+		case "info":
+			logLevelDefault = "info"
+		case "warn":
+			logLevelDefault = "warn"
+		case "error":
+			logLevelDefault = "error"
+		case "fatal":
+			logLevelDefault = "fatal"
+		default:
+			logLevelDefault = "info"
+			log.Infoc(ctxS, "Invalid log level", "ER_LOG_LEVEL", logLevelEnvVar, "using", logLevelDefault)
+		}
+	} else {
+		logLevelDefault = "info"
+	}
+	logLevelStr := flag.String("log-level", logLevelDefault, "log level (trace, debug, info, warn, error, fatal)")
 
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
 	memprofile := flag.String("memprofile", "", "write memory profile to this file")
