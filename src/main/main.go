@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"reflect"
 	"runtime/pprof"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -59,16 +60,116 @@ func main() {
 	ctxS := "main"
 	log.SetLevel(log.InfoLevel)
 
-	configFile := flag.String("config", "./event-router.yml", "path to config file")
-	port := flag.String("port", "8080", "http port")
-	host := flag.String("host", "0.0.0.0", "http host")
+	/* Parameters ENV VAR or command line */
+	var configDefault string
+	configEnvVar := os.Getenv("ER_CONFIG_FILE")
+	if configEnvVar != "" {
+		configDefault = configEnvVar
+	} else {
+		configDefault = "./event-router.yml"
+	}
+	configFile := flag.String("config", configDefault, "path to config file")
 
-	logFname := flag.String("log-file", "", "log file name")
-	logMaxSize := flag.Int("log-max-size", 100, "log file max size (MB)")
-	logMaxBackup := flag.Int("log-max-backups", 3, "log file backups")
-	logMaxAge := flag.Int("log-max-age", 31, "log file max age (days)")
-	// logExclude := flag.String("log-exclude", "", "regex to exclude log messages from output")
-	logLocatime := flag.Bool("log-localtime", false, "log file max age (days)")
+	var portDefault string
+	portEnvVar := os.Getenv("ER_PORT")
+	if portEnvVar != "" {
+		portDefault = portEnvVar
+	} else {
+		portDefault = "8080"
+	}
+	port := flag.String("port", portDefault, "http port")
+
+	var hostDefault string
+	hostEnvVar := os.Getenv("ER_HOST")
+	if hostEnvVar != "" {
+		hostDefault = hostEnvVar
+	} else {
+		hostDefault = "0.0.0.0"
+	}
+	host := flag.String("host", hostDefault, "http host")
+
+	var logFileDefault string
+	logFileEnvVar := os.Getenv("ER_LOG_FILE")
+	if logFileEnvVar != "" {
+		logFileDefault = logFileEnvVar
+	} else {
+		logFileDefault = ""
+	}
+	logFname := flag.String("log-file", logFileDefault, "log file name")
+
+	var logMaxSizeDefault int
+	logMaxSizeEnvVar := os.Getenv("ER_LOG_FILE_MAX_SIZE")
+	if logMaxSizeEnvVar != "" {
+		var err error
+		logMaxSizeDefault, err = strconv.Atoi(logMaxSizeEnvVar)
+		if err != nil {
+			logMaxSizeDefault = 100
+			log.Infoc(ctxS, "Invalid log file max size (MB)", "ER_LOG_FILE_MAX_SIZE", logMaxSizeEnvVar, "using", logMaxSizeDefault)
+		}
+	} else {
+		logMaxSizeDefault = 100
+	}
+	logMaxSize := flag.Int("log-max-size", logMaxSizeDefault, "log file max size (MB)")
+
+	var logMaxBackupDefault int
+	logMaxBackupEnvVar := os.Getenv("ER_LOG_FILE_MAX_BACKUP")
+	if logMaxBackupEnvVar != "" {
+		var err error
+		logMaxBackupDefault, err = strconv.Atoi(logMaxBackupEnvVar)
+		if err != nil {
+			logMaxBackupDefault = 3
+			log.Infoc(ctxS, "Invalid log file backups", "ER_LOG_FILE_MAX_BACKUP", logMaxBackupEnvVar, "using", logMaxBackupDefault)
+		}
+	} else {
+		logMaxBackupDefault = 3
+	}
+	logMaxBackup := flag.Int("log-max-backups", logMaxBackupDefault, "log file backups")
+
+	var logMaxAgeDefault int
+	logMaxAgeEnvVar := os.Getenv("ER_LOG_FILE_MAX_AGE")
+	if logMaxAgeEnvVar != "" {
+		var err error
+		logMaxAgeDefault, err = strconv.Atoi(logMaxAgeEnvVar)
+		if err != nil {
+			logMaxAgeDefault = 31
+			log.Infoc(ctxS, "Invalid log file max age (days)", "ER_LOG_FILE_MAX_AGE", logMaxAgeEnvVar, "using", logMaxAgeDefault)
+		}
+	} else {
+		logMaxAgeDefault = 31
+	}
+	logMaxAge := flag.Int("log-max-age", logMaxAgeDefault, "log file max age (days)")
+
+	var logLocaltimeDefault bool
+	logLocaltimeEnvVar := os.Getenv("ER_LOG_USE_LOCALTIME")
+	if logLocaltimeEnvVar != "" {
+		var err error
+		logLocaltimeDefault, err = strconv.ParseBool(logLocaltimeEnvVar)
+		if err != nil {
+			logLocaltimeDefault = false
+			log.Infoc(ctxS, "Invalid log file backups", "ER_LOG_MAX_BACKUP", logLocaltimeEnvVar, "using", logLocaltimeDefault)
+		}
+	} else {
+		logLocaltimeDefault = false
+	}
+	logLocatime := flag.Bool("log-localtime", logLocaltimeDefault, "log uses local time")
+
+	var cpuProfileFileDefault string
+	cpuProfileFileEnvVar := os.Getenv("ER_CPU_PROFILE_FILE")
+	if cpuProfileFileEnvVar != "" {
+		cpuProfileFileDefault = cpuProfileFileEnvVar
+	} else {
+		cpuProfileFileDefault = ""
+	}
+	cpuprofile := flag.String("cpuprofile", cpuProfileFileDefault, "write cpu profile to this file")
+
+	var memProfileFileDefault string
+	memProfileFileEnvVar := os.Getenv("ER_MEM_PROFILE_FILE")
+	if memProfileFileEnvVar != "" {
+		memProfileFileDefault = memProfileFileEnvVar
+	} else {
+		memProfileFileDefault = ""
+	}
+	memprofile := flag.String("memprofile", memProfileFileDefault, "write memory profile to this file")
 
 	var logLevelDefault string
 	logLevelEnvVar := os.Getenv("ER_LOG_LEVEL")
@@ -94,12 +195,6 @@ func main() {
 		logLevelDefault = "info"
 	}
 	logLevelStr := flag.String("log-level", logLevelDefault, "log level (trace, debug, info, warn, error, fatal)")
-
-	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
-	memprofile := flag.String("memprofile", "", "write memory profile to this file")
-	// var confTcpChaos tools.TCPChaosConf
-	// processor.ParseConfig(&confTcpChaos, "chaos")
-	// tools.TcpChaosInit(&confTcpChaos)
 
 	flag.Parse()
 
