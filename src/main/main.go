@@ -36,6 +36,7 @@ var (
 	Version = ""
 	Build   = ""
 	Date    = ""
+	Ready   = false
 )
 
 type Distribution struct {
@@ -404,6 +405,27 @@ func main() {
 		fmt.Fprintf(w, "Welcome to event-router!")
 	})*/
 
+	/* If I can answer, I'm alive */
+	log.Infoc(ctxS, "[HTTP] Setting up /live...")
+	http.HandleFunc("/live", func(w http.ResponseWriter, r *http.Request) {
+		channels.Update()
+		log.Tracec(ctxS, "Status check: Alive")
+		w.WriteHeader(http.StatusOK)
+	})
+
+	/* Verifies that all streams are ready */
+	log.Infoc(ctxS, "[HTTP] Setting up /ready...")
+	http.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
+		channels.Update()
+		if Ready {
+			log.Tracec(ctxS, "Status check: Ready")
+			w.WriteHeader(http.StatusOK)
+		} else {
+			log.Tracec(ctxS, "Status check: Not ready")
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
+	})
+
 	log.Infoc(ctxS, "[HTTP] Setting up /metrics (prometheus)...")
 	http.Handle("/metrics", promhttp.Handler())
 
@@ -446,10 +468,12 @@ func main() {
 		}
 	}()
 
+	Ready = true
 	c := make(chan os.Signal, 2)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
 	log.Infoc(ctxS, "terminate")
+	Ready = false
 	channels.Display(ctxS)
 	readerCancel()
 	time.Sleep(1 * time.Second)

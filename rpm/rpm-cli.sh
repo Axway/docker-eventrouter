@@ -382,7 +382,17 @@ case "${1:-}" in
         exit 1
       fi
     ;;
-    
+
+    live) ## ## show liviness of __APPNAME__
+      # FIXME: check curl
+      curl -s -v http://localhost:8080/live
+    ;;
+
+    ready) ## ## show readiness of __APPNAME__
+      # FIXME: check curl
+      curl -s -v http://localhost:8080/ready
+    ;;
+
     metrics) ## ## show metrics __APPNAME__
       port=${ER_PORT:-"8080"}
       curl -s http://localhost:$port/metrics
