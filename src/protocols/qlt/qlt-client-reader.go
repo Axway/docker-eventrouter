@@ -4,16 +4,16 @@ import (
 	"net"
 	"time"
 
-	"axway.com/qlt-router/src/tools"
 	log "axway.com/qlt-router/src/log"
+	"axway.com/qlt-router/src/tools"
 )
 
 type QltClientReader struct {
-	CtxS      string
-	Addr      string
-	QueueName string
+	CtxS              string
+	Addr              string
+	QueueName         string
 	Cert, CertKey, Ca string
-	qlt       *QLT
+	qlt               *QLT
 }
 
 func NewQltClientReader(ctx string, addr string, queueName string, cert string, certKey string, ca string) *QltClientReader {
@@ -32,7 +32,7 @@ func (c *QltClientReader) Connect(timeout time.Duration) error {
 	log.Infoc(c.CtxS, "connecting... ", "addr", c.Addr, "queue", c.QueueName)
 
 	var err error
- 	var conn net.Conn
+	var conn net.Conn
 	// FIXME: timeout needed
 	if c.Ca != "" {
 		conn, _, err = tools.TlsConnect(c.Addr, c.Ca, c.Cert, c.CertKey, c.CtxS)
@@ -47,7 +47,7 @@ func (c *QltClientReader) Connect(timeout time.Duration) error {
 	log.Infoc(c.CtxS, "connected", "addr", c.Addr, "queue", c.QueueName)
 	err = c.qlt.Send(QLTPacketTypeConnRequest, c.QueueName)
 	if err != nil {
-		log.Errorc(c.CtxS, " initialization failed (sending pull request)", "addr", c.Addr, "queue", c.QueueName, "err", err)
+		log.Errorc(c.CtxS, "initialization failed (sending pull request)", "addr", c.Addr, "queue", c.QueueName, "err", err)
 		return err
 	}
 	log.Infoc(c.CtxS, "wait connection ack", "addr", c.Addr, "queue", c.QueueName)
@@ -63,7 +63,7 @@ func (c *QltClientReader) Connect(timeout time.Duration) error {
 
 func (c *QltClientReader) Close() error {
 	err := c.qlt.Close()
-	log.Infoc(c.CtxS, " close", "err", err)
+	log.Infoc(c.CtxS, "close", "err", err)
 	return err
 }
 

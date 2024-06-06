@@ -209,7 +209,7 @@ func main() {
 		}
 	}
 
-	log.Infoc(ctxS, "info", "Version", Version, " Build", Build, " Date", Date)
+	log.Infoc(ctxS, "info", "Version", Version, "Build", Build, "Date", Date)
 
 	config.Print()
 

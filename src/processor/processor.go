@@ -3,9 +3,9 @@ package processor
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"regexp"
 	"sync"
-	"reflect"
 
 	log "axway.com/qlt-router/src/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -45,9 +45,9 @@ type Processor struct {
 	Out_ack int64
 	Context context.Context `json:"-"`
 
-	Cin  *Channel
-	Cout *Channel
-	Ctl  chan ControlEvent `json:"-"`
+	Cin   *Channel
+	Cout  *Channel
+	Ctl   chan ControlEvent `json:"-"`
 	mutex sync.Mutex
 }
 
@@ -89,23 +89,30 @@ func (p *Processor) InitializePrometheusCounters() {
 	})
 }
 
-func (p *Processor) AddReader(reader Connector) (ConnectorRuntime, error) {
+func (p *Processor) AddRuntime(reader Connector) (ConnectorRuntime, error) {
+	select {
+	case <-p.Context.Done():
+		log.Debugc(p.Name, "Closing...")
+		return nil, nil
+	default:
+	}
 	log.Debugc(p.Name, "Adding runtime...")
 	runtime, err := reader.Start(p.Context, p, p.Ctl, p.Cin.GetC(), p.Cout.GetC())
 	if err != nil {
 		p.Ctl <- ControlEvent{p, runtime, "ERROR", fmt.Sprint("connector start error: ", "err ", err)}
 	}
-	// log.Debugln(p.Name, "Started AddReader!!!!*************************")
+
 	p.Runtimes = append(p.Runtimes, runtime)
 	log.Debugc(p.Name, "Runtime added", "runtime", runtime.Ctx())
 	return runtime, err
 }
 
-func (p *Processor) RemoveReader(runtime ConnectorRuntime) {
+func (p *Processor) RemoveRuntime(runtime ConnectorRuntime) {
 	if len(p.Runtimes) == 0 {
+		// log.Debugc(p.Name, "Removing runtime failed, list is empty", "reader", runtime.Ctx())
 		return
 	}
-	if (reflect.TypeOf(runtime).String() == "*mem.MemReadersSource") {
+	if reflect.TypeOf(runtime).String() == "*mem.MemReadersSource" {
 		// FIXME - so uggly, mem reader runtime is required after execution for testing purpose
 		return
 	}
@@ -116,7 +123,7 @@ func (p *Processor) RemoveReader(runtime ConnectorRuntime) {
 
 	p.mutex.Lock()
 	for i, p2 := range p.Runtimes {
-		if (p2 == runtime) {
+		if p2 == runtime {
 			found = true
 			p.Runtimes = append(p.Runtimes[:i], p.Runtimes[i+1:]...)
 			log.Debugc(p.Name, "Runtime removed", "runtime", runtime.Ctx())
@@ -134,7 +141,7 @@ func (p *Processor) Start(ctx context.Context, ctl chan ControlEvent, cin *Chann
 	p.Cin = cin
 	p.Cout = cout
 	p.Context = ctx
-	runtime, err := p.AddReader(p.Conf)
+	runtime, err := p.AddRuntime(p.Conf)
 	p.Runtime = runtime
 	return runtime, err
 }
@@ -144,6 +151,7 @@ func (p *Processor) Close() error {
 		log.Debugc(p.Name, "processor closing: empty runtime")
 		return nil
 	}
+	p.RemoveRuntime(p.Runtime)
 	log.Debugc(p.Name, "processor closing", "runtime", p.Runtime.Ctx())
 	return p.Runtime.Close()
 }

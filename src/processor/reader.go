@@ -15,7 +15,7 @@ import (
 
 var (
 	ReaderAckSourceProxyChanSize = config.DeclareInt("processor.readerAckSourceProxyChanSize", 10, "Size of the reader ack channel")
-	ReaderAckAllNotify           = config.DeclareDuration("processor.readerAckSourceWait", "10ms", "Duration to wait before waiting ack message")
+	ReaderAckAllNotify           = config.DeclareDuration("processor.ReaderAckAllNotify", "10ms", "Duration to wait before waiting ack message")
 	ReaderAckSourceWait          = config.DeclareDuration("processor.readerAckSourceWait", "1s", "Duration to wait before waiting ack message")
 	ReaderReadRetryDelay         = config.DeclareDuration("processor.readerReadRetryDelay", "200ms", "Duration to wait before retrying reading")
 )
@@ -65,7 +65,7 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 	log.Infoc(ctxp, "Starting Reader Proxy Ack Loop...")
 	go func() {
 		defer p2.Close()
-		defer p.RemoveReader(p2)
+		defer p.RemoveRuntime(p2)
 		done := false
 		var lastAcked int64 = -1
 		nextWait := ReaderAckSourceWait

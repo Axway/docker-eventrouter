@@ -14,13 +14,14 @@ type QltServerReader struct {
 
 func NewQltServerReader(ctx string, conn net.Conn) *QltServerReader {
 	var c QltServerReader
+	c.CtxS = ctx
 	c.qlt = newQltConnection(c.CtxS, conn)
 	return &c
 }
 
 func (c *QltServerReader) Close() error {
 	err := c.qlt.Close()
-	log.Infoc(c.CtxS, " close", "err", err)
+	log.Infoc(c.CtxS, "close", "err", err)
 	return err
 }
 

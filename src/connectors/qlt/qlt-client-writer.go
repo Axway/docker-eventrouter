@@ -53,8 +53,8 @@ func (c *QLTClientWriterConf) Start(context context.Context, p *processor.Proces
 			acks := p.Chans.Create(q.CtxS+"-AckEvent (Not Tracked)", qltAckQueueSize)
 			// TcpChaosInit(TCPChaosConf{Name: q.Ctx, Addr: addr})
 			c2 := &QLTClientWriterConnection{c, q.CtxS, addr, nil, acks.C}
-			// log.Debugc(q.CtxS, "AddReader!!!!*************************")
-			p.AddReader(c2)
+			// log.Debugc(q.CtxS, "AddRuntime!!!!*************************")
+			p.AddRuntime(c2)
 		}
 	}
 	return q, nil
@@ -66,11 +66,11 @@ func (c *QLTClientWriterConf) Clone() processor.Connector {
 }
 
 type QLTClientWriterConnection struct {
-	Conf *QLTClientWriterConf
-	CtxS string
-	Addr string
-	Qlt  *qlt.QltClientWriter
-	acks chan processor.AckableEvent
+	Conf        *QLTClientWriterConf
+	CtxS        string
+	Addr        string
+	Qlt         *qlt.QltClientWriter
+	waitingAcks chan processor.AckableEvent
 }
 
 func (c *QLTClientWriterConnection) Start(context context.Context, p *processor.Processor, ctl chan processor.ControlEvent, inc, out chan processor.AckableEvent) (processor.ConnectorRuntime, error) {
@@ -112,7 +112,6 @@ func (q *QLTClientWriterConnection) Write(events []processor.AckableEvent) (int,
 			return n, nil
 		}
 		if err := q.Qlt.Send(str); err != nil {
-			// log.Debugc(q.CtxS, "close")
 			q.Close()
 			return n, err
 		}
@@ -123,7 +122,7 @@ func (q *QLTClientWriterConnection) Write(events []processor.AckableEvent) (int,
 				return n, err
 			}
 		} else {
-			q.acks <- event
+			q.waitingAcks <- event
 		}
 		// log.Debugc(q.CtxS, "Wrote", "message", str)
 		n++
@@ -141,9 +140,9 @@ func (q *QLTClientWriterConnection) IsActive() bool {
 }
 
 func (q *QLTClientWriterConnection) DrainAcks() {
-	for i := len(q.acks); i > 0; i-- {
+	for i := len(q.waitingAcks); i > 0; i-- {
 		select {
-		case _, ok := <-q.acks:
+		case _, ok := <-q.waitingAcks:
 			if !ok {
 				log.Debugc(q.CtxS, "acks channel closed while draining")
 				return
@@ -155,14 +154,14 @@ func (q *QLTClientWriterConnection) DrainAcks() {
 	}
 }
 
-func (q *QLTClientWriterConnection) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent, errs chan error) {
+func (q *QLTClientWriterConnection) ProcessAcks(ctx context.Context, receivedAcks chan processor.AckableEvent, errs chan error) {
 	for {
 		select {
 		case <-ctx.Done():
 			log.Infoc(q.CtxS, "close ack loop")
 			return
 		default:
-			event, ok := <-q.acks
+			event, ok := <-q.waitingAcks
 			if !ok {
 				log.Infoc(q.CtxS, "close ack loop")
 				return
@@ -183,7 +182,7 @@ func (q *QLTClientWriterConnection) ProcessAcks(ctx context.Context, acks chan p
 				continue
 			}
 
-			acks <- event
+			receivedAcks <- event
 		}
 	}
 }

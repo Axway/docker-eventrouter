@@ -35,7 +35,7 @@ type MemReadersConf struct {
 /*
 func (r *MemReaders) Add(messages []string) {
 	reader := &MemReadersSource{Messages: messages}
-	r.processor.AddReader(reader)
+	r.processor.AddRuntime(reader)
 }*/
 
 func (c *MemReadersConf) Start(context context.Context, p *processor.Processor, ctl chan processor.ControlEvent, inc, out chan processor.AckableEvent) (processor.ConnectorRuntime, error) {
@@ -43,7 +43,7 @@ func (c *MemReadersConf) Start(context context.Context, p *processor.Processor, 
 	for i := 0; i < len(q.Conf.Messages); i++ {
 		src := &MemReadersSource{CtxS: q.CtxS + "-" + fmt.Sprint(i), AckPos: -1}
 		src.Messages = q.Conf.Messages[i]
-		p.AddReader(src)
+		p.AddRuntime(src)
 	}
 	return q, nil
 }

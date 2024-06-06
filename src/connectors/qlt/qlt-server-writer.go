@@ -2,7 +2,10 @@ package qlt
 
 import (
 	"context"
+	"errors"
+	"io"
 	"net"
+	"syscall"
 
 	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
@@ -51,11 +54,11 @@ type QLTServerWriterConf struct {
 }
 
 type QLTServerWriterConnection struct {
-	CtxS string
-	Conf *QLTServerWriterConf
-	Qlt  *qlt.QltServerWriter
-	acks chan processor.AckableEvent
-	From string
+	CtxS        string
+	Conf        *QLTServerWriterConf
+	Qlt         *qlt.QltServerWriter
+	waitingAcks chan processor.AckableEvent
+	From        string
 }
 
 func (conf *QLTServerWriterConf) Start(ctx context.Context, p *processor.Processor, ctl chan processor.ControlEvent, in chan processor.AckableEvent, out chan processor.AckableEvent) (processor.ConnectorRuntime, error) {
@@ -63,9 +66,9 @@ func (conf *QLTServerWriterConf) Start(ctx context.Context, p *processor.Process
 		// qltHandleRequest(ctx, conn, ctx2+p.Flow.Name, p, ctl, out)
 		qlt := qlt.NewQltServerWriter(ctx2, conn, conf.QueueName)
 
-		src := &QLTServerWriterConnection{CtxS: ctx2 + ".conn", Conf: conf, Qlt: qlt, acks: make(chan processor.AckableEvent, qltAckQueueSize), From: conn.RemoteAddr().String()}
+		src := &QLTServerWriterConnection{CtxS: ctx2 + ".conn", Conf: conf, Qlt: qlt, waitingAcks: make(chan processor.AckableEvent, qltAckQueueSize), From: conn.RemoteAddr().String()}
 
-		p.AddReader(src)
+		p.AddRuntime(src)
 	}
 	var listener net.Listener
 	var err error
@@ -75,9 +78,10 @@ func (conf *QLTServerWriterConf) Start(ctx context.Context, p *processor.Process
 		listener, err = tools.TcpServe(conf.Host+":"+conf.Port, qltHandle, "QLT-TCP")
 	}
 	q := &QLTServerWriter{conf, p.Name, listener}
-	log.Debugc(q.ctx, "listening server started", "host", conf.Host, "port", conf.Port)
 	if err != nil {
 		log.Errorc(q.ctx, "error starting listening server", "err", err)
+	} else {
+		log.Debugc(q.ctx, "listening server started", "host", conf.Host, "port", conf.Port)
 	}
 	return q, err
 }
@@ -115,9 +119,9 @@ func (m *QLTServerWriterConnection) IsAckAsync() bool {
 }
 
 func (q *QLTServerWriterConnection) DrainAcks() {
-	for i := len(q.acks); i > 0; i-- {
+	for i := len(q.waitingAcks); i > 0; i-- {
 		select {
-		case _, ok := <-q.acks:
+		case _, ok := <-q.waitingAcks:
 			if !ok {
 				log.Debugc(q.CtxS, "acks channel closed while draining")
 				return
@@ -129,15 +133,8 @@ func (q *QLTServerWriterConnection) DrainAcks() {
 	}
 }
 
-func (q *QLTServerWriterConnection) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent, errs chan error) {
+func (q *QLTServerWriterConnection) ProcessAcks(ctx context.Context, receivedAcks chan processor.AckableEvent, errs chan error) {
 	for {
-		// log.Debugln(q.CtxS, "waiting msg to ack")
-		event, ok := <-q.acks
-		if !ok {
-			log.Infoc(q.CtxS, "close ack loop")
-			return
-		}
-
 		if q.Qlt == nil {
 			log.Warnc(q.CtxS, "close warn not opened: sleeping")
 			q.DrainAcks()
@@ -146,12 +143,31 @@ func (q *QLTServerWriterConnection) ProcessAcks(ctx context.Context, acks chan p
 
 		err := q.Qlt.WaitAck(qltWriterAckTimeout)
 		if err != nil {
-			log.Errorc(q.CtxS, "error waiting ack: close ack loop", "err", err)
-			q.DrainAcks()
+			select {
+			case <-ctx.Done():
+				log.Infoc(q.CtxS, "close ack loop")
+				return
+			default:
+				if errors.Is(err, io.EOF) {
+					log.Infoc(q.CtxS, "connection closed, close ack loop")
+					errs <- tools.ErrClosedConnection
+					return
+				}
+				if len(q.waitingAcks) > 0 {
+					log.Errorc(q.CtxS, "error waiting ack", "err", err)
+				}
+				continue
+			}
+		}
+
+		// log.Debugln(q.CtxS, "waiting msg to ack")
+		event, ok := <-q.waitingAcks
+		if !ok {
+			log.Infoc(q.CtxS, "close ack loop")
 			return
 		}
 
-		acks <- event
+		receivedAcks <- event
 	}
 }
 
@@ -169,10 +185,13 @@ func (q *QLTServerWriterConnection) Write(events []processor.AckableEvent) (int,
 	for _, event := range events {
 		str, _ := event.Msg.(string)
 		if err := q.Qlt.Send(str); err != nil {
+			if errors.Is(err, syscall.EPIPE) || errors.Is(err, io.EOF) {
+				err = tools.ErrClosedConnection
+			}
 			return n, err
 		}
 		// log.Debugln(q.CtxS, "Wrote", str)
-		q.acks <- event
+		q.waitingAcks <- event
 		n++
 	}
 

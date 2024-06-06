@@ -3,11 +3,13 @@ package processor
 import (
 	"context"
 	"errors"
+	"io"
 	"sync/atomic"
 	"time"
 
 	"axway.com/qlt-router/src/config"
 	log "axway.com/qlt-router/src/log"
+	"axway.com/qlt-router/src/tools"
 )
 
 var (
@@ -46,7 +48,6 @@ func removeAckableFromList(l []AckableEvent, e AckableEvent) []AckableEvent {
 // GenProcessorHelper
 func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p *Processor, ctl chan ControlEvent, in chan AckableEvent, out chan AckableEvent) (ConnectorRuntime, error) {
 	ctxp := p.Name + "-" + p2.Ctx()
-	p.Name = ctxp
 	sent := 0
 	acked := 0
 	var ackPendingEvents []AckableEvent
@@ -56,6 +57,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 
 	log.Infoc(ctxp, "Initializing Writer...")
 	ctl <- ControlEvent{p, p2, "STARTING", "Writer"}
+	ackDone := make(chan interface{})
 
 	err := p2.Init(p)
 	if err != nil {
@@ -82,27 +84,24 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 				}
 
 				select {
-				case event := <-acks.C:
-					// log.Debugln(ctxp, "Ack Event:", event)
+				case event, ok := <-acks.C:
+					if !ok {
+						log.Infoc(ctxp, "failed to read from channel. Stopping...")
+						return
+					}
 					acksReceived.C <- event
 					event.Src.AckMsg(event.Msgid)
 					acked++
 					atomic.AddInt64(&p.Out_ack, 1)
 					p.OutAckCounter.Inc()
-					// ctl <- ControlEvent{p, p2, "ACK", "" + fmt.Sprint(acked, sent)}
-					// FIXME: not ALL_ALL_DONE on writer ?
-					/*if acked == sent {
-						ctl <- ControlEvent{p, p2, "ACK_DONE", ""}
-						// FIXME: is this required ?
-						if p.Out_ack == p.Out {
-							ctl <- ControlEvent{p, p2, "ACK_ALL_DONE", ""}
-						}
-					}*/
 				case <-t.C:
 					log.Debugc(ctxp, "Waiting ACKs Timeout...")
 					errCh <- errors.New("timeout")
+				case <-ackDone:
+					log.Infoc(ctxp, "Writer Ack Loop closed")
+					return
 				case <-ctx.Done():
-					log.Infoc(ctxp, "Done")
+					log.Infoc(ctxp, "Writer Ack Loop closed: done")
 					return
 				}
 				timer_set = false
@@ -114,13 +113,16 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 				}
 			}
 		}()
-		// should not be required : time.Sleep(1 * time.Second)
 	} else {
 		log.Infoc(ctxp, "Not Starting Writer Proxy Ack Loop ! (sync writer)")
 	}
 
 	go func() {
+		defer close(errCh)
+		defer close(acksReceived.C)
+		defer close(ackDone)
 		defer p2.Close()
+		defer p.RemoveRuntime(p2)
 		defer log.Infoc(ctxp, "Closing...(auto)")
 
 		var events []AckableEvent
@@ -149,7 +151,12 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 					/* Remove element from the waiting for Ack list */
 					ackPendingEvents = removeAckableFromList(ackPendingEvents, event)
 				case err := <-errCh:
-					log.Debugc(ctxp, "error detected", "err", err)
+					if errors.Is(err, tools.ErrClosedConnection) {
+						ackDone <- 1
+						log.Debugc(ctxp, "error detected (close)", "err", err)
+						return
+					}
+					log.Debugc(ctxp, "error detected (continue)", "err", err)
 					continue
 				case event := <-in:
 					// data, _ := p2.PrepareEvent(&event)
@@ -167,7 +174,12 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 					/* Remove element from the waiting for Ack list */
 					ackPendingEvents = removeAckableFromList(ackPendingEvents, event)
 				case err := <-errCh:
-					log.Debugc(ctxp, "error detected", "err", err)
+					if errors.Is(err, io.EOF) {
+						ackDone <- 1
+						log.Debugc(ctxp, "error detected (close)", "err", err)
+						return
+					}
+					log.Debugc(ctxp, "error detected (continue)", "err", err)
 					continue
 				case event := <-in:
 					// data, _ := p2.PrepareEvent(&event)
@@ -197,6 +209,13 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 				if err != nil {
 					log.Errorc(ctxp, "error writing messages...", "batch", n, "total", len(events), "err", err)
 					ctl <- ControlEvent{p, p2, "ERROR", ""}
+
+					if errors.Is(err, tools.ErrClosedConnection) {
+						// broken pipe
+						log.Errorc(ctxp, "stopping")
+						ackDone <- 1
+						break
+					}
 
 					delay := WriterWriteRetryDelay * time.Duration(retryFactor)
 					if delay >= time.Minute {

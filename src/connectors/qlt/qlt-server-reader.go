@@ -66,7 +66,7 @@ func (conf *QLTServerReaderConf) Start(ctx context.Context, p *processor.Process
 		qlt := qlt.NewQltServerReader(ctx2, conn)
 
 		src := &QLTServerReaderConnection{CtxS: ctx2 + ".conn", Qlt: qlt, ack: make(chan int64), From: conn.RemoteAddr().String()}
-		p.AddReader(src)
+		p.AddRuntime(src)
 	}
 	var listener net.Listener
 	var err error
@@ -77,9 +77,10 @@ func (conf *QLTServerReaderConf) Start(ctx context.Context, p *processor.Process
 	}
 
 	q := &QLTServerReader{conf, p.Name, listener}
-	log.Debugc(q.ctx, "listening server started", "host", conf.Host, "port", conf.Port)
 	if err != nil {
 		log.Errorc(q.ctx, "error starting listening server", "err", err)
+	} else {
+		log.Debugc(q.ctx, "listening server started", "host", conf.Host, "port", conf.Port)
 	}
 	return q, err
 }

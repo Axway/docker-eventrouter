@@ -14,7 +14,7 @@ type ControlEvent struct {
 }
 
 func (msg *ControlEvent) Log() {
-	log.Debugc(msg.From.Name, " (CTL-LOG)", "id", msg.Id, "from", msg.From.Name, "ctx", msg.From2.Ctx(), "msg", msg.Msg)
+	log.Debugc(msg.From.Name, "(CTL-LOG)", "id", msg.Id, "from", msg.From.Name, "ctx", msg.From2.Ctx(), "msg", msg.Msg)
 }
 
 func ControlEventDiscardAll(ctxS string, ctx context.Context, ctl chan ControlEvent) {

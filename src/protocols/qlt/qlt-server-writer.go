@@ -16,6 +16,7 @@ type QltServerWriter struct {
 
 func NewQltServerWriter(ctx string, conn net.Conn, queueName string) *QltServerWriter {
 	var c QltServerWriter
+	c.CtxS = ctx
 	c.QueueName = queueName
 	c.qlt = newQltConnection(c.CtxS, conn)
 	return &c
@@ -23,7 +24,7 @@ func NewQltServerWriter(ctx string, conn net.Conn, queueName string) *QltServerW
 
 func (c *QltServerWriter) Close() error {
 	err := c.qlt.Close()
-	log.Infoc(c.CtxS, " close", "err", err)
+	log.Infoc(c.CtxS, "close", "err", err)
 	return err
 }
 

@@ -76,7 +76,7 @@ func TlsClientConfig(
 	if certFilename != "" {
 		cert, err := tls.LoadX509KeyPair(certFilename, keyFilename)
 		if err != nil {
-			log.Fatalc(prefix, " Unable to load cert", "certFilename", certFilename, "keyFilename", keyFilename, "err", err)
+			log.Fatalc(prefix, "Unable to load cert", "certFilename", certFilename, "keyFilename", keyFilename, "err", err)
 		}
 		certs = append(certs, cert)
 	}
@@ -157,7 +157,11 @@ func TlsConnect(
 	return conn, ctx, nil
 }
 
-func TcpServe(addr string, handleRequest func(net.Conn, string), prefix string) (net.Listener, error) {
+func TcpServe(
+	addr string,
+	handleRequest func(net.Conn, string),
+	prefix string,
+) (net.Listener, error) {
 	ctxInit := "[" + prefix + "]"
 	// Listen for incoming connections.
 	l, err := net.Listen("tcp", addr)
@@ -238,7 +242,7 @@ func TlsServe(
 	// Listen for incoming connections.
 	cert, err := tls.LoadX509KeyPair(certFilename, keyFilename)
 	if err != nil {
-		log.Errorc(ctxInit, " TLS - loadkeys", "err", err)
+		log.Errorc(ctxInit, "TLS - loadkeys", "err", err)
 		return nil, err
 
 	}

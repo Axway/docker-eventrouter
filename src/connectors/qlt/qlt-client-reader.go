@@ -3,6 +3,7 @@ package qlt
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 	"strings"
 
@@ -55,7 +56,7 @@ func (c *QLTClientReaderConf) Start(context context.Context, p *processor.Proces
 			acks := make(chan int64, qltAckQueueSize) // FIXME: untracked queue
 			c2 := &QLTClientReaderConnection{c, q.CtxS, addr, nil, 0, 0, acks}
 			log.Debugc(q.CtxS, "AddReader!!!!*************************")
-			p.AddReader(c2)
+			p.AddRuntime(c2)
 		}
 	}
 
@@ -113,7 +114,12 @@ func (c *QLTClientReaderConnection) Read() ([]processor.AckableEvent, error) {
 		if errors.Is(err, os.ErrDeadlineExceeded) {
 			return nil, err
 		}
-		log.Warnc(c.CtxS, "Reading error ", "err", err)
+		if errors.Is(err, io.EOF) {
+			log.Infoc(c.CtxS, "Reader disconnected", "err", err)
+			c.Close()
+		} else {
+			log.Warnc(c.CtxS, "Reading error", "err", err)
+		}
 		return nil, nil
 	}
 	c.MsgId += 1
