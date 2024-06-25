@@ -1,5 +1,5 @@
 FROM registry.suse.com/suse/sle15:latest
-RUN zypper --non-interactive update && zypper --non-interactive install tar gzip systemd && zypper --non-interactive clean all
+RUN zypper --non-interactive update && zypper --non-interactive install tar gzip systemd procps && zypper --non-interactive clean all
 
 COPY ./artefacts/*.rpm .
 ARG NAME

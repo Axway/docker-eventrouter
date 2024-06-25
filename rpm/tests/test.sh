@@ -72,3 +72,6 @@ find /tmp/$NAME-support -type f | while read file; do
     echo ""
 done
 check_ok $NAME --runtime "$RUNTIME" gen-systemd-unit
+
+echo "All tests OK"
+exit 0
