@@ -93,8 +93,6 @@ func TlsClientConfig(
 			// TLS 1.2 cipher suites.
 			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_RSA_WITH_AES_128_CBC_SHA,
-			tls.TLS_RSA_WITH_AES_256_CBC_SHA,
 			// TLS 1.3 cipher suites.
 			tls.TLS_AES_128_GCM_SHA256,
 			tls.TLS_AES_256_GCM_SHA384,
@@ -115,8 +113,6 @@ func TlsConnect(
 	ctx := fmt.Sprint("["+prefix+"-", getSessionId(), "]")
 
 	tlsConfig := TlsClientConfig(caFilenames, certFilename, keyFilename, prefix)
-
-	tlsConfig.BuildNameToCertificate()
 
 	conn, err := tls.Dial("tcp", addr, tlsConfig)
 	if err != nil {
@@ -152,7 +148,7 @@ func TlsConnect(
 		"CipherSuiteName", tls.CipherSuiteName(state.CipherSuite),
 		"handshakecomplete", state.HandshakeComplete,
 		"negotiatedProtocol", state.NegotiatedProtocol,
-		"negotiatedProtocolIsMutual", state.NegotiatedProtocolIsMutual)
+	)
 
 	return conn, ctx, nil
 }
@@ -205,7 +201,6 @@ func TlsLogInfo(tlscon *tls.Conn, ctx string) {
 		"OCSPResponse", state.OCSPResponse,
 		"handshakecomplete", state.HandshakeComplete,
 		"negotiatedProtocol", state.NegotiatedProtocol,
-		"negotiatedProtocolIsMutual", state.NegotiatedProtocolIsMutual,
 	)
 	log.Infoc(ctx, "TLS - Server: client public key is:")
 	for i, cert := range state.PeerCertificates {
@@ -263,8 +258,6 @@ func TlsServe(
 			// TLS 1.2 cipher suites.
 			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_RSA_WITH_AES_128_CBC_SHA,
-			tls.TLS_RSA_WITH_AES_256_CBC_SHA,
 			// TLS 1.3 cipher suites.
 			tls.TLS_AES_128_GCM_SHA256,
 			tls.TLS_AES_256_GCM_SHA384,
