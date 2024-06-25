@@ -203,7 +203,10 @@ fi
 profile="$HOME/.$APPNAME/profile"
 if [ -f "$profile" ]; then
     $verb "LOAD PROFILE $profile $(cat "$profile")"
-    . "$profile"
+    while read -r line; do
+        [ -z "$line" ] && continue
+        export "$line";
+    done <"$profile"
 fi
 
 if [ -z "$RUNTIME" ]; then
@@ -218,15 +221,26 @@ if [ -z "$RUNTIME" ]; then
     RUNTIME="$(realpath "$(dirname "$0")/../..")"
 fi
 
+config_subst() {
+    echo "Configuration:"
+    echo "-----"
+    echo "${runtime_env_name}    runtime folder"
+    echo "ER_CONFIG_FILE          path to config file"
+    echo "ER_LOG_LEVEL            log level. Supported values: trace, debug, info, warn, error, fatal"
+    echo "ER_LOG_USE_LOCALTIME    log uses local time"
+    echo "ER_PORT                 http port"
+    echo "ER_HOST                 http host"
+    echo "ER_LOG_FILE             log file name when writing to a file, leave empty to use standard output"
+    echo "ER_LOG_FILE_MAX_SIZE    log file max size (MB) - when writing to a file"
+    echo "ER_LOG_FILE_MAX_BACKUP  log file backups - when writing to a file"
+    echo "ER_LOG_FILE_MAX_AGE     log file max age (days) - when writing to a file"
+    echo "ER_CPU_PROFILE_FILE     write cpu profile to file"
+    echo "ER_MEM_PROFILE_FILE     write memory profile to this file"
+}
 
 OPTIONS=""
 while [ ! $# -eq 0 ] ; do
   case "$1" in
-    --nop) ## ## Do not execute commands (not implemented)
-      shift;
-      OPTIONS+=" --nop"
-      NOP=debug
-    ;;
     --version) ## ## Show version
       shift
       echo "$APPVERSION"
@@ -239,7 +253,7 @@ while [ ! $# -eq 0 ] ; do
       verb=debug
       OPTIONS+=" --verbose"
     ;;
-    --runtime) ## ## Use customer runtime folder
+    --runtime) ## <runtime-dir> ## Use customer runtime folder
         shift;
         RUNTIME="$1"
         shift;
@@ -368,32 +382,28 @@ case "${1:-}" in
         exit 1
       fi
     ;;
-
-    health) ## ## show health of __APPNAME__
-      # FIXME: check curl
-      curl -s -v http://localhost:8080/health
-    ;;
-
+    
     metrics) ## ## show metrics __APPNAME__
-      # FIXME: check curl
-      curl -s http://localhost:8080/metrics
+      port=${ER_PORT:-"8080"}
+      curl -s http://localhost:$port/metrics
     ;;
 
-    config) ## ## Display the service configuration parameters"
+    config) ## ## Display the service configuration parameters
       shift
       config_subst
     ;;
 
     gen-systemd-unit) ## ## Generate a template for systemd
-      echo "/etc/systemd/system/$APPNAME.service"
+      echo "# /etc/systemd/system/$APPNAME.service"
+      echo 
 cat <<EOF
 [Unit]
-Description=Flowmanager Agent
+Description=Axway Event Router
 After=network.target
 
 [Service]
-ExecStart="$INSTALLDIR/usr/bin/${APPNAME}d" --config="$RUNTIME/etc/${APPNAME}.conf"
-WorkingDirectory="$RUNTIME"
+ExecStart=$INSTALLDIR/usr/bin/${APPNAME}d --config=$RUNTIME/etc/${APPNAME}.conf
+WorkingDirectory=$RUNTIME
 User=$USER
 Type=simple
 
@@ -480,4 +490,3 @@ EOF
         exit 1
     ;;
 esac
-

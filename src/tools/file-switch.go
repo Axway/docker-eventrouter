@@ -1,18 +1,18 @@
 package tools
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path"
-	"time"
-	"fmt"
 	"regexp"
+	"time"
 
 	"axway.com/qlt-router/src/log"
 	"github.com/esimov/gogu"
 )
 
-func TimestampedFilename(ctx, filenamePrefix string, filenameSuffix string) (string) {
+func TimestampedFilename(ctx, filenamePrefix string, filenameSuffix string) string {
 	postfix := time.Now().UTC().Format(time.RFC3339Nano)
 	timestampedFilename := filenamePrefix + "." + postfix
 	if len(filenameSuffix) > 0 {
@@ -22,28 +22,28 @@ func TimestampedFilename(ctx, filenamePrefix string, filenameSuffix string) (str
 	return timestampedFilename
 }
 
-func NextFile(ctx, filenamePrefix string, filenameSuffix string, lastfilename string) (string, error) {
+func NextFile(ctx, filenamePrefix string, filenameSuffix string, lastfilename string, create bool) (string, error) {
 	var nextfilename string
 
-	filenames, err := FileSwitchList(ctx, filenamePrefix, filenameSuffix)
+	filenames, err := FileSwitchList(ctx, filenamePrefix, filenameSuffix, create)
 	if err != nil || len(filenames) == 0 {
 		return lastfilename, err
 	}
 
 	nextfilename = filenames[len(filenames)-1]
-	for i := len(filenames)-1; i >= 0; i-- {
+	for i := len(filenames) - 1; i >= 0; i-- {
 		if filenames[i] == lastfilename {
-			break;
+			break
 		}
 		nextfilename = filenames[i]
 	}
 	return nextfilename, nil
 }
 
-func FileToUse(ctx, filenamePrefix string, filenameSuffix string) (string) {
+func FileToUse(ctx, filenamePrefix string, filenameSuffix string, create bool) string {
 	newfname := TimestampedFilename(ctx, filenamePrefix, filenameSuffix)
 
-	filesUsed, err := FileSwitchList(ctx, filenamePrefix, filenameSuffix)
+	filesUsed, err := FileSwitchList(ctx, filenamePrefix, filenameSuffix, create)
 	if err != nil {
 		return newfname
 	}
@@ -53,12 +53,21 @@ func FileToUse(ctx, filenamePrefix string, filenameSuffix string) (string) {
 	return filesUsed[len(filesUsed)-1]
 }
 
-func FileSwitchList(ctx, filenamePrefix string, filenameSuffix string) ([]string, error) {
+func FileSwitchList(ctx, filenamePrefix string, filenameSuffix string, create bool) ([]string, error) {
 	dir := path.Dir(filenamePrefix)
+
+	/* Trying to create directories if non existant */
+	if create {
+		err := os.MkdirAll(dir, 0755)
+		if err != nil {
+			log.Errorc(ctx, "failed to creating missing directory: ", "dir", dir, "err", err)
+			return nil, err
+		}
+	}
 
 	files, err := os.ReadDir(dir)
 	if err != nil {
-		log.Errorc(ctx, "error on ReadDir : readdir", "filenamePrefix", filenamePrefix, "err", err)
+		log.Errorc(ctx, "error on ReadDir: readdir", "filenamePrefix", filenamePrefix, "err", err)
 		return nil, err
 	}
 	//log.Debugc(ctx, "FileSwitchList", "files", files)
@@ -78,7 +87,7 @@ func FileSwitchList(ctx, filenamePrefix string, filenameSuffix string) ([]string
 func FileSwitch(ctx string, filenamePrefix string, filenameSuffix string, maxfile int) (string, error) {
 	newfname := TimestampedFilename(ctx, filenamePrefix, filenameSuffix)
 
-	filenames, err := FileSwitchList(ctx, filenamePrefix, filenameSuffix)
+	filenames, err := FileSwitchList(ctx, filenamePrefix, filenameSuffix, false)
 	if err != nil {
 		return newfname, err
 	}
@@ -91,7 +100,7 @@ func FileSwitch(ctx string, filenamePrefix string, filenameSuffix string, maxfil
 			log.Infoc(ctx, "Removing ", "filename", fname)
 			err := os.Remove(fname)
 			if err != nil {
-				log.Errorc(ctx, "error while switching : removing old", "filename", fname, "err", err)
+				log.Errorc(ctx, "error while switching: removing old", "filename", fname, "err", err)
 				return newfname, err
 			}
 		}

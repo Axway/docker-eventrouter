@@ -138,12 +138,14 @@ integration-test:
         path: coverage.xml
 
 rpm-build:
-  image: rpmbuild/centos7
+  image: golang:1.21
   needs:
     - version
     - build-glibc
   stage: pack
   script:
+    - apt-get update -y
+    - apt-get install rpm -y
     - test -d /artefacts && ln -s /artefacts ./artefacts
     - . ./.env
     - ./rpm/rpm-build.sh $NAME $VERSION

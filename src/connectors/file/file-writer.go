@@ -51,7 +51,7 @@ func (q *FileStoreRawWriter) Ctx() string {
 func (q *FileStoreRawWriter) Init(p *processor.Processor) error {
 	/* Find file to use */
 	/* Looking for oldest file with prefix */
-	filename := tools.FileToUse(q.CtxS, q.Conf.FilenamePrefix, q.Conf.FilenameSuffix)
+	filename := tools.FileToUse(q.CtxS, q.Conf.FilenamePrefix, q.Conf.FilenameSuffix, true)
 	q.Filename = filename
 	return q.Open()
 }

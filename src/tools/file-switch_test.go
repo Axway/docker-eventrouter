@@ -10,7 +10,7 @@ import (
 )
 
 func CleanFiles(ctx, filenamePrefix string, filenameSuffix string) error {
-	entries, err := tools.FileSwitchList(ctx, filenamePrefix, filenameSuffix)
+	entries, err := tools.FileSwitchList(ctx, filenamePrefix, filenameSuffix, false)
 	if err != nil {
 		fmt.Println("FileSwitchList error ")
 		return err
@@ -44,7 +44,7 @@ func TestFileSwitch(t *testing.T) {
 
 	// real test
 	for i := 0; i < n+3; i++ {
-		entries, err := tools.FileSwitchList(ctx, prefix, suffix)
+		entries, err := tools.FileSwitchList(ctx, prefix, suffix, false)
 		if err != nil {
 			t.Error("FileSwitchList error", err)
 			return

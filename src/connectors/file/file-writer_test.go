@@ -10,10 +10,10 @@ import (
 	"testing"
 
 	"axway.com/qlt-router/src/connectors/file"
-	"axway.com/qlt-router/src/tools"
 	mem "axway.com/qlt-router/src/connectors/mem"
 	"axway.com/qlt-router/src/connectors/memtest"
 	"axway.com/qlt-router/src/processor"
+	"axway.com/qlt-router/src/tools"
 )
 
 func Test1FileStoreRawWriterStart(t *testing.T) {
@@ -57,7 +57,7 @@ func Test1FileStoreRawWriterStart(t *testing.T) {
 		return
 	}
 
-	entries, err := tools.FileSwitchList(ctx, targetFilename, targetFilenameSuf)
+	entries, err := tools.FileSwitchList(ctx, targetFilename, targetFilenameSuf, false)
 	if err != nil {
 		t.Error(err)
 		return
@@ -138,7 +138,7 @@ func Test2FileStoreMultipleFilesStart(t *testing.T) {
 		return
 	}
 
-	entries, err := tools.FileSwitchList(ctx, targetFilename, "")
+	entries, err := tools.FileSwitchList(ctx, targetFilename, "", false)
 	if err != nil {
 		t.Error(err)
 		return

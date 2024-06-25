@@ -2,8 +2,8 @@ package file_test
 
 import (
 	"context"
-	"os"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -15,7 +15,7 @@ import (
 )
 
 func CleanFiles(ctx, filenamePrefix string, filenameSuffix string) error {
-	entries, err := tools.FileSwitchList(ctx, filenamePrefix, filenameSuffix)
+	entries, err := tools.FileSwitchList(ctx, filenamePrefix, filenameSuffix, false)
 	if err != nil {
 		fmt.Println("FileSwitchList error ")
 		return err

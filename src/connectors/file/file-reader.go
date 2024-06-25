@@ -62,7 +62,7 @@ func (q *FileStoreRawReader) Init(p *processor.Processor) error {
 		if !os.IsNotExist(err) {
 			log.Errorc(q.CtxS, "Error opening file for reading last position", "filename", q.conf.ReaderFilename, "err", err)
 		}
-		q.Filename, err = tools.NextFile(q.CtxS, q.conf.FilenamePrefix, q.conf.FilenameSuffix, q.conf.FilenamePrefix)
+		q.Filename, err = tools.NextFile(q.CtxS, q.conf.FilenamePrefix, q.conf.FilenameSuffix, q.conf.FilenamePrefix, true)
 		q.Offset = 0
 	} else {
 		/* Read info from file */
@@ -88,13 +88,13 @@ func (q *FileStoreRawReader) Init(p *processor.Processor) error {
 	q.file = f
 
 	/* Go to correct offset */
-	log.Infoc(q.CtxS, "Seeking position", "offset", strconv.FormatInt(q.Offset,10))
+	log.Infoc(q.CtxS, "Seeking position", "offset", strconv.FormatInt(q.Offset, 10))
 	q.file.Seek(q.Offset, io.SeekStart)
 
 	return nil
 }
 
-func (q *FileStoreRawReader) Switch(newFilename string) (error) {
+func (q *FileStoreRawReader) Switch(newFilename string) error {
 	log.Infoc(q.CtxS, "Closing file", "filename", q.Filename)
 	q.file.Close()
 	q.AckOffset = 0
@@ -126,7 +126,7 @@ func (q *FileStoreRawReader) Read() ([]processor.AckableEvent, error) {
 			return nil, nil
 		}
 		// FIXME avoid calling nextFile (ReadDir) so often
-		filename, _ := tools.NextFile(q.CtxS, q.conf.FilenamePrefix, q.conf.FilenameSuffix, q.Filename)
+		filename, _ := tools.NextFile(q.CtxS, q.conf.FilenamePrefix, q.conf.FilenameSuffix, q.Filename, false)
 		if filename != q.Filename {
 			err = q.Switch(filename)
 			if err != nil {
@@ -165,7 +165,7 @@ func (q *FileStoreRawReader) Read() ([]processor.AckableEvent, error) {
 	}
 
 	// log.Debugc(q.CtxS, "Buffer", "size", q.Offset, "content", string(q.b[0:q.Pos]))
-	
+
 	return events, nil
 }
 

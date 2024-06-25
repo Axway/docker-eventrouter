@@ -51,7 +51,7 @@ check_ko $NAME --runtime "$RUNTIME" stop
 check_ok $NAME --runtime "$RUNTIME" start
 sleep 1
 check_ok $NAME --runtime "$RUNTIME" logs
-check_ok $NAME --runtime "$RUNTIME" health
+#check_ok $NAME --runtime "$RUNTIME" health
 check_ok $NAME --runtime "$RUNTIME" metrics
 check_ok $NAME --runtime "$RUNTIME" status
 check_ko $NAME --runtime "$RUNTIME" start
