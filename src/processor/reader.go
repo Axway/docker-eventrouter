@@ -119,7 +119,7 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 			if err != nil {
 				if errors.Is(err, os.ErrDeadlineExceeded) {
 					timeout = true
-					// log.Debugc(ctxp, "IO Timeout")
+					log.Debugc(ctxp, "IO Timeout")
 				} else if errors.Is(err, io.EOF) {
 					log.Infoc(ctxp, "No more event to read", "err", err)
 					done = true
@@ -137,8 +137,11 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 				delay := ReaderReadRetryDelay * time.Duration(retryFactor)
 				if delay >= time.Minute {
 					delay = time.Minute
+				} else {
+					retryFactor = retryFactor * 2
 				}
 
+				log.Debugc(ctxp, "wait read timer", "delay", delay)
 				t := time.NewTimer(delay)
 				select {
 				case <-ctxz.Done():
@@ -146,8 +149,6 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 				case <-t.C:
 				}
 				t.Stop()
-
-				retryFactor = retryFactor * 2
 			} else {
 				retryFactor = 1
 			}

@@ -112,6 +112,8 @@ func (q *FileStoreRawReader) Switch(newFilename string) error {
 	return nil
 }
 
+var counter_eof = 0
+
 func (q *FileStoreRawReader) Read() ([]processor.AckableEvent, error) {
 	n, err := q.file.Read(q.b[q.Pos:q.Size])
 	log.Tracec(q.CtxS, "Read", "file", q.file, "nread", n)
@@ -125,14 +127,18 @@ func (q *FileStoreRawReader) Read() ([]processor.AckableEvent, error) {
 		if errors.Is(err, io.EOF) && q.AckOffset < (q.Offset-1) {
 			return nil, nil
 		}
-		// FIXME avoid calling nextFile (ReadDir) so often
-		filename, _ := tools.NextFile(q.CtxS, q.conf.FilenamePrefix, q.conf.FilenameSuffix, q.Filename, false)
-		if filename != q.Filename {
-			err = q.Switch(filename)
-			if err != nil {
-				return nil, err
+		/* Try to check for next file only once every 5 tries */
+		if counter_eof%5 == 0 {
+			log.Debugc(q.CtxS, "Read: looking for next file")
+			filename, _ := tools.NextFile(q.CtxS, q.conf.FilenamePrefix, q.conf.FilenameSuffix, q.Filename, false)
+			if filename != q.Filename {
+				err = q.Switch(filename)
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
+		counter_eof += 1
 		return nil, nil
 	}
 
