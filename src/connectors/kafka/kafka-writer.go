@@ -89,16 +89,19 @@ loop:
 			break loop
 		}
 
-		select {
-		case err := <-q.errorCh:
-			log.Errorc(q.CtxS, "err returned by kafka", "err", err)
-			q.Close()
-			errs <- err
-		case <-q.acksCh:
-			// log.Debugc(q.CtxS, "Received Ack")
+		if event.Msg != nil {
+			select {
+			case err := <-q.errorCh:
+				log.Infoc(q.CtxS, "err returned by kafka", "err", err)
+				break loop
+			case <-q.acksCh:
+				// log.Debugc(q.CtxS, "Received Ack")
+				acks <- event
+			case <-done:
+				break loop
+			}
+		} else { // if empty message, sends ack back
 			acks <- event
-		case <-done:
-			break loop
 		}
 
 	}
@@ -191,6 +194,12 @@ func (q *KafkaWriter) Write(events []processor.AckableEvent) (int, error) {
 
 	n := 0
 	for _, event := range events {
+		if event.Msg == nil {
+			log.Tracec(q.CtxS, "Event filtered", "topic", q.Conf.Topic)
+			q.sentMess.C <- event
+			n++
+			continue
+		}
 		data := []byte(event.Msg.(string))
 
 		if q.Writer == nil {

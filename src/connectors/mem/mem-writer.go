@@ -2,6 +2,7 @@ package mem
 
 import (
 	"context"
+	"errors"
 
 	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
@@ -38,18 +39,28 @@ func (q *MemWriter) Init(p *processor.Processor) error {
 }
 
 func (q *MemWriter) PrepareEvent(event *processor.AckableEvent) (string, error) {
-	str, _ := event.Msg.(string)
+	str, b := event.Msg.(string)
+	if !b {
+		return "", errors.New("can't transform to string")
+	}
 	return str, nil
 }
 
 func (q *MemWriter) Write(events []processor.AckableEvent) (int, error) {
+	i := 0
 	datas := make([]string, len(events))
 	log.Tracec(q.CtxS, "write msg count", "n", len(events))
-	for i, e := range events {
-		data, _ := q.PrepareEvent(&e)
+	for _, e := range events {
+		data, err := q.PrepareEvent(&e)
+		if err != nil {
+			continue
+		}
 		log.Tracec(q.CtxS, "write msg", "msg", data)
 		datas[i] = data
+		i++
 	}
+	datas = datas[:i]
+
 	if q.Conf.MaxSize != 0 {
 		q.Messages = append(q.Messages, datas...)
 		n := len(q.Messages)

@@ -135,36 +135,38 @@ func (q *QLTServerWriterConnection) DrainAcks() {
 
 func (q *QLTServerWriterConnection) ProcessAcks(ctx context.Context, receivedAcks chan processor.AckableEvent, errs chan error) {
 	for {
-		if q.Qlt == nil {
-			log.Warnc(q.CtxS, "close warn not opened: sleeping")
-			q.DrainAcks()
-			continue
-		}
-
-		err := q.Qlt.WaitAck(qltWriterAckTimeout)
-		if err != nil {
-			select {
-			case <-ctx.Done():
-				log.Infoc(q.CtxS, "close ack loop")
-				return
-			default:
-				if errors.Is(err, io.EOF) {
-					log.Infoc(q.CtxS, "connection closed, close ack loop")
-					errs <- tools.ErrClosedConnection
-					return
-				}
-				if len(q.waitingAcks) > 0 {
-					log.Errorc(q.CtxS, "error waiting ack", "err", err)
-				}
-				continue
-			}
-		}
-
 		// log.Debugln(q.CtxS, "waiting msg to ack")
 		event, ok := <-q.waitingAcks
 		if !ok {
 			log.Infoc(q.CtxS, "close ack loop")
 			return
+		}
+
+		if event.Msg != nil {
+			if q.Qlt == nil {
+				log.Warnc(q.CtxS, "close warn not opened: sleeping")
+				q.DrainAcks()
+				continue
+			}
+
+			err := q.Qlt.WaitAck(qltWriterAckTimeout)
+			if err != nil {
+				select {
+				case <-ctx.Done():
+					log.Infoc(q.CtxS, "close ack loop")
+					return
+				default:
+					if errors.Is(err, io.EOF) {
+						log.Infoc(q.CtxS, "connection closed, close ack loop")
+						errs <- tools.ErrClosedConnection
+						return
+					}
+					if len(q.waitingAcks) > 0 {
+						log.Errorc(q.CtxS, "error waiting ack", "err", err)
+					}
+					continue
+				}
+			}
 		}
 
 		receivedAcks <- event
@@ -183,12 +185,14 @@ func (q *QLTServerWriterConnection) Write(events []processor.AckableEvent) (int,
 	n := 0
 	// log.Debugln(q.CtxS, "Write events", "events", events)
 	for _, event := range events {
-		str, _ := event.Msg.(string)
-		if err := q.Qlt.Send(str); err != nil {
-			if errors.Is(err, syscall.EPIPE) || errors.Is(err, io.EOF) {
-				err = tools.ErrClosedConnection
+		if event.Msg != nil {
+			str, _ := event.Msg.(string)
+			if err := q.Qlt.Send(str); err != nil {
+				if errors.Is(err, syscall.EPIPE) || errors.Is(err, io.EOF) {
+					err = tools.ErrClosedConnection
+				}
+				return n, err
 			}
-			return n, err
 		}
 		// log.Debugln(q.CtxS, "Wrote", str)
 		q.waitingAcks <- event

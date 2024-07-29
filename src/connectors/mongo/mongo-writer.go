@@ -118,6 +118,9 @@ func (q *MongoWriter) ProcessAcks(ctx context.Context, acks chan processor.Ackab
 func (q *MongoWriter) Write(events []processor.AckableEvent) (int, error) {
 	var docs []interface{}
 	for _, event := range events {
+		if event.Msg == nil {
+			continue
+		}
 		var m interface{}
 		// FIXME: this is inefficient at best
 		s := event.Msg.(string)
@@ -136,5 +139,5 @@ func (q *MongoWriter) Write(events []processor.AckableEvent) (int, error) {
 		log.Errorc(q.CtxS, "insertMany", "n", len(docs), "err", err)
 		return 0, err
 	}
-	return len(docs), nil
+	return len(events), nil
 }

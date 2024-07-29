@@ -77,7 +77,7 @@ func TestUnexpectedContent(t *testing.T) {
 }
 
 func TestConvertToMapISO8859(t *testing.T) {
-	_, err := convertToMap(dataISO8859)
+	_, err := ConvertToMap(dataISO8859)
 	if err != nil {
 		t.Error(err)
 	}
@@ -91,7 +91,7 @@ func TestConvert1ISO8859(t *testing.T) {
 }
 
 func TestConvertToMapInvalidXML(t *testing.T) {
-	_, err := convertToMap(dataInvalidXML)
+	_, err := ConvertToMap(dataInvalidXML)
 	if err != nil {
 		t.Error(err)
 	}

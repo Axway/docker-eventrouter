@@ -89,7 +89,7 @@ func convert1(data string) (string, error) {
 	return "{" + strings.Join(a, ", ") + "}", nil
 }
 
-func convertToMap(data string) (map[string]string, error) {
+func ConvertToMap(data string) (map[string]string, error) {
 	var c trkDescriptor
 
 	// Escape invalid '<' in attribute value
@@ -223,14 +223,14 @@ func convertStreamDummy(eventsIn chan qlt.QLTEvent, eventOut chan AckableEvent) 
 func convertStreamDummy2(eventsIn chan processor.AckableEvent, eventOut chan processor.AckableEvent) {
 	for {
 		qltEvent := <-eventsIn
-		event, err := convertToMap(qltEvent.Msg.(string))
+		event, err := ConvertToMap(qltEvent.Msg.(string))
 		if err != nil {
 			log.Errorc(qltEvent.Src.Ctx(), "XML parsing error, closing...", "msgid", qltEvent.Msgid, "err", err)
 			qltEvent.Src.AckMsg(qltEvent.Msgid)
 			// qltEvent.Ack <- false
 			continue
 		}
-		eventOut <- processor.AckableEvent{qltEvent.Src, qltEvent.Msgid, event, &qltEvent}
+		eventOut <- processor.AckableEvent{Src: qltEvent.Src, Msgid: qltEvent.Msgid, Msg: event, Orig: &qltEvent}
 	}
 }
 
@@ -238,7 +238,7 @@ func convertStreamNoTransform(p *processor.Processor, eventsIn chan processor.Ac
 	for {
 		qltEvent := <-eventsIn
 		// log.Debugln("[No Transform]", qltEvent.qlt.ctxMsg(), qltEvent.msgid)
-		eventOut <- processor.AckableEvent{qltEvent.Src, qltEvent.Msgid, make(map[string]string), &qltEvent}
+		eventOut <- processor.AckableEvent{Src: qltEvent.Src, Msgid: qltEvent.Msgid, Msg: make(map[string]string), Orig: &qltEvent}
 
 	}
 }
@@ -256,10 +256,10 @@ func (conf *Convert2JsonConf) Start(ctx context.Context, p *processor.Processor,
 				msg, err := convert1(qltEvent.Msg.(string))
 				if err != nil {
 					log.Errorc(qltEvent.Src.Ctx(), "convertStream: XML parsing failed, closing...", "msgid", qltEvent.Msgid, "err", err)
-					eventOut <- processor.AckableEvent{qltEvent.Src, qltEvent.Msgid, nil, &qltEvent}
+					eventOut <- processor.AckableEvent{Src: qltEvent.Src, Msgid: qltEvent.Msgid, Msg: qltEvent.Msg.(string), Orig: &qltEvent}
 					continue
 				}
-				eventOut <- processor.AckableEvent{qltEvent.Src, qltEvent.Msgid, msg, &qltEvent}
+				eventOut <- processor.AckableEvent{Src: qltEvent.Src, Msgid: qltEvent.Msgid, Msg: msg, Orig: &qltEvent}
 			case <-done:
 				log.Infoc(ctxS, "[ConvertStreamXML2Dict] done")
 				return
@@ -284,10 +284,10 @@ func (conf *ConvertStreamConf) Start(ctx context.Context, p *processor.Processor
 		for {
 			select {
 			case qltEvent := <-eventsIn:
-				event, err := convertToMap(qltEvent.Msg.(string))
+				event, err := ConvertToMap(qltEvent.Msg.(string))
 				if err != nil {
 					log.Errorc(qltEvent.Src.Ctx(), "convertStream XML Parsing failed, closing... '", "msgid", qltEvent.Msgid, "err", err)
-					eventOut <- processor.AckableEvent{qltEvent.Src, qltEvent.Msgid, nil, &qltEvent}
+					eventOut <- processor.AckableEvent{Src: qltEvent.Src, Msgid: qltEvent.Msgid, Msg: qltEvent.Msg.(string), Orig: &qltEvent}
 					continue
 				}
 
@@ -296,7 +296,7 @@ func (conf *ConvertStreamConf) Start(ctx context.Context, p *processor.Processor
 
 				// log.Println("", "Process Event... ")
 				msg := processEvent(event)
-				eventOut <- processor.AckableEvent{qltEvent.Src, qltEvent.Msgid, msg, &qltEvent}
+				eventOut <- processor.AckableEvent{Src: qltEvent.Src, Msgid: qltEvent.Msgid, Msg: msg, Orig: &qltEvent}
 			case <-done:
 				log.Infoc(ctxS, "done")
 				return

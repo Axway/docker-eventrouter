@@ -61,15 +61,19 @@ func (q *AwsSQSWriter) Init(p *processor.Processor) error {
 }
 
 func (q *AwsSQSWriter) Write(events []processor.AckableEvent) (int, error) {
+	i := 0
 	entries := make([]*sqs.SendMessageBatchRequestEntry, len(events))
-	for i, e := range events {
-		msg, _ := e.Msg.(string)
-		entries[i] = &sqs.SendMessageBatchRequestEntry{MessageBody: aws.String(msg)}
+	for _, e := range events {
+		if e.Msg != nil {
+			msg, _ := e.Msg.(string)
+			entries[i] = &sqs.SendMessageBatchRequestEntry{MessageBody: aws.String(msg)}
+			i++
+		}
 	}
 
 	// Create the message input object
 	inputs := &sqs.SendMessageBatchInput{
-		Entries:  entries,
+		Entries:  entries[:i],
 		QueueUrl: aws.String(q.Conf.QueueURL),
 	}
 

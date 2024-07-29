@@ -38,11 +38,16 @@ func (q *SampleWriterSync) Init(p *processor.Processor) error {
 }
 
 func (q *SampleWriterSync) Write(events []processor.AckableEvent) (int, error) {
+	i := 0
 	datas := make([]string, len(events))
-	for i, e := range events {
-		str, _ := e.Msg.(string)
-		datas[i] = str
+	for _, e := range events {
+		if e.Msg != nil {
+			str, _ := e.Msg.(string)
+			datas[i] = str
+			i++
+		}
 	}
+	datas = datas[:i]
 	q.Messages = append(q.Messages, datas...)
 	return len(events), nil
 }

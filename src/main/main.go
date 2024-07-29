@@ -25,6 +25,7 @@ import (
 	"axway.com/qlt-router/src/connectors/mem"
 	"axway.com/qlt-router/src/connectors/postgres"
 	"axway.com/qlt-router/src/connectors/qlt"
+	"axway.com/qlt-router/src/filters/expr"
 	"axway.com/qlt-router/src/filters/qlt2json"
 	log "axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
@@ -240,6 +241,7 @@ func main() {
 	connectors.Register("event-generator", &mem.MemGeneratorReaderConf{})
 	connectors.Register("qlt2dict", &qlt2json.ConvertStreamConf{})
 	connectors.Register("qlt2json", &qlt2json.Convert2JsonConf{})
+	connectors.Register("filter", &expr.ExprConf{})
 	connectors.Register("control", &processor.ControlConf{})
 	connectors.Register("file-writer", &file.FileStoreRawWriterConfig{})
 	connectors.Register("file-reader", &file.FileStoreRawReaderConfig{})

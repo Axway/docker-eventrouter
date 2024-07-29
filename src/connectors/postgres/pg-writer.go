@@ -144,12 +144,16 @@ func (q *PGWriter) Init(p *processor.Processor) error {
 }
 
 func (q *PGWriter) Write(msgs []processor.AckableEvent) (int, error) {
+	i := 0
 	valueStrings := make([]string, 0, len(msgs))
 	valueArgs := make([]interface{}, 0, len(msgs))
-	for i, msg := range msgs {
-		log.Tracec(q.ctx, "Write", "row", msg)
-		valueStrings = append(valueStrings, "($"+fmt.Sprint(i+1)+")")
-		valueArgs = append(valueArgs, msg.Msg)
+	for _, msg := range msgs {
+		if msg.Msg != nil {
+			log.Tracec(q.ctx, "Write", "row", msg)
+			valueStrings = append(valueStrings, "($"+fmt.Sprint(i+1)+")")
+			valueArgs = append(valueArgs, msg.Msg)
+			i++
+		}
 	}
 	params := strings.Join(valueStrings, ",")
 	stmt := fmt.Sprintf("INSERT INTO "+QLTTABLE+" (name) VALUES %s", params)
@@ -159,7 +163,7 @@ func (q *PGWriter) Write(msgs []processor.AckableEvent) (int, error) {
 	// log.Debugln(q.ctx, "rows", len(msgs))
 	_, err := q.conn.Exec(stmt, valueArgs...)
 	if err != nil {
-		log.Errorc(q.ctx, "INSERT failed ", "n", len(msgs), "err", err)
+		log.Errorc(q.ctx, "INSERT failed ", "n", i, "err", err)
 		return 0, err
 	}
 

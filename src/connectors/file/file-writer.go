@@ -2,6 +2,7 @@ package file
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -100,19 +101,19 @@ func (q *FileStoreRawWriter) Switch() error {
 func (q *FileStoreRawWriter) PrepareEvent(event *processor.AckableEvent) (string, error) {
 	str, b := event.Msg.(string)
 	if !b {
-		str = event.Orig.Msg.(string)
+		return "", errors.New("can't transform to string")
 	}
 	str = strings.ReplaceAll(str, "\n", "")
 	return str, nil
 }
 
 func (q *FileStoreRawWriter) Write(events []processor.AckableEvent) (int, error) {
-	datas := processor.PrepareEvents(q, events)
+	datas, skippedCount := processor.PrepareEvents(q, events)
 
 	// log.Debugln(q.CtxS, "writing", "count", len(datas))
 	buf := []byte(strings.Join(datas, "\n") + "\n")
 	if len(buf) == 1 { /* data is empty: not writing */
-		return 0, nil
+		return skippedCount, nil
 	}
 
 	q.Size += int64(len(buf))
@@ -125,11 +126,22 @@ func (q *FileStoreRawWriter) Write(events []processor.AckableEvent) (int, error)
 	size, err := q.file.Write(buf)
 	n := strings.Count(string(buf[:size]), "\n")
 	if err != nil {
+		if skippedCount > 0 {
+			// Compute effective skipped messages from current position to last written msg
+			skippedCount = 0
+			lastWrittenMsg := datas[n-1]
+			for _, event := range events[n-1:] {
+				if event.Msg != nil && event.Msg.(string) == lastWrittenMsg {
+					break
+				}
+				skippedCount++
+			}
+		}
 		log.Errorc(q.CtxS, "error write message in file", "filename", q.Filename, "err", err)
-		return n, err
+		return n + skippedCount, err
 	}
 
-	return n, nil
+	return n + skippedCount, nil
 }
 
 func (q *FileStoreRawWriter) IsAckAsync() bool {

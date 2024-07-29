@@ -225,4 +225,9 @@ Feb 14 15:35:21 localhost event-routerd[904]: 2024-02-14T15:35:21.792525+01:00 I
 Feb 14 15:35:21 localhost event-routerd[904]: 2024-02-14T15:35:21.792558+01:00 INF [] main channel -- name=mem-writer-mem-writerWriterAcks size=0
 ```
 
+## Profiling
 
+./event-router -config ../qlt-router2/fto/qlt-router-qdn.yml -cpuprofile cpuprofile2 -log-level debug
+> go tool pprof event-router cpuprofile2
+(pprof) top10
+(pprof) web

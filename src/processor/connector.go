@@ -19,11 +19,15 @@ type ConnectorWithPrepare interface {
 	PrepareEvent(event *AckableEvent) (string, error)
 }
 
-func PrepareEvents(q ConnectorWithPrepare, events []AckableEvent) []string {
+func PrepareEvents(q ConnectorWithPrepare, events []AckableEvent) ([]string, int) {
+	n := 0
 	datas := make([]string, len(events))
-	for i, e := range events {
-		data, _ := q.PrepareEvent(&e)
-		datas[i] = data
+	for _, e := range events {
+		data, err := q.PrepareEvent(&e)
+		if err == nil {
+			datas[n] = data
+			n++
+		}
 	}
-	return datas
+	return datas[:n], len(events) - n
 }
