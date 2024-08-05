@@ -384,13 +384,13 @@ case "${1:-}" in
     ;;
 
     live) ## ## show liviness of __APPNAME__
-      # FIXME: check curl
-      curl -s -v http://localhost:8080/live
+      port=${ER_PORT:-"8080"}
+      curl -s -v http://localhost:$port/live
     ;;
 
     ready) ## ## show readiness of __APPNAME__
-      # FIXME: check curl
-      curl -s -v http://localhost:8080/ready
+      port=${ER_PORT:-"8080"}
+      curl -s -v http://localhost:$port/ready
     ;;
 
     metrics) ## ## show metrics __APPNAME__
