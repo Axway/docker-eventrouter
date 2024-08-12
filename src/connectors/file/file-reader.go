@@ -62,12 +62,12 @@ func (q *FileStoreRawReader) Init(p *processor.Processor) error {
 		if !os.IsNotExist(err) {
 			log.Errorc(q.CtxS, "Error opening file for reading last position", "filename", q.conf.ReaderFilename, "err", err)
 		}
-		q.Filename, err = tools.NextFile(q.CtxS, q.conf.FilenamePrefix, q.conf.FilenameSuffix, q.conf.FilenamePrefix, true)
+		q.Filename, _ = tools.NextFile(q.CtxS, q.conf.FilenamePrefix, q.conf.FilenameSuffix, q.conf.FilenamePrefix, true)
 		q.Offset = 0
 	} else {
 		/* Read info from file */
 		b := make([]byte, 3072)
-		n, err := f2.Read(b)
+		n, _ := f2.Read(b)
 		f2.Close()
 		s := string(b[0:n])
 		arr := strings.Split(s, "\n")
@@ -82,8 +82,19 @@ func (q *FileStoreRawReader) Init(p *processor.Processor) error {
 	log.Infoc(q.CtxS, "Opening file", "filename", q.Filename)
 	f, err := os.OpenFile(q.Filename, os.O_RDONLY, 0o644)
 	if err != nil {
-		log.Errorc(q.CtxS, "Error opening file for reading", "filename", q.Filename, "err", err)
-		return err
+		if os.IsNotExist(err) {
+			log.Errorc(q.CtxS, "Error opening file for reading", "filename", q.Filename, "err", err)
+			q.Filename, _ = tools.NextFile(q.CtxS, q.conf.FilenamePrefix, q.conf.FilenameSuffix, q.conf.FilenamePrefix, true)
+			q.Offset = 0
+			q.AckOffset = q.Offset
+
+			log.Infoc(q.CtxS, "Opening file", "filename", q.Filename)
+			f, err = os.OpenFile(q.Filename, os.O_RDONLY, 0o644)
+		}
+		if err != nil {
+			log.Errorc(q.CtxS, "Error opening file for reading", "filename", q.Filename, "err", err)
+			return err
+		}
 	}
 	q.file = f
 
