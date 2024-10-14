@@ -195,13 +195,17 @@ func (q *FileStoreRawReader) AckMsg(msgid processor.EventAck) {
 	q.AckOffset = offset
 
 	/* Write in file */
-	f2, err := os.OpenFile(q.conf.ReaderFilename, os.O_WRONLY|os.O_CREATE, 0o644)
+	f2, err := os.Create(q.conf.ReaderFilename)
 	if err != nil {
 		log.Errorc(q.CtxS, "Error opening file for writing last position", "filename", q.conf.ReaderFilename, "err", err)
 	} else {
 		defer f2.Close()
+
 		b := []byte(strconv.FormatInt(q.AckOffset, 10) + "\n" + q.Filename)
 		_, err = f2.Write(b)
+		if err != nil {
+			log.Errorc(q.CtxS, "Error writing position to file", "filename", q.conf.ReaderFilename, "err", err)
+		}
 	}
 }
 
