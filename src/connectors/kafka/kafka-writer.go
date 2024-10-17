@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"strings"
 
-	"axway.com/qlt-router/src/config"
 	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
 	"axway.com/qlt-router/src/tools"
@@ -16,7 +15,8 @@ import (
 )
 
 var (
-	kafkaAckQueueSize = config.DeclareInt("connectors.kafka-writer.ackQueueSize", 1000, "Kafka ack Queue Size")
+/*FIXME: disable asynchronous mode*/
+// kafkaAckQueueSize = config.DeclareInt("connectors.kafka-writer.ackQueueSize", 1000, "Kafka ack Queue Size")
 )
 
 type KafkaWriterConf struct {
@@ -28,13 +28,14 @@ type KafkaWriterConf struct {
 }
 
 type KafkaWriter struct {
-	CtxS     string
-	Conf     *KafkaWriterConf
-	Writer   *kafka.Writer
-	sentMess *processor.Channel
-	acksCh   chan kafka.Message
-	errorCh  chan error
-	// delivery_chan chan kafka.Event
+	CtxS   string
+	Conf   *KafkaWriterConf
+	Writer *kafka.Writer
+	
+	/*FIXME: disable asynchronous mode*/
+	//sentMess *processor.Channel
+	//acksCh   chan kafka.Message
+	//errorCh  chan error
 }
 
 func (conf *KafkaWriterConf) Start(context context.Context, p *processor.Processor, ctl chan processor.ControlEvent, inc, out chan processor.AckableEvent) (processor.ConnectorRuntime, error) {
@@ -50,15 +51,17 @@ func (c *KafkaWriterConf) Clone() processor.Connector {
 
 func (q *KafkaWriter) Init(p *processor.Processor) error {
 	q.CtxS = p.Name
-
-	q.sentMess = p.Chans.Create("kafka-sent", kafkaAckQueueSize)
-	q.acksCh = make(chan kafka.Message, kafkaAckQueueSize)
-	q.errorCh = make(chan error, kafkaAckQueueSize)
+	
+	/*FIXME: disable asynchronous mode*/
+	//q.sentMess = p.Chans.Create("kafka-sent", kafkaAckQueueSize)
+	//q.acksCh = make(chan kafka.Message, kafkaAckQueueSize)
+	//q.errorCh = make(chan error, kafkaAckQueueSize)
 
 	return nil
 }
 
-func (q *KafkaWriter) KafkaCompletion(messages []kafka.Message, err error) {
+/*FIXME: disable asynchronous mode*/
+/*func (q *KafkaWriter) KafkaCompletion(messages []kafka.Message, err error) {
 	for _, message := range messages {
 		if err != nil {
 			q.errorCh <- err
@@ -66,11 +69,14 @@ func (q *KafkaWriter) KafkaCompletion(messages []kafka.Message, err error) {
 			q.acksCh <- message
 		}
 	}
-}
+}*/
 
 func (q *KafkaWriter) ProcessAcks(ctx context.Context, acks chan processor.AckableEvent, errs chan error) {
 	// Delivery report handler for produced messages
 	// events := q.k.Events()
+	log.Fatalc(q.CtxS, "Not supported")
+	/*FIXME: disable asynchronous mode*/
+/*
 	done := ctx.Done()
 	defer log.Infoc(q.CtxS, "Stopped processing acks")
 loop:
@@ -93,7 +99,6 @@ loop:
 			select {
 			case err := <-q.errorCh:
 				log.Infoc(q.CtxS, "err returned by kafka", "err", err)
-				break loop
 			case <-q.acksCh:
 				// log.Debugc(q.CtxS, "Received Ack")
 				acks <- event
@@ -103,8 +108,8 @@ loop:
 		} else { // if empty message, sends ack back
 			acks <- event
 		}
-
 	}
+*/
 }
 
 func (q *KafkaWriter) Close() error {
@@ -117,26 +122,17 @@ func (q *KafkaWriter) Close() error {
 	return nil
 }
 
-/*func (q *KafkaConsumer) AckMsg(msgid int64) {
-	return
-}*/
-
 func (q *KafkaWriter) Ctx() string {
 	return q.CtxS
 }
 
 func (q *KafkaWriter) IsAckAsync() bool {
-	return true
+	return false
 }
 
 func (q *KafkaWriter) IsActive() bool {
 	return q.Writer != nil
 }
-
-/*func (q *KafkaWriter) PrepareEvent(event *processor.AckableEvent) (string, error) {
-	msg := event.Msg.([]byte)
-	return string(msg), nil
-}*/
 
 func (q *KafkaWriter) InitializeKafka() {
 	var mechanism sasl.Mechanism
@@ -173,9 +169,10 @@ func (q *KafkaWriter) InitializeKafka() {
 		Topic:                  q.Conf.Topic,
 		RequiredAcks:           kafka.RequireAll,
 		AllowAutoTopicCreation: true,
-		Async:                  true,
+		Async:                  false,
 		MaxAttempts:            1,
-		Completion:             q.KafkaCompletion,
+		/*FIXME: disable asynchronous mode*/
+		//Completion:             q.KafkaCompletion,
 		Transport: &kafka.Transport{
 			TLS:  tlsConfig,
 			SASL: mechanism,
@@ -196,7 +193,8 @@ func (q *KafkaWriter) Write(events []processor.AckableEvent) (int, error) {
 	for _, event := range events {
 		if event.Msg == nil {
 			log.Tracec(q.CtxS, "Event filtered", "topic", q.Conf.Topic)
-			q.sentMess.C <- event
+			/*FIXME: disable asynchronous mode*/
+			//q.sentMess.C <- event
 			n++
 			continue
 		}
@@ -207,13 +205,12 @@ func (q *KafkaWriter) Write(events []processor.AckableEvent) (int, error) {
 			return n, nil
 		}
 		if err := q.Writer.WriteMessages(context.Background(), kafka.Message{Value: data}); err != nil {
-			//Shouldn't happen since we are async
 			log.Errorc(q.CtxS, "error writing event", "err", err)
-			q.Close()
 			return n, err
 		}
 		log.Tracec(q.CtxS, "Wrote Event", "topic", q.Conf.Topic, "msg", event.Msg.(string))
-		q.sentMess.C <- event
+		/*FIXME: disable asynchronous mode*/
+		//q.sentMess.C <- event
 		n++
 	}
 	return n, nil
