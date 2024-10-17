@@ -73,7 +73,7 @@ func FileSwitchList(ctx, filenamePrefix string, filenameSuffix string, create bo
 	//log.Debugc(ctx, "FileSwitchList", "files", files)
 
 	// List file with pattern: prefix.(time.RFC3339Nano)(.suffix)
-	pattern := path.Base(filenamePrefix) + `\.` + `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z\.*` + filenameSuffix
+	pattern := `^` + path.Base(filenamePrefix) + `\.` + `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z\.*` + filenameSuffix + `$`
 	r, _ := regexp.Compile(pattern)
 	filtered := gogu.Filter(files, func(file fs.DirEntry) bool {
 		return r.MatchString(file.Name())
