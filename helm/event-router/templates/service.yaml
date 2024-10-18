@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "event-router.fullname" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "event-router.labels" . | nindent 4 }}
+    {{- if .Values.podLabels }}
+    {{- toYaml .Values.podLabels | nindent 4 }}
+    {{- end }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  {{- if .Values.service.loadBalancerIP }}
+  loadBalancerIP: "{{ .Values.service.loadBalancerIP }}"
+  {{- end }}
+  ports:
+    - name: httpport
+      {{- if .Values.eventrouter.httpPort.port }}
+      port: {{ int .Values.eventrouter.httpPort.port }}
+      {{- else }}
+      port: 8080
+      {{- end }}
+      {{- if .Values.eventrouter.httpPort.targetPort }}
+      targetPort: {{ int .Values.eventrouter.httpPort.targetPort }}
+      {{- end }}
+      {{- if .Values.eventrouter.httpPort.nodePort }}
+      nodePort: {{ int .Values.eventrouter.httpPort.nodePort }}
+      {{- end }}
+    {{- range .Values.service.ports }}
+    - name: {{ lower .name }}
+      port: {{ int .port }}
+      {{- if .targetPort }}
+      targetPort: {{ int .targetPort }}
+      {{- end }}
+      {{- if .nodePort }}
+      nodePort: {{ int .nodePort }}
+      {{- end }}
+      {{- if .protocol }}
+      protocol: {{ .protocol }}
+      {{- end }}
+    {{- end}}
+  selector:
+    {{- include "event-router.selectorLabels" . | nindent 4 }}
+  {{- with .Values.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}

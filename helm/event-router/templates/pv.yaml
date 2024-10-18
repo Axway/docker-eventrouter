@@ -1,0 +1,39 @@
+{{- if and .Values.persistence.enabled (not .Values.persistence.eventrouterData.existingClaim) -}}
+{{- if and .Values.persistence.eventrouterData.nfsPath .Values.persistence.eventrouterData.nfsServer -}}
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: {{ include "event-router.fullname" . }}-nfs-volume
+  labels:
+    {{- include "event-router.labels" . | nindent 4 }}
+    {{- if .Values.podLabels }}
+    {{- toYaml .Values.podLabels | nindent 4 }}
+    {{- end }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.eventrouterData.accessMode }}
+  capacity:
+    storage: {{ .Values.persistence.eventrouterData.size}}
+  nfs:
+    server: {{ .Values.persistence.eventrouterData.nfsServer | quote }}
+    path: {{ .Values.persistence.eventrouterData.nfsPath | quote }}
+{{- if .Values.persistence.eventrouterData.storageClass }}
+  {{- if (eq "-" .Values.persistence.eventrouterData.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: {{ .Values.persistence.eventrouterData.storageClass }}
+  {{- end }}
+{{- else }}
+  storageClassName: {{ include "event-router.fullname" . }}-nfs
+{{- end }}
+{{- if .Values.persistence.eventrouterData.reclaimPolicy }}
+  persistentVolumeReclaimPolicy: {{ .Values.persistence.eventrouterData.reclaimPolicy | quote }}
+{{- end }}
+{{- if .Values.persistence.eventrouterData.mountOptions }}
+  {{- with .Values.persistence.eventrouterData.mountOptions }}
+  mountOptions:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- end -}}

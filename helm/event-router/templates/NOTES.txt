@@ -1,0 +1,36 @@
+Axway Event Router has been installed.
+
+Axway Event Router metrics can be accessed:
+
+  * From outside the cluster, run these commands in the same shell:
+
+  {{- if contains "LoadBalancer" .Values.service.type }}
+      NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+
+      You can watch the status of by running 'kubectl get svc -w  --namespace {{ .Release.Namespace}} {{ include "event-router.fullname" . }}'
+
+      On GKE/Azure:
+      export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace}} {{ include "event-router.fullname" . }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+      
+      On AWS:
+      export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace}} {{ include "event-router.fullname" . }} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+      
+      echo http://$SERVICE_IP:{{ .Values.eventrouter.httpPort.port }}/metrics
+
+  {{- else if contains "ClusterIP" .Values.service.type }}
+
+      export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace}} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "event-router.fullname" . }})
+      export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace}} -o jsonpath="{.items[0].status.addresses[0].address}")
+      
+      echo http://$NODE_IP:$NODE_PORT/metrics
+
+  {{- else if contains "NodePort" .Values.service.type }}
+
+      export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace}} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "event-router.fullname" . }})
+      export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace}} -o jsonpath="{.items[0].status.addresses[0].address}")
+      
+      echo http://$NODE_IP:$NODE_PORT/metrics
+
+  {{- end }}
+
+

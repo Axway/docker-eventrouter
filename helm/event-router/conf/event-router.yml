@@ -1,0 +1,101 @@
+instance_id: "$ER_INSTANCE_ID"
+streams:
+  - name: "qlt_in_xml_out"
+    disable: false
+    description: "qlt source to an xml file"
+    upstream: ""
+    reader:
+      type: qlt-server-reader
+      conf:
+        port: 1325
+        # cert: $ER_QLT_SERVER_CERT
+        # certKey: $ER_QLT_SERVER_KEY
+    writer:
+      type: file-writer
+      conf:
+        filenamePrefix: "data/xml_events"
+        filenameSuffix: "xml"
+        maxSize: 100  # Integer: number of MBs, the minimum size is 1 MB
+        maxFile: 5    # Integer: number of files the writer can use.
+                      # When this number is reached the oldest file is
+                      # erased and a new one is created.
+                      # Set this to zero “0” to have an unlimited number of files.
+  - name: "xml_in_json_out"
+    disable: false
+    description: "converts QLT XML messages to the JSON format"
+    upstream: "qlt_in_xml_out"
+    reader:
+      type: file-reader
+      conf:
+        filenamePrefix: "data/xml_events"
+        filenameSuffix: "xml"
+        readerFilename: "data/xml_in_json_out.cursor"
+    transforms:
+      - type: qlt2json
+    writer:
+      type: file-writer
+      conf:
+        filenamePrefix: "data/json_events"
+        filenameSuffix: "json"
+        maxSize: 100
+        maxFile: 5
+  - name: "xml_in_sentinel_out"
+    disable: true #to enable this stream set disable: false
+    description: "reads xml file and sends to sentinel"
+    upstream: qlt_in_xml_out
+    reader:
+      type: file-reader
+      conf:
+        filenamePrefix: "data/xml_events"
+        filenameSuffix: "xml"
+        readerFilename: "data/xml_in_sentinel_out.cursor"
+    writer:
+      type: "qlt-client-writer"
+      conf:
+        addresses: "<sentinel_address>:<sentinel_port>"
+        synchronous: true # must be set to "true" if Sentinel is the target
+        cnx: 1
+        # ca: $ER_SENTINEL_CA
+  - name: "xml_in_er_out_with_filter"
+    disable: true   # to enable this stream, set disable: false
+    description: "reads xml file and sends to event router using a filter"
+    upstream: "qlt_in_xml_out"
+    reader:
+      type: file-reader
+      conf:
+        filenamePrefix: "data/xml_events"
+        filenameSuffix: "xml"
+        readerFilename: "data/xml_in_er_out_with_filter.cursor"
+    transforms:
+      - type: "filter"
+        conf:
+          expression: "msg.qltname == 'XFBTransfer' and msg.qlttype=='Event' and msg.application=='BIN'"
+    writer:
+      type: qlt-client-writer
+      conf:
+        addresses: "<event_router_address>:<event_router_port>"
+        cnx: 1
+        # ca: $ER_QLT_SERVER_CA
+  - name: "xml_in_kafka_out"
+    disable: true #to enable this stream set disable: false
+    description: "reads xml file and sends to a kafka topic"
+    upstream: "qlt_in_xml_out"
+    reader:
+      type: file-reader
+      conf:
+        filenamePrefix: "data/xml_events"
+        filenameSuffix: "xml"
+        readerFilename: "data/xml_in_kafka_out.cursor"
+    transforms:
+      - type: qlt2json
+    writer:
+      type: kafka-writer
+      conf:
+        addresses: "<kafka_address>:<kafka_port>"
+        topic: "T_Kafka_out"
+        # ca: $ER_KAFKA_SERVER_CA
+        # cert: $ER_KAFKA_CLIENT_CERT
+        # certKey: $ER_KAFKA_CLIENT_KEY
+        # user:
+        # password:
+        # saslType:

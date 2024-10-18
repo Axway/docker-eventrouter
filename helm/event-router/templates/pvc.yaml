@@ -1,0 +1,32 @@
+{{- if and .Values.persistence.enabled (not .Values.persistence.eventrouterData.existingClaim) -}}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ include "event-router.fullname" . }}-claim
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "event-router.labels" . | nindent 4 }}
+    {{- if .Values.podLabels }}
+    {{- toYaml .Values.podLabels | nindent 4 }}
+    {{- end }}
+    {{- if .Values.persistence.keep }}
+    helm.sh/resource-policy: keep
+    {{- end }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.eventrouterData.accessMode | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.eventrouterData.size | quote }}
+{{- if .Values.persistence.eventrouterData.storageClass }}
+  {{- if (eq "-" .Values.persistence.eventrouterData.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: "{{ .Values.persistence.eventrouterData.storageClass }}"
+  {{- end }}
+{{- else }}
+  {{- if and .Values.persistence.eventrouterData.nfsPath .Values.persistence.eventrouterData.nfsServer}}
+  storageClassName: {{ include "event-router.fullname" . }}-nfs
+  {{- end }}
+{{- end }}
+{{- end -}}

@@ -1,0 +1,226 @@
+{{- $fullName := include "event-router.fullname" . -}}
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $fullName }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "event-router.labels" . | nindent 4 }}
+    {{- if .Values.podLabels }}
+    {{- toYaml .Values.podLabels | nindent 4 }}
+    {{- end }}
+spec:
+  serviceName: {{ $fullName }}
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "event-router.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "event-router.selectorLabels" . | nindent 8 }}
+      {{- if .Values.podAnnotations }}
+      annotations:
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+      {{- end }}
+    spec:
+     {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+     {{- end }}
+      serviceAccountName: {{ include "event-router.serviceAccountName" . }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName | quote }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: {{ .Chart.Name }}
+        securityContext:
+          {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+          - name: httpport
+            protocol: TCP
+          {{- if .Values.eventrouter.httpPort }}
+           {{- if .Values.eventrouter.httpPort.port }}
+            containerPort: {{ int .Values.eventrouter.httpPort.port }}
+           {{- end }}
+          {{- else }}
+            containerPort: 8080
+          {{- end }}
+          {{- if .Values.service.ports }}
+           {{- range .Values.service.ports }}
+          - name: {{ lower .name }}
+            containerPort: {{ .port }}
+            {{- if and .protocol }}
+            protocol: {{ .protocol }}
+            {{- end }}
+           {{- end }}
+          {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /live
+            port: httpport
+            scheme: HTTP
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          successThreshold: {{ .Values.livenessProbe.successThreshold }}
+          failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+          {{- if .Values.livenessProbe.timeoutSeconds }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          {{- end }}
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: httpport
+            scheme: HTTP
+          periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          successThreshold: {{ .Values.readinessProbe.successThreshold }}
+          failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+          {{- if .Values.readinessProbe.timeoutSeconds }}
+          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          {{- end }}
+        resources:
+          {{- toYaml .Values.resources | nindent 12 }}
+        env:
+          {{- if .Values.service.ports }}
+           {{- range .Values.service.ports }}
+            {{- if .variableInConf }}
+          - name: {{ .variableInConf | quote }}
+            value: {{ .port | quote }}
+            {{- end }}
+           {{- end }}
+          {{- end }}
+         {{- with .Values.eventrouter }}
+          {{- if .configuration }}
+           {{- if and (.configuration.fileName) (or .configuration.createConfigMap .configuration.existingConfigMap) }}
+          - name: "ER_CONFIG_FILE"
+            {{- if .configuration.createConfigMap }}
+            value: "/mnt/custom/{{ .configuration.fileName }}/{{ .configuration.fileName }}"
+            {{- else }}
+            value: "/mnt/custom/{{ .configuration.fileName }}/{{ .configuration.existingConfigMap.keyRef }}"
+            {{- end }}
+           {{- end }}
+          {{- end }}
+          {{- if .instanceId }}
+          - name: "ER_INSTANCE_ID"
+            value: {{ .instanceId | quote }}
+          {{- end }}
+          {{- if .logLevel }}
+          - name: "ER_LOG_LEVEL"
+            value: {{ .logLevel | quote }}
+          {{- end }}
+          {{- if .logUseLocalTime }}
+          - name: "ER_LOG_USE_LOCALTIME"
+            value: {{ .logUseLocalTime | quote }}
+          {{- end }}
+          {{- if .certificates }}
+           {{- range .certificates }}
+          - name: {{ .variableInConf }}
+            {{- if .createSecretFile }}
+            value: "/run/secrets/{{ .secretName }}/{{ .secretName }}"
+            {{- else }}
+            value: "/run/secrets/{{ .secretName }}/{{ .existingSecretFile.keyRef }}"
+            {{- end }}
+           {{- end }}
+          {{- end }}
+         {{- end }}
+         {{- if .Values.extraEnv }}
+          {{- range $key, $value := .Values.extraEnv }}
+          - name: {{ $key }}
+            value: {{ $value | quote }}
+          {{- end }}
+         {{- end }}
+        volumeMounts:
+          - name: {{ $fullName }}-volume
+            mountPath: /opt/axway/data
+          ## ConfigMaps
+         {{- with .Values.eventrouter }}
+          {{- if .configuration }}
+           {{- if and (.configuration.fileName) (or .configuration.createConfigMap .configuration.existingConfigMap) }}
+          - name: {{ .configuration.fileName }}
+            readOnly: true
+            mountPath: "/mnt/custom/{{ .configuration.fileName }}"
+           {{- end }}
+          {{- end }}
+         {{- end }}
+          ## Secrets
+         {{- if .Values.eventrouter.certificates }}
+           {{- range .Values.eventrouter.certificates }}
+            {{- if and (.secretName) (or .createSecretFile  .existingSecretFile) }}
+          - name: {{ .secretName }}
+            readOnly: true
+            mountPath: "/run/secrets/{{ .secretName }}"
+            {{- end }}
+           {{- end }}
+         {{- end }}
+          ## Other volumes
+         {{- if .Values.extraVolumeMounts }}
+          {{- range .Values.extraVolumeMounts }}
+          - name: {{ .name }}
+            mountPath: {{ .mountPath }}
+            subPath: {{ .subPath | default "" }}
+            readOnly: {{ .readOnly }}
+          {{- end }}
+         {{- end }}
+      volumes:
+       {{- if and .Values.persistence .Values.persistence.enabled }}
+        - name: {{ $fullName }}-volume
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.eventrouterData.existingClaim | default (printf "%s-claim" (include "event-router.fullname" .))}}
+       {{- else }}
+        - name: {{ $fullName }}-volume
+          emptyDir: {}
+       {{- end -}}
+       {{- if .Values.eventrouter.configuration }}
+        {{- if and (.Values.eventrouter.configuration.fileName) (or .Values.eventrouter.configuration.createConfigMap .Values.eventrouter.configuration.existingConfigMap) }}
+        - name: {{ .Values.eventrouter.configuration.fileName }}
+          configMap:
+          {{- if .Values.eventrouter.configuration.createConfigMap }}
+            name: {{ $fullName }}-{{ .Values.eventrouter.configuration.fileName }}
+          {{- else }}
+            name: {{ .Values.eventrouter.configuration.fileName }}
+          {{- end }}
+            defaultMode: 0777
+        {{- end }}
+       {{- end }}
+       {{- if .Values.eventrouter.certificates }}
+        {{- range .Values.eventrouter.certificates }}
+         {{- if and (.secretName) (or .createSecretFile  .existingSecretFile) }}
+        - name: {{ .secretName }}
+          secret:
+          {{- if .createSecretFile }}
+            secretName: {{ $fullName }}-{{ .secretName }}
+          {{- else }}
+            secretName:  {{ .secretName }}
+          {{- end }}
+            defaultMode: 0777 
+         {{- end }}
+        {{- end }}
+       {{- end }}
+       {{- if .Values.extraVolumeMounts }}
+        {{- range .Values.extraVolumeMounts }}
+        - name: {{ .name }}
+         {{- if .hostPath }}
+          hostPath:
+            path: {{ .hostPath }}
+         {{- else }}
+          persistentVolumeClaim:
+            claimName: {{ .existingClaim }}
+         {{- end }}
+        {{- end }}
+       {{- end }}
+     {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+     {{- end }}
+     {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+     {{- end }}
+     {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+     {{- end }}

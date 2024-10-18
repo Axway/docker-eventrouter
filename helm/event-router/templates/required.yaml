@@ -1,0 +1,15 @@
+###
+### Required values test
+###
+# configuration
+{{- required "A valid .Values.eventrouter.configuration  entry required!" .Values.eventrouter.configuration  }}
+{{- required "A valid .Values.eventrouter.configuration.fileName entry required!" .Values.eventrouter.configuration.fileName }}
+{{- if .Values.eventrouter.configuration.createConfigMap }}
+  {{- required "A valid .Values.eventrouter.configuration.localFile entry required!" .Values.eventrouter.configuration.localFile }}
+{{- else }}
+  {{- if .Values.eventrouter.configuration.existingConfigMap }}
+    {{- required "A valid .Values.eventrouter.configuration.existingConfigMap.keyRef entry required!" .Values.eventrouter.configuration.existingConfigMap.keyRef }}
+  {{- else }}
+    {{- required "A valid .Values.eventrouter.configuration.existingConfigMap entry required! (createConfigMap=false)" .Values.eventrouter.configuration.existingConfigMap }}
+  {{- end }}
+{{- end }}
