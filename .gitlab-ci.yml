@@ -138,7 +138,7 @@ integration-test:
         path: coverage.xml
 
 rpm-build:
-  image: golang:1.21
+  image: golang:1.23
   needs:
     - version
     - build-glibc
@@ -229,8 +229,8 @@ blackduck:
   before_script:
     - apt-get --allow-releaseinfo-change update
     - apt-get install build-essential make git unzip wget -y --fix-missing
-    - wget https://go.dev/dl/go1.22.3.linux-amd64.tar.gz
-    - rm -rf /usr/local/go && tar -C /usr/local -xzf go1.22.3.linux-amd64.tar.gz
+    - wget https://go.dev/dl/go1.23.2.linux-amd64.tar.gz
+    - rm -rf /usr/local/go && tar -C /usr/local -xzf go1.23.2.linux-amd64.tar.gz
     - export PATH=/usr/local/go/bin:$PATH
     - go version
   script:
