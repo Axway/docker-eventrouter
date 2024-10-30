@@ -243,7 +243,12 @@ blackduck:
     - cd ..
     - wget --no-check-certificate https://artifactory-ptx.ecd.axway.int/artifactory/psg-generic-release/blackduck/synopsys-detect.zip
     - unzip synopsys-detect.zip -d synopsys-detect
-    - java -jar synopsys-detect/synopsys-detect.jar --blackduck.url=$BLACK_DUCK_URL --blackduck.api.token=$BLACK_DUCK_TOKEN --detect.project.name="$BLACK_DUCK_PROJECT_NAME" --detect.project.version.name=$BLACK_DUCK_PROJECT_VERSION --detect.source.path=qlt-router/ --detect.go.path=`which go` --detect.go.mod.dependency.types.excluded=UNUSED --detect.output.path="/blackduck/output" --detect.status.json.output.path="/blackduck/status"
+    - if [ $BLACK_DUCK_PROJECT_VERSION != "SNAPSHOT" ]; then
+    -   echo "Cloning SNAPSHOT to $BLACK_DUCK_PROJECT_VERSION..."
+    -   java -jar synopsys-detect/synopsys-detect.jar --blackduck.url=$BLACK_DUCK_URL --blackduck.api.token=$BLACK_DUCK_TOKEN --detect.project.name="$BLACK_DUCK_PROJECT_NAME" --detect.project.version.name=$BLACK_DUCK_PROJECT_VERSION --detect.clone.project.version.name="SNAPSHOT" --detect.source.path=qlt-router/ --detect.go.path=`which go` --detect.go.mod.dependency.types.excluded=UNUSED --detect.output.path="/blackduck/output" --detect.status.json.output.path="/blackduck/status"
+    - else
+    -   java -jar synopsys-detect/synopsys-detect.jar --blackduck.url=$BLACK_DUCK_URL --blackduck.api.token=$BLACK_DUCK_TOKEN --detect.project.name="$BLACK_DUCK_PROJECT_NAME" --detect.project.version.name=$BLACK_DUCK_PROJECT_VERSION --detect.source.path=qlt-router/ --detect.go.path=`which go` --detect.go.mod.dependency.types.excluded=UNUSED --detect.output.path="/blackduck/output" --detect.status.json.output.path="/blackduck/status"
+    - fi
 
 deploy-ser:
   tags:
