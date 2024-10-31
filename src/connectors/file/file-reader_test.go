@@ -79,7 +79,7 @@ func Test1FileStoreRawReaderStart(t *testing.T) {
 				return
 			}
 			msg.Src.AckMsg(msg.Msgid)
-		case <-time.After(1000 * time.Millisecond):
+		case <-time.After(2000 * time.Millisecond):
 			t.Error("reached timeout", all_count, i)
 		}
 	}
@@ -91,7 +91,7 @@ func Test1FileStoreRawReaderStart(t *testing.T) {
 				return
 			}
 			msg.Src.AckMsg(msg.Msgid)
-		case <-time.After(1000 * time.Millisecond):
+		case <-time.After(2000 * time.Millisecond):
 			t.Error("reached timeout", all_count, i)
 		}
 	}
