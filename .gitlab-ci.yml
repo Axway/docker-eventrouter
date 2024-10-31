@@ -50,6 +50,9 @@ unit-test:
   #coverage: "/\\(statements\\)(?:\\s+)?(\\d+(?:\\.\\d+)?%)/"
   script:
     - ./scripts/run-unit-test-docker.sh
+  artifacts:
+    reports:
+      junit: report.xml
 
 .build:
   image: golang:bookworm
