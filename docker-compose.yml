@@ -4,6 +4,7 @@ services:
     build: docker
     tty: true
     environment:
+      ACCEPT_GENERAL_CONDITIONS:   "YES"
       #SENTINEL_ADDRS: "ingestion-lumberjack.branch2.trcblt.com:80"
       #ES_URL: "http://elasticsearch:9200"
       #FILENAME: "/data/sss.json"

@@ -1,5 +1,14 @@
 #!/bin/sh
 
+# Testing EULA
+ACCEPT_GENERAL_CONDITIONS=`echo $ACCEPT_GENERAL_CONDITIONS | tr '[a-z]' '[A-Z]'`
+if [ "$ACCEPT_GENERAL_CONDITIONS" = "YES" ]; then
+    echo "General Terms and Conditions accepted."
+else
+    echo "General Terms and Conditions not accepted. EXIT"
+    exit 1
+fi
+
 whoami
 if [ $? -ne 0 ]; then
     if [ -w /etc/passwd ]; then
