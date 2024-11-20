@@ -156,8 +156,8 @@ func (flow *Flow) Start(ctx context.Context, readerContext context.Context, inst
 					},
 				})
 				p.OutDataCounter = promauto.NewCounter(prometheus.CounterOpts{
-					Name: "er_messages_data_total",
-					Help: "The total volume messages processed",
+					Name: "er_messages_bytes_total",
+					Help: "The total volume of messages processed in bytes",
 					ConstLabels: prometheus.Labels{
 						"position":       position,
 						"type":           step.Type,
