@@ -63,6 +63,7 @@ Parameter | Description | Default
 `nodeSelector` | Label used to deploy on specific node | `{}`
 `tolerations` | Toleration are applied to pods, and allow (but do not require) the pods to schedule onto nodes with matching taints | `[]`
 `affinity` | Affinity rules between each pods | `{}`
+`event-router.accept_general_conditions` | Set parameter to `true` if you accept the applicable General Terms and Conditions, located at https://www.axway.com/en/legal/contract-documents | `false`
 `event-router.fqdn` | A fully qualified domain name (FQDN) or an  IP address used to connect to your Event Router deployment. | ``
 `event-router.instanceId` |  | `eventrouter-1`
 `event-router.logLevel` | Log level. Supported values: trace, debug, info, warn, error, fatal | `info`

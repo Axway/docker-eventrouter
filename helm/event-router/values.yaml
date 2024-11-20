@@ -116,6 +116,10 @@ affinity: {}
 ####################################
 
 eventrouter:
+  # Set to true to accept the applicable General Terms and Conditions,
+  # located at https://www.axway.com/en/legal/contract-documents
+  accept_general_conditions: false
+  
   fqdn: "" # A fully qualified domain name (FQDN) or an  IP address used to connect to your Event Router deployment.
   instanceId: "eventrouter-1"
   logLevel: "info"  # supported values: trace, debug, info, warn, error, fatal

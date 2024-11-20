@@ -94,6 +94,13 @@ spec:
            {{- end }}
           {{- end }}
          {{- with .Values.eventrouter }}
+          {{- if .accept_general_conditions }}
+          - name: "ACCEPT_GENERAL_CONDITIONS"
+            value: "YES"
+          {{- else }}
+          - name: "ACCEPT_GENERAL_CONDITIONS"
+            value: "NO"
+          {{- end }}
           {{- if .configuration }}
            {{- if and (.configuration.fileName) (or .configuration.createConfigMap .configuration.existingConfigMap) }}
           - name: "ER_CONFIG_FILE"

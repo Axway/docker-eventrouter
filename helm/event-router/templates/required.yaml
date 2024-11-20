@@ -1,6 +1,10 @@
 ###
 ### Required values test
 ###
+# General conditions
+{{- if not .Values.eventrouter.accept_general_conditions }}
+  {{- required "General Terms and Conditions not accepted. (.Values.eventrouter.accept_general_conditions)" .Values.eventrouter.accept_general_conditions }}
+{{- end }}
 # configuration
 {{- required "A valid .Values.eventrouter.configuration  entry required!" .Values.eventrouter.configuration  }}
 {{- required "A valid .Values.eventrouter.configuration.fileName entry required!" .Values.eventrouter.configuration.fileName }}

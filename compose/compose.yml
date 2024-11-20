@@ -11,6 +11,10 @@ services:
     image: eventrouter/eventrouter:3.0
 
     environment:
+      ## Set parameter to yes if you accept the applicable General Terms and Conditions,
+      ## located at https://www.axway.com/en/legal/contract-documents
+      ACCEPT_GENERAL_CONDITIONS:   "NO"
+
       # 
       # Parameters referenced in the template configuration
       # 

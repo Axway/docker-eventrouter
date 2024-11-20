@@ -49,11 +49,12 @@ You can use the Docker Compose compose.yml file to automate application deployme
 
  **Parameter**              |  **Values**  |  **Description**
  -------------------------- | :----------: | --------------- 
- ER_LOG_LEVEL           |  \<string>   | Defines log level. Supported values: trace, debug, info, warn, error, fatal
- ER_CONFIG_FILE         |  \<string>   | Sets the configuration file pathname. (Default is '/opt/axway/event-router.yml')
- ER_PORT                |  \<number>   | HTTP server port
- ER_HOST                |  \<string>   | Host address to listen to. (Default is '0.0.0.0')
- ER_LOG_USE_LOCALTIME   | \<boolean>   | Log uses local time
+ ACCEPT_GENERAL_CONDITIONS  |  "YES"/"NO"  | Set to YES to accept the  General Terms and Conditions. See https://www.axway.com/en/legal/contract-documents
+ ER_LOG_LEVEL               |  \<string>   | Defines log level. Supported values: trace, debug, info, warn, error, fatal
+ ER_CONFIG_FILE             |  \<string>   | Sets the configuration file pathname. (Default is '/opt/axway/event-router.yml')
+ ER_PORT                    |  \<number>   | HTTP server port
+ ER_HOST                    |  \<string>   | Host address to listen to. (Default is '0.0.0.0')
+ ER_LOG_USE_LOCALTIME       | \<boolean>   | Log uses local time
 
 2.  Set data persistence.  
     The Axway Event Router compose.yml file defines a volume as a mechanism for persisting data generated and used by the Event Router. However, this volume is only needed if the Event Router uses files (file-writer and file-reader). You can change the volume configuration to use a previously created volume, as described in [Volumes top-level element](https://docs.docker.com/compose/compose-file/07-volumes) and [Create and manage volumes](https://docs.docker.com/storage/volumes/#create-and-manage-volumes).
