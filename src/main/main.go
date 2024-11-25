@@ -333,6 +333,23 @@ func main() {
 		}
 	}
 
+	{ // Verify that all streams have reader and writer defined
+		count := 0
+		for _, flow := range conf.Streams {
+			if flow.Reader == nil {
+				log.Errorc(ctxS, "Missing mandatory argument reader", "stream", flow.Name)
+				count++
+			}
+			if flow.Writer == nil {
+				log.Errorc(ctxS, "Missing mandatory argument writer", "stream", flow.Name)
+				count++
+			}
+		}
+		if count != 0 {
+			os.Exit(1)
+		}
+	}
+
 	{ // Verify that all upstreams are defined
 		count := 0
 		for _, flow := range conf.Streams {
