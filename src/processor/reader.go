@@ -49,8 +49,8 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 	log.Infoc(ctxp, "Initializing Reader...")
 	ctl <- ControlEvent{p, p2, "STARTING", ""}
 
-	p.Chans.Create(ctxp+"ReaderAsyncAckProxy - FIXME/not tracked", 1000) // FIXME: not tracked
-	acks := make(chan EventAck, ReaderAckSourceProxyChanSize)            // FIXME: not tracked
+	p.Chans.Create(ctxp+"ReaderAsyncAckProxy", 1000)          // FIXME: not tracked
+	acks := make(chan EventAck, ReaderAckSourceProxyChanSize) // FIXME: not tracked
 	src := &SourceProxy{acks, ctxp}
 
 	ackDone := make(chan interface{})

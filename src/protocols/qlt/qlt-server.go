@@ -111,7 +111,7 @@ type QLT struct {
 	RCount int
 	RSize  int
 	WCount int
-	WSsize int
+	WSize  int
 	CtxS   string
 }
 
@@ -154,7 +154,7 @@ func (q *QLT) WriteQLTAck() error {
 		return err
 	}
 	q.WCount++
-	q.WSsize += 3
+	q.WSize += 3
 	return nil
 }
 
@@ -257,8 +257,8 @@ func (q *QLT) Send(typ byte, _msg string) error {
 		log.Errorc(q.CtxS, "write error", "err", err)
 		return err
 	}
-	// q.WCount++
-	// q.WSize += l
+	q.WCount++
+	q.WSize += l
 
 	return nil
 }

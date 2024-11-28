@@ -16,6 +16,7 @@ var (
 	WriterBatchSize       = config.DeclareInt("processor.writerBatchSize", 10, "Size of the Batch to writer connector")
 	WriterWait            = config.DeclareDuration("processor.WriterWait", "30s", "Duration to wait before waiting ack message")
 	WriterWriteRetryDelay = config.DeclareDuration("processor.WriterWriteRetryDelay", "200ms", "Duration to wait before retrying writing")
+	WriterQueuesSize      = config.DeclareInt("processor.writerQueueSize", 1000, "General writer queue size")
 )
 
 type ConnectorRuntimeWriter interface {
@@ -52,8 +53,8 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 	acked := 0
 	var ackPendingEvents []AckableEvent
 
-	acksReceived := p.Chans.Create(ctxp+"WriterAcks", 1000)
-	errCh := make(chan error, 500)
+	acksReceived := p.Chans.Create(ctxp+"WriterAcks", WriterQueuesSize)
+	errCh := make(chan error, WriterQueuesSize)
 
 	log.Infoc(ctxp, "Initializing Writer...")
 	ctl <- ControlEvent{p, p2, "STARTING", "Writer"}
@@ -69,7 +70,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 
 	if p2.IsAckAsync() {
 		log.Infoc(ctxp, "Starting Writer Ack Loops (async writer)...")
-		acks := p.Chans.Create(ctxp+"WriterAsyncAck", 1000)
+		acks := p.Chans.Create(ctxp+"WriterAsyncAck", WriterQueuesSize)
 
 		go p2.ProcessAcks(ctx, acks.C, errCh)
 		go func() {
@@ -130,6 +131,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 		flush := false
 		batchsize := WriterBatchSize
 		donef := false
+		acksDone := false
 		retryFactor := 1
 		log.Infoc(ctxp, "Running")
 		ctl <- ControlEvent{p, p2, "RUNNING", ""}
@@ -142,6 +144,20 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 				log.Debugc(ctxp, "retry old events")
 				events = append(ackPendingEvents, events...)
 				ackPendingEvents = nil
+			}
+
+			if p2.IsAckAsync() {
+				// Critical section: emptying acksReceived before trying to send more events
+				acksDone = false
+				for !acksDone {
+					select {
+					case event := <-acksReceived.C:
+						/* Remove element from the waiting for Ack list */
+						ackPendingEvents = removeAckableFromList(ackPendingEvents, event)
+					default:
+						acksDone = true
+					}
+				}
 			}
 
 			if len(events) == 0 {

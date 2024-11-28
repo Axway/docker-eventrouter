@@ -51,8 +51,8 @@ func (c *QltClientWriter) Close() error {
 	return err
 }
 
-func (c *QltClientWriter) WaitAck() error {
-	err := c.qlt.WaitAck(0)
+func (c *QltClientWriter) WaitAck(timeout time.Duration) error {
+	err := c.qlt.WaitAck(timeout)
 	return err
 }
 

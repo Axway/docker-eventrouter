@@ -16,6 +16,7 @@ import (
 func TestQltPush(t *testing.T) {
 	ctxS := "test-" + t.Name()
 	port := "9899"
+	timeout := 5 * time.Second
 
 	ch := make(chan *qlt.QltServerReader)
 	l, err := tools.TcpServe("localhost:"+port, func(conn net.Conn, ctx string) {
@@ -66,7 +67,7 @@ func TestQltPush(t *testing.T) {
 		return
 	}
 
-	err = c.WaitAck()
+	err = c.WaitAck(timeout)
 	if err != nil {
 		t.Error("error waiting ack", err)
 		return
@@ -105,7 +106,7 @@ func TestQltPull(t *testing.T) {
 	}
 	defer l.Close()
 
-	c := qlt.NewQltClientReader("[qlt-client-test]", "localhost:"+port, queueName ,"", "", "")
+	c := qlt.NewQltClientReader("[qlt-client-test]", "localhost:"+port, queueName, "", "", "")
 
 	err = c.Connect(timeout)
 	if err != nil {

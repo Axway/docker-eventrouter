@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
@@ -125,7 +126,7 @@ func (q *QLTClientWriterConnection) Write(events []processor.AckableEvent) (int,
 		}
 		if q.Conf.Synchronous {
 			// log.Debugc(q.CtxS, "Waiting for the ACK")
-			if err := q.Qlt.WaitAck(); err != nil {
+			if err := q.Qlt.WaitAck(qltWriterAckTimeout); err != nil {
 				q.Close()
 				return n, err
 			}
@@ -163,13 +164,27 @@ func (q *QLTClientWriterConnection) DrainAcks() {
 }
 
 func (q *QLTClientWriterConnection) ProcessAcks(ctx context.Context, receivedAcks chan processor.AckableEvent, errs chan error) {
+	t := time.NewTimer(qltClientInactivityTimeout)
+	timer_set := true
+
 	for {
+		if !timer_set {
+			t.Reset(qltClientInactivityTimeout)
+			timer_set = true
+		}
+
 		select {
 		case <-ctx.Done():
 			log.Infoc(q.CtxS, "close ack loop")
 			return
-		default:
-			event, ok := <-q.waitingAcks
+		case <-t.C:
+			if q.Qlt != nil {
+				log.Infoc(q.CtxS, "closing connection due to inactivity")
+				q.DrainAcks()
+				q.Close()
+				continue
+			}
+		case event, ok := <-q.waitingAcks:
 			if !ok {
 				log.Infoc(q.CtxS, "close ack loop")
 				return
@@ -182,7 +197,7 @@ func (q *QLTClientWriterConnection) ProcessAcks(ctx context.Context, receivedAck
 					continue
 				}
 
-				err := q.Qlt.WaitAck()
+				err := q.Qlt.WaitAck(qltWriterAckTimeout)
 				if err != nil {
 					log.Infoc(q.CtxS, "error waiting ack: draining", "err", err)
 					q.DrainAcks()
@@ -192,6 +207,14 @@ func (q *QLTClientWriterConnection) ProcessAcks(ctx context.Context, receivedAck
 			}
 
 			receivedAcks <- event
+		}
+
+		timer_set = false
+		if !t.Stop() {
+			select {
+			case <-t.C:
+			default:
+			}
 		}
 	}
 }
