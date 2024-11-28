@@ -219,6 +219,12 @@ func (q *QLT) ReadQLTPacketRaw(timeout time.Duration) (string, byte, error) {
 		}*/
 
 		length := qltPacketSize(q.buf)
+		if length == 0 {
+			if q.Conn.RemoteAddr() != nil {
+				return "", 0xFF, errors.New("unexpected QLT message size: 0 (RemoteAddr=" + q.Conn.RemoteAddr().String() + ")")
+			}
+			return "", 0xFF, errors.New("unexpected QLT message size: 0")
+		}
 
 		if length+2 <= q.idx {
 			orig := string(q.buf[3 : 3+length-1])
