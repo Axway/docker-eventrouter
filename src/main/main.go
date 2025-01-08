@@ -58,6 +58,23 @@ type RouterState struct {
 //go:embed ui/*
 var ui embed.FS
 
+func printHelp(rc int) {
+	fmt.Println("Axway Event Router")
+	fmt.Println("")
+	fmt.Println("Usage: event-router [options] [arguments]")
+	fmt.Println("If no argument is specified, the Event Router starts.")
+	fmt.Println("")
+	fmt.Println("Options:")
+	flag.PrintDefaults()
+	fmt.Println("")
+	fmt.Println("Arguments:")
+	fmt.Println("\thelp")
+	fmt.Println("\tversion")
+	fmt.Println("\tlist-connectors")
+	fmt.Println("\tlist-config")
+	os.Exit(rc)
+}
+
 func main() {
 	ctxS := "main"
 	log.SetLevel(log.InfoLevel)
@@ -299,11 +316,9 @@ func main() {
 			config.Print()
 			os.Exit(0)
 		case "help":
-			flag.PrintDefaults()
-			os.Exit(0)
+			printHelp(0)
 		default:
-			flag.PrintDefaults()
-			os.Exit(1)
+			printHelp(1)
 		}
 	}
 
