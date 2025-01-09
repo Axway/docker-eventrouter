@@ -160,15 +160,15 @@ waitpid () {
     done
     if ps -p "$pid" >/dev/null; then
         endspin "failed"
-    else 
+    else
         endspin "done"
     fi
 }
 
 usage() {
     echo usage
-    grep -E "##.*##" "$0" | grep -v "grep" | sed 's/)[^#]*//g' | while IFS="#" read -r cmd a as b msg; do 
-        #echo "  $cmd [$as] ($msg)"; 
+    grep -E "##.*##" "$0" | grep -v "grep" | sed 's/)[^#]*//g' | while IFS="#" read -r cmd a as b msg; do
+        #echo "  $cmd [$as] ($msg)";
         printf "%-30.30s %s\n" "$cmd $as" "$msg"
     done
 }
@@ -180,7 +180,7 @@ verbose=
 verb=nop
 NOP=
 
-if [ "$EUID" = 0 ] ; then 
+if [ "$EUID" = 0 ] ; then
     error "Please run as non root"
     exit 1
 fi
@@ -195,7 +195,7 @@ runtime_env_name="${APPNAME//-/_}_RUNTIME"
 runtime_env_name="${runtime_env_name^^}"
 $verb "RUNTIME RUNTIME_ENVNAME $runtime_env_name ${!runtime_env_name:-}"
 runtime_env_value="${!runtime_env_name:-}"
-if [ -n "$runtime_env_value" ]; then 
+if [ -n "$runtime_env_value" ]; then
     RUNTIME="$runtime_env_value"
     $verb "RUNTIME ENV $RUNTIME"
 fi
@@ -211,7 +211,7 @@ fi
 
 if [ -z "$RUNTIME" ]; then
     runtime_env_value="${!runtime_env_name:-}"
-    if [ -n "$runtime_env_value" ]; then 
+    if [ -n "$runtime_env_value" ]; then
         RUNTIME="$runtime_env_value"
         $verb "RUNTIME PROFILE $RUNTIME"
     fi
@@ -275,7 +275,7 @@ while [ ! $# -eq 0 ] ; do
     --*)
         error "Invalid flag : $1"
         exit 1
-    ;;  
+    ;;
     *)
       break;
   esac
@@ -285,7 +285,7 @@ done
 #RUNTIME="$(realpath "$RUNTIME")"
 #$verb "RUNTIME=$RUNTIME"
 
-# Ensure RUNTIME is properly set to non "/" and does have required files/folders 
+# Ensure RUNTIME is properly set to non "/" and does have required files/folders
 case "${1:-}" in
     init)
     ;;
@@ -296,7 +296,7 @@ case "${1:-}" in
     "")
     ;;
     *)
-        if [ "$RUNTIME" = "/" ]; then 
+        if [ "$RUNTIME" = "/" ]; then
             error "RUNTIME cannot be set to '/', you should use $0 init <runtime-folder>, and <runtime-folder>/usr/bin/$(basename "$0") "
             exit 1
         fi
@@ -311,7 +311,7 @@ esac
 
 check_pid() {
   PID=$(cat "$RUNTIME/var/run/$APPNAME.pid" 2>/dev/null || echo "")
-  if [ -n "$PID" ]; then 
+  if [ -n "$PID" ]; then
     if ps -p "$PID" > /dev/null; then
       #echo "running ($PID)"
       return 0
@@ -340,7 +340,7 @@ case "${1:-}" in
     stop) ## ## stop __APPNAME__
       if check_pid; then
         PID=$(cat "$RUNTIME/var/run/$APPNAME.pid")
-        (sleep 1 && kill "$PID") & 
+        (sleep 1 && kill "$PID") &
         waitpid "$PID"
       else
         echo "$APPNAME already stopped"
@@ -352,7 +352,7 @@ case "${1:-}" in
        cd "$RUNTIME"
       if check_pid; then
         PID=$(cat "$RUNTIME/var/run/$APPNAME.pid")
-        (sleep 1 && kill "$PID") & 
+        (sleep 1 && kill "$PID") &
         waitpid "$PID"
       else
         echo "$APPNAME is stopped"
@@ -365,11 +365,11 @@ case "${1:-}" in
     logs) ## ## show __APPNAME__ logs
       cat "$RUNTIME/var/log/$APPNAME.log"
     ;;
-    
+
     status) ## ## show the status of __APPNAME__
       PID=$(cat "$RUNTIME/var/run/$APPNAME.pid" 2>/dev/null || echo "")
       echo "$PID"
-      if [ -n "$PID" ]; then 
+      if [ -n "$PID" ]; then
         if ps -p "$PID" > /dev/null; then
           echo "running ($PID)"
           exit 0
@@ -378,7 +378,7 @@ case "${1:-}" in
           exit 1
         fi
       else
-        echo "not running" 
+        echo "not running"
         exit 1
       fi
     ;;
@@ -405,7 +405,7 @@ case "${1:-}" in
 
     gen-systemd-unit) ## ## Generate a template for systemd
       echo "# /etc/systemd/system/$APPNAME.service"
-      echo 
+      echo
 cat <<EOF
 [Unit]
 Description=Axway Event Router
@@ -416,11 +416,12 @@ ExecStart=$INSTALLDIR/usr/bin/${APPNAME}d --config=$RUNTIME/etc/${APPNAME}.conf
 WorkingDirectory=$RUNTIME
 User=$USER
 Type=simple
+EnvironmentFile=$profile
 
 [Install]
 WantedBy=default.target
 EOF
-    ;; 
+    ;;
 
     init) ## <runtime-dir> ## Initialize a local environment
         shift
@@ -475,11 +476,11 @@ EOF
 
         mkdir -p "$A/log"
         cp "$RUNTIME/var/log/$APPNAME.log"* "$A/log"  || true
-        
+
         mkdir -p "$A/etc"
         cp "$RUNTIME/etc/$APPNAME.conf" "$A/etc"  || true
 
-        ps -ef >"$A/ps.txt"  || true 
+        ps -ef >"$A/ps.txt"  || true
         find "$RUNTIME" -type f -exec ls -la '{}' \; > "$A/files.txt"
         uname -a > "$A/uname.txt"
         cat /etc/*-release /etc/*_version > "$A/lsb-release.txt" || true
