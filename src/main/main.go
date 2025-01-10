@@ -25,6 +25,7 @@ import (
 	"axway.com/qlt-router/src/connectors/mem"
 	"axway.com/qlt-router/src/connectors/postgres"
 	"axway.com/qlt-router/src/connectors/qlt"
+	"axway.com/qlt-router/src/connectors/sqlite"
 	"axway.com/qlt-router/src/filters/expr"
 	"axway.com/qlt-router/src/filters/qlt2json"
 	log "axway.com/qlt-router/src/log"
@@ -272,6 +273,8 @@ func main() {
 	connectors.Register("qlt-server-writer", &qlt.QLTServerWriterConf{}) // Pull mode QLT
 	connectors.Register("pg-writer", &postgres.PGWriterConf{})
 	connectors.Register("pg-reader", &postgres.PGReaderConf{})
+	connectors.Register("sqlite-writer", &sqlite.SqliteWriterConf{})
+	connectors.Register("sqlite-reader", &sqlite.SqliteReaderConf{})
 	// processors.Register("es_json_consumer", &elasticsearch.EsConsumerConf{})
 	// processors.Register("mongo_json_consumer", &mongo.MongoConsumerConf{})
 	// processors.Register("lumberjack_json_consumer", &elasticsearch.LumberjackConsumerConf{})

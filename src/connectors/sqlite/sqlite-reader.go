@@ -1,4 +1,4 @@
-package postgres
+package sqlite
 
 import (
 	"context"
@@ -10,8 +10,8 @@ import (
 	"axway.com/qlt-router/src/processor"
 )
 
-type PGReader struct {
-	conf           *PGReaderConf
+type SqliteReader struct {
+	conf           *SqliteReaderConf
 	conn           *sql.DB
 	ctx            string
 	offset         int64
@@ -20,18 +20,18 @@ type PGReader struct {
 	processor      *processor.Processor
 }
 
-type PGReaderConf struct {
-	Url        string
+type SqliteReaderConf struct {
+	Path       string
 	ReaderName string
 	Table      string
 }
 
-func (conf *PGReaderConf) Start(ctx context.Context, p *processor.Processor, ctl chan processor.ControlEvent, inc chan processor.AckableEvent, out chan processor.AckableEvent) (processor.ConnectorRuntime, error) {
-	var q PGReader
+func (conf *SqliteReaderConf) Start(ctx context.Context, p *processor.Processor, ctl chan processor.ControlEvent, inc chan processor.AckableEvent, out chan processor.AckableEvent) (processor.ConnectorRuntime, error) {
+	var q SqliteReader
 
 	q.conf = conf
-	if conf.Url == "" {
-		return nil, errors.New("Url field cannot be empty")
+	if conf.Path == "" {
+		return nil, errors.New("Path field cannot be empty")
 	}
 	if conf.ReaderName == "" {
 		return nil, errors.New("ReaderName field cannot be empty")
@@ -43,15 +43,15 @@ func (conf *PGReaderConf) Start(ctx context.Context, p *processor.Processor, ctl
 	return processor.GenProcessorHelperReader(ctx, &q, p, ctl, inc, out)
 }
 
-func (c *PGReaderConf) Clone() processor.Connector {
+func (c *SqliteReaderConf) Clone() processor.Connector {
 	c2 := *c
 	return &c2
 }
 
-func (q *PGReader) Init(p *processor.Processor) error {
+func (q *SqliteReader) Init(p *processor.Processor) error {
 	time.Sleep(1 * time.Second)
-	log.Infoc(q.ctx, "Opening database", "url", "'"+q.conf.Url+"'")
-	conn, err := sql.Open("pgx", q.conf.Url)
+	log.Infoc(q.ctx, "Opening database", "path", "'"+q.conf.Path+"'")
+	conn, err := sql.Open("sqlite", q.conf.Path)
 	if err != nil {
 		log.Errorc(q.ctx, "Error opening file for appending", "err", err)
 		return err
@@ -65,12 +65,12 @@ func (q *PGReader) Init(p *processor.Processor) error {
 
 	q.offset = offset
 
-	q.lastmsgid, _ = pgDBGetLast(conn, q.conf.Table)
+	q.lastmsgid, _ = sqliteDBGetLast(conn, q.conf.Table)
 
 	return nil
 }
 
-func (q *PGReader) Close() error {
+func (q *SqliteReader) Close() error {
 	log.Infoc(q.ctx, "Closing...")
 	err := q.conn.Close()
 	if err != nil {
@@ -81,15 +81,15 @@ func (q *PGReader) Close() error {
 	return err
 }
 
-func (q *PGReader) Read() ([]processor.AckableEvent, error) {
-	rows, err := pgDBRead(q.conn, 1000, int(q.offset), q.conf.Table)
+func (q *SqliteReader) Read() ([]processor.AckableEvent, error) {
+	rows, err := sqliteDBRead(q.conn, 1000, int(q.offset), q.conf.Table)
 	if err != nil {
 		log.Errorc(q.ctx, "error reading db", "err", err)
 		// FIXME the reader should reconnect
 		return nil, err
 	}
 
-	q.lastmsgid, _ = pgDBGetLast(q.conn, q.conf.Table)
+	q.lastmsgid, _ = sqliteDBGetLast(q.conn, q.conf.Table)
 
 	msgs := make([]processor.AckableEvent, len(rows))
 
@@ -101,16 +101,16 @@ func (q *PGReader) Read() ([]processor.AckableEvent, error) {
 	return msgs, nil
 }
 
-func (q *PGReader) Ctx() string {
+func (q *SqliteReader) Ctx() string {
 	return q.ctx
 }
 
-func (q *PGReader) AckMsg(ack processor.EventAck) {
+func (q *SqliteReader) AckMsg(ack processor.EventAck) {
 	offset := ack.(int64)
 	q.commitAck(offset)
 }
 
-func (q *PGReader) commitAck(offset int64) error {
+func (q *SqliteReader) commitAck(offset int64) error {
 	_, err := q.conn.Exec("UPDATE "+q.conf.Table+"Consumer"+" SET position = $2 WHERE name = $1", q.conf.ReaderName, offset)
 	if err != nil {
 		log.Errorc(q.ctx, "Error commiting Ack", "err", err)
@@ -120,7 +120,7 @@ func (q *PGReader) commitAck(offset int64) error {
 	return nil
 }
 
-func (q *PGReader) initializeReaderEntry() (int64, error) {
+func (q *SqliteReader) initializeReaderEntry() (int64, error) {
 	// FIXME: retrieve last
 	_, err := q.conn.Exec("INSERT INTO "+q.conf.Table+"Consumer"+" (name, position) VALUES ($1, $2) ON CONFLICT DO NOTHING", q.conf.ReaderName, 0)
 	if err != nil {

@@ -20,7 +20,7 @@ func TestPGConnectorGen(t *testing.T) {
 		t.Fatal("Error cleaninup database", err)
 		return
 	}
-	writer := &PGWriterConf{Url: url, Initialize: false}
-	reader := &PGReaderConf{Url: url, ReaderName: "testAuto"}
+	writer := &PGWriterConf{Url: url, Initialize: false, Table: "QLTBuffer"}
+	reader := &PGReaderConf{Url: url, ReaderName: "testAuto", Table: "QLTBuffer"}
 	memtest.TestConnector(t, writer, reader)
 }

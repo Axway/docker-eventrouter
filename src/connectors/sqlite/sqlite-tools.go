@@ -1,20 +1,22 @@
-package postgres
+package sqlite
 
-import "database/sql"
+import (
+	"database/sql"
+)
 
 type QLTRow struct {
 	id   int64
 	text string
 }
 
-func pgDBGetLast(conn *sql.DB, tab string) (int64, error) {
+func sqliteDBGetLast(conn *sql.DB, tab string) (int64, error) {
 	var count int64
 	err := conn.QueryRow("SELECT MAX(id) FROM " + tab).Scan(&count)
 	return count, err
 }
 
-func pgDBRead(conn *sql.DB, maxlength int, offset int, tab string) ([]QLTRow, error) {
-	qrows, err := conn.Query("SELECT * FROM "+tab+"  WHERE id > $2 ORDER BY id LIMIT $1", maxlength, offset)
+func sqliteDBRead(conn *sql.DB, maxlength int, offset int, tab string) ([]QLTRow, error) {
+	qrows, err := conn.Query("SELECT * FROM "+tab+"  WHERE id > $1 ORDER BY id LIMIT $2", offset, maxlength)
 	if err != nil {
 		return nil, err
 	}

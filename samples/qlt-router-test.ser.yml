@@ -131,6 +131,36 @@ streams:
       type: "file-writer"
       conf:
         filenamePrefix: "./data/out/filename-pg"
+  - name: "file-to-sqlite"
+    upstream: "qlt-to-file"
+    disable: false
+    reader:
+      type: "file-reader"
+      conf:
+        filenamePrefix: "./data/out/generator-raw"
+        filenameSuffix: "xml"
+        readerFilename: "file-to-sqlite-reader"
+    transforms:
+      - type: "control"
+    writer:
+      type: "sqlite-writer"
+      conf:
+        path: "./test.db"
+        initialize: true
+  - name: "sqlite-to-file"
+    upstream: "file-to-sqlite"
+    disable: false
+    reader:
+      type: "sqlite-reader"
+      conf:
+        path: "./test.db"
+        readerName: "alltest"
+    transforms:
+      - type: "control"
+    writer:
+      type: "file-writer"
+      conf:
+        filenamePrefix: "./data/out/filename-sqlite"
 #processors:
 #  file_csv_producer:
 #    filename: "./data/csvprodductcer"
