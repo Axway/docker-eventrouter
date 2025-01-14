@@ -1,10 +1,8 @@
 #!/bin/bash
 #
 
-if [ "${VERSION:-}" = ""  ]; then
-    VERSION="3.0.$(date +'%Y%m%d')"
-fi
-sed -i "s/VERSION=.*/VERSION=$VERSION/" .env
+DATE="$(date +'%Y%m%d')"
+sed -i -r "s/VERSION=(.*)dev/VERSION=\1.$DATE/" .env
 
 echo VERSION=$VERSION
 cat .env

@@ -35,10 +35,12 @@ ENV LANG=C.UTF-8
 
 ARG BUILD_DATE
 ARG VERSION="3.0"
+ARG BUILD_REVISION
 
 LABEL title="Axway Event Router"
-LABEL version="${VERSION:-}"
-LABEL created="${BUILD_DATE:-}"
+LABEL created="${BUILD_DATE}"
+LABEL version="${VERSION}"
+LABEL revision="${BUILD_REVISION}"
 LABEL vendor="Axway"
 LABEL url="https://www.axway.com"
 LABEL maintainer="support@axway.com"

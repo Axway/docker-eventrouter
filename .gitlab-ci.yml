@@ -1,10 +1,14 @@
 variables:
   NAME: event-router
   IMAGE_NAME: eventrouter
-  DOCKER_REPO: sentineleventrouter-docker-snapshot-ptx.artifactory-ptx.ecd.axway.int
-  RPM_REPO: https://artifactory-ptx.ecd.axway.int/artifactory/sentineleventrouter-generic-snapshot-ptx
+  NAME_PACK: EventRouter
+  DOCKER_REPO_SNAPSHOT: sentineleventrouter-docker-snapshot-ptx.artifactory-ptx.ecd.axway.int
+  DOCKER_REPO_RELEASE: sentineleventrouter-docker-release-ptx.artifactory-ptx.ecd.axway.int
+  RPM_REPO_SNAPSHOT: https://artifactory-ptx.ecd.axway.int/artifactory/sentineleventrouter-generic-snapshot-ptx
+  RPM_REPO_RELEASE: https://artifactory-ptx.ecd.axway.int/artifactory/sentineleventrouter-generic-release-ptx
   CURL_IMAGE: "davinci1976/docker-ci:unstable"
   CURL_AXWAY: "curl --cacert ./AxwayRootCA.cer"
+  SHA_RELEASE: ""
 
   # Security images
   #BLACKDUCK_DOCKER_IMAGE: psg-docker-release.artifactory-ptx.ecd.axway.int/blackduck:latest # impossible to add packages to this image
@@ -20,11 +24,11 @@ default:
   tags:
     - docker-ex
   before_script:
-    - eval export CI_COMMIT_BRANCH=$(echo "$CI_COMMIT_BRANCH" | tr '[:upper:]' '[:lower:]')
+    - eval export CI_COMMIT_BRANCH=$(echo "${CI_COMMIT_BRANCH:-$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}" | tr '[:upper:]' '[:lower:]')
     - echo using commit $CI_COMMIT_BRANCH
-    - eval export DOCKER_IMAGE=$DOCKER_REPO/$IMAGE_NAME:$CI_COMMIT_BRANCH
+    - eval export DOCKER_IMAGE=$DOCKER_REPO_SNAPSHOT/$IMAGE_NAME:$CI_COMMIT_BRANCH
     - echo using image $DOCKER_IMAGE
-
+    - eval export REVISION=$(echo "$CI_COMMIT_SHA" | cut -c 1-10)
 stages:
   - prepare
   - build
@@ -38,6 +42,10 @@ stages:
 version:
   image: davinci1976/docker-ci:unstable
   stage: prepare
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_PIPELINE_SOURCE == "trigger"
   script:
     - ./scripts/setVersion.sh
   artifacts:
@@ -46,8 +54,11 @@ version:
 
 unit-test:
   image: docker
-  needs: []
   stage: prepare
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_PIPELINE_SOURCE == "trigger"
   #coverage: "/\\(statements\\)(?:\\s+)?(\\d+(?:\\.\\d+)?%)/"
   script:
     - ./scripts/run-unit-test-docker.sh
@@ -58,9 +69,10 @@ unit-test:
 .build:
   image: golang:bookworm
   stage: build
-  needs:
-    - version
-    - unit-test
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_PIPELINE_SOURCE == "trigger"
   cache:
     paths:
       - .cache/
@@ -81,8 +93,10 @@ unit-test:
 build-glibc:
   image: docker
   stage: build
-  needs:
-    - version
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_PIPELINE_SOURCE == "trigger"
   script:
     - (test -d /artefacts && ln -s /artefacts ./artefacts) || mkdir -p artefacts
     - ./scripts/run-build-docker.sh
@@ -95,9 +109,10 @@ build-glibc:
 build-docker:
   image: davinci1976/docker-ci:unstable
   stage: build
-  needs:
-    - version
-    - unit-test
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_PIPELINE_SOURCE == "trigger"
   script:
     - . ./.env
     - docker build --pull -f ./docker/Dockerfile -t $DOCKER_IMAGE .
@@ -121,9 +136,11 @@ integration-test-reset:
 
 integration-test:
   image: docker
-  needs:
-    - build-docker
   stage: test
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_PIPELINE_SOURCE == "trigger"
   cache:
     paths:
       - .cache/
@@ -141,18 +158,19 @@ integration-test:
         coverage_format: cobertura
         path: coverage.xml
 
-rpm-build:
+rpm-pack:
   image: golang:1.23
-  needs:
-    - version
-    - build-glibc
   stage: pack
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_PIPELINE_SOURCE == "trigger"
   script:
     - apt-get update -y
     - apt-get install rpm -y
     - test -d /artefacts && ln -s /artefacts ./artefacts
     - . ./.env
-    - ./rpm/rpm-build.sh $NAME $VERSION
+    - ./rpm/rpm-build.sh $NAME ${VERSION}
   artifacts:
     paths:
       - ./artefacts/$NAME*.rpm
@@ -160,10 +178,11 @@ rpm-build:
 
 rpm-test:
   image: davinci1976/docker-ci:unstable
-  needs:
-    - version
-    - rpm-build
   stage: test
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_PIPELINE_SOURCE == "trigger"
   script:
     #- test ! -e ./artefacts && ln -s /artefacts ./artefacts
     - test ! -e ./artefacts && cp -rf /artefacts ./artefacts/
@@ -172,28 +191,61 @@ rpm-test:
 rpm-snapshot:
   image: $CURL_IMAGE
   stage: deploy
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_PIPELINE_SOURCE == "trigger" && $SHA_RELEASE == ""
   dependencies:
     - version
-    - rpm-build
+    - rpm-pack
   script:
     - . ./.env
-    - $CURL_AXWAY -k -v -u $ARTIFACTORY_USER:$ARTIFACTORY_TOKEN -T ./artefacts/$NAME*.rpm "$RPM_REPO/$NAME/$NAME-$CI_COMMIT_BRANCH.rpm"
+    - $CURL_AXWAY -k -v -u $ARTIFACTORY_USER:$ARTIFACTORY_TOKEN -T ./artefacts/$NAME*.rpm "$RPM_REPO_SNAPSHOT/${SHORT_VERSION}/${NAME_PACK}_${CI_COMMIT_BRANCH}_${REVISION}.rpm"
 
 docker-snapshot:
   image: docker
   stage: deploy
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_PIPELINE_SOURCE == "trigger" && $SHA_RELEASE == ""
   dependencies:
     - version
-  before_script:
-    - docker login -u $ARTIFACTORY_USER -p $ARTIFACTORY_TOKEN $DOCKER_REPO
-    - . ./.env
-    - eval export BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-    - eval export CI_COMMIT_BRANCH=$(echo "$CI_COMMIT_BRANCH" | tr '[:upper:]' '[:lower:]')
-    - eval export DOCKER_IMAGE=$DOCKER_REPO/$IMAGE_NAME:$CI_COMMIT_BRANCH
-    - echo using image $DOCKER_IMAGE
   script:
-    - echo $VERSION
-    - docker build --pull -f ./docker/Dockerfile -t $DOCKER_IMAGE --build-arg BUILD_DATE=$BUILD_DATE --build-arg VERSION=$VERSION .
+    - . ./.env
+    - docker login -u $ARTIFACTORY_USER -p $ARTIFACTORY_TOKEN $DOCKER_REPO_SNAPSHOT
+    - eval export BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+    - echo VERSION:${VERSION} REVISION:$REVISION BUILD_DATE:$BUILD_DATE
+    - docker build --pull -f ./docker/Dockerfile -t $DOCKER_IMAGE --build-arg BUILD_DATE=$BUILD_DATE --build-arg VERSION=${VERSION} --build-arg BUILD_REVISION=${REVISION} .
+    - docker push $DOCKER_IMAGE
+
+rpm-release:
+  image: $CURL_IMAGE
+  stage: deploy
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "trigger" && $SHA_RELEASE != ""
+  dependencies:
+    - version
+    - rpm-pack
+  script:
+    - . ./.env
+    - $CURL_AXWAY -k -v -u $ARTIFACTORY_USER:$ARTIFACTORY_TOKEN -T ./artefacts/$NAME*.rpm "$RPM_REPO_RELEASE/${VERSION:0:-2}/${NAME_PACK}_${VERSION}_${REVISION}_linux-x86-64.rpm"
+
+docker-release:
+  image: docker
+  stage: deploy
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "trigger" && $SHA_RELEASE != ""
+  dependencies:
+    - version
+  script:
+    - . ./.env
+    - eval export DOCKER_IMAGE=$DOCKER_REPO_RELEASE/$IMAGE_NAME:${VERSION}
+    - echo using image $DOCKER_IMAGE
+    - docker login -u $ARTIFACTORY_USER -p $ARTIFACTORY_TOKEN $DOCKER_REPO_RELEASE
+    - eval export BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+    - echo VERSION:${VERSION} REVISION:$REVISION BUILD_DATE:$BUILD_DATE
+    - docker build --pull -f ./docker/Dockerfile -t $DOCKER_IMAGE --build-arg BUILD_DATE=$BUILD_DATE --build-arg VERSION=${VERSION} --build-arg BUILD_REVISION=${REVISION} .
     - docker push $DOCKER_IMAGE
 
 .security:
@@ -207,10 +259,9 @@ docker-snapshot:
 fortify:
   image: $FORTIFY_DOCKER_IMAGE
   extends: .security
-  before_script:
+  script:
     - apt-get update -y
     - apt-get install git -y
-  script:
     - git clone https://cft_read:$GIT_CFT_READ_TOKEN@git.ecd.axway.org/cft/qlt-router.git qlt-router
     - cd qlt-router
     - git checkout master
@@ -230,14 +281,13 @@ twistlock:
 blackduck:
   image: $BLACKDUCK_DOCKER_IMAGE
   extends: .security
-  before_script:
+  script:
     - apt-get --allow-releaseinfo-change update
     - apt-get install build-essential make git unzip wget -y --fix-missing
     - wget https://go.dev/dl/go1.23.2.linux-amd64.tar.gz
     - rm -rf /usr/local/go && tar -C /usr/local -xzf go1.23.2.linux-amd64.tar.gz
     - export PATH=/usr/local/go/bin:$PATH
     - go version
-  script:
     - CI_COMMIT_BRANCH="${CI_COMMIT_BRANCH:-master}"
     - echo using commit $CI_COMMIT_BRANCH
     - git clone https://cft_read:$GIT_CFT_READ_TOKEN@git.ecd.axway.org/cft/qlt-router.git qlt-router
@@ -263,12 +313,6 @@ deploy-ser:
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: always
     - when: manual
-  before_script:
-    - eval export CI_COMMIT_BRANCH=$(echo "$CI_COMMIT_BRANCH" | tr '[:upper:]' '[:lower:]')
-    - CI_COMMIT_BRANCH="${CI_COMMIT_BRANCH:-master}"
-    - echo using commit $CI_COMMIT_BRANCH
-    - eval export DOCKER_IMAGE=$DOCKER_REPO/$IMAGE_NAME:$CI_COMMIT_BRANCH
-    - echo using image $DOCKER_IMAGE
   script:
     - cd security
     - docker compose -f compose.qlt.yml up -d
