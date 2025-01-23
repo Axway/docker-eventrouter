@@ -121,7 +121,8 @@ build-docker:
 integration-test-reset:
   image: docker
   needs: []
-  when: manual
+  rules:
+    - when: manual
   stage: test
   #coverage: "/\\(statements\\)(?:\\s+)?(\\d+(?:\\.\\d+)?%)/"
   script:
