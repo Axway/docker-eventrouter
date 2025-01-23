@@ -204,7 +204,7 @@ rpm-snapshot:
     - if [ "$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" != "" ] ; then
     -     version="${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}"
     - else
-    -     version="${VERSION}"
+    -     version="3.0_${CI_COMMIT_BRANCH}"
     - fi
     - datetime=$(date -u +'%Y%m%d%H%M')
     - $CURL_AXWAY -k -v -u $ARTIFACTORY_USER:$ARTIFACTORY_TOKEN -T ./artefacts/$NAME*.rpm "$RPM_REPO_SNAPSHOT/${version}/${NAME_PACK}_${CI_COMMIT_BRANCH}_${datetime}_${REVISION}.rpm"
