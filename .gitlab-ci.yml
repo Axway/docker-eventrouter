@@ -40,7 +40,7 @@ stages:
   - cleansecurity
 
 version:
-  image: davinci1976/docker-ci:unstable
+  image: $CURL_IMAGE
   stage: prepare
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
@@ -107,7 +107,7 @@ build-glibc:
       - ./artefacts/$NAME
 
 build-docker:
-  image: davinci1976/docker-ci:unstable
+  image: $CURL_IMAGE
   stage: build
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
@@ -118,12 +118,33 @@ build-docker:
     - docker build --pull -f ./docker/Dockerfile -t $DOCKER_IMAGE .
     - docker run --env ACCEPT_GENERAL_CONDITIONS=YES --rm $DOCKER_IMAGE $NAME version
 
+rpm-pack:
+  image: golang:1.23
+  stage: pack
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_PIPELINE_SOURCE == "trigger"
+  script:
+    - apt-get update -y
+    - apt-get install rpm -y
+    - test -d /artefacts && ln -s /artefacts ./artefacts
+    - . ./.env
+    - ./rpm/rpm-build.sh $NAME ${VERSION}
+  artifacts:
+    paths:
+      - ./artefacts/$NAME*.rpm
+    expire_in: 2 day
+
 integration-test-reset:
   image: docker
-  needs: []
-  rules:
-    - when: manual
   stage: test
+  needs: []
+  when: manual
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_PIPELINE_SOURCE == "trigger"
   #coverage: "/\\(statements\\)(?:\\s+)?(\\d+(?:\\.\\d+)?%)/"
   script:
     - ./scripts/run-integration-test-docker.sh reset
@@ -159,26 +180,8 @@ integration-test:
         coverage_format: cobertura
         path: coverage.xml
 
-rpm-pack:
-  image: golang:1.23
-  stage: pack
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_PIPELINE_SOURCE == "trigger"
-  script:
-    - apt-get update -y
-    - apt-get install rpm -y
-    - test -d /artefacts && ln -s /artefacts ./artefacts
-    - . ./.env
-    - ./rpm/rpm-build.sh $NAME ${VERSION}
-  artifacts:
-    paths:
-      - ./artefacts/$NAME*.rpm
-    expire_in: 2 day
-
 rpm-test:
-  image: davinci1976/docker-ci:unstable
+  image: $CURL_IMAGE
   stage: test
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
@@ -192,6 +195,7 @@ rpm-test:
 rpm-snapshot:
   image: $CURL_IMAGE
   stage: deploy
+  needs: ["version", "rpm-pack", "rpm-test"]
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "master"
@@ -212,6 +216,7 @@ rpm-snapshot:
 docker-snapshot:
   image: docker
   stage: deploy
+  needs: ["version", "integration-test"]
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "master"
@@ -232,6 +237,7 @@ docker-snapshot:
 rpm-release:
   image: $CURL_IMAGE
   stage: deploy
+  needs: ["version", "rpm-pack", "rpm-test"]
   rules:
     - if: $CI_PIPELINE_SOURCE == "trigger" && $SHA_RELEASE != ""
   dependencies:
@@ -244,6 +250,7 @@ rpm-release:
 docker-release:
   image: docker
   stage: deploy
+  needs: ["version", "integration-test"]
   rules:
     - if: $CI_PIPELINE_SOURCE == "trigger" && $SHA_RELEASE != ""
   dependencies:
@@ -258,13 +265,28 @@ docker-release:
     - docker build --pull -f ./docker/Dockerfile -t $DOCKER_IMAGE --build-arg BUILD_DATE=$BUILD_DATE --build-arg VERSION=${VERSION} --build-arg BUILD_REVISION=${REVISION} .
     - docker push $DOCKER_IMAGE
 
-.security:
-  stage: security
+preparesecurity-deploy-ser:
+  stage: preparesecurity
   allow_failure: true
   rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: manual
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: always
-    - when: manual
+  script:
+    - cd security
+    - docker compose -f compose.qlt.yml up -d
+
+.security:
+  stage: security
+  needs:
+    - job: "preparesecurity-deploy-ser"
+      optional: true
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: always
 
 fortify:
   image: $FORTIFY_DOCKER_IMAGE
@@ -272,7 +294,7 @@ fortify:
   script:
     - apt-get update -y
     - apt-get install git -y
-    - git clone https://cft_read:$GIT_CFT_READ_TOKEN@git.ecd.axway.org/cft/qlt-router.git qlt-router
+    - git clone https://qlt_router_read:$QLT_ROUTER_READ_TOKEN@git.ecd.axway.org/cft/qlt-router.git qlt-router
     - cd qlt-router
     - git checkout master
     - sourceanalyzer -b er_fortify **/src/**/*.go -verbose -logfile ./log.txt
@@ -298,11 +320,11 @@ blackduck:
     - rm -rf /usr/local/go && tar -C /usr/local -xzf go1.23.2.linux-amd64.tar.gz
     - export PATH=/usr/local/go/bin:$PATH
     - go version
-    - CI_COMMIT_BRANCH="${CI_COMMIT_BRANCH:-master}"
-    - echo using commit $CI_COMMIT_BRANCH
-    - git clone https://cft_read:$GIT_CFT_READ_TOKEN@git.ecd.axway.org/cft/qlt-router.git qlt-router
+    - branch="${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-master}"
+    - echo using commit $branch
+    - git clone https://qlt_router_read:$QLT_ROUTER_READ_TOKEN@git.ecd.axway.org/cft/qlt-router.git qlt-router
     - cd qlt-router
-    - git checkout $CI_COMMIT_BRANCH
+    - git checkout $branch
     - make
     - cd ..
     - wget --no-check-certificate https://artifactory-ptx.ecd.axway.int/artifactory/psg-generic-release/blackduck/synopsys-detect.zip
@@ -314,30 +336,20 @@ blackduck:
     -   java -jar synopsys-detect/synopsys-detect.jar --blackduck.url=$BLACK_DUCK_URL --blackduck.api.token=$BLACK_DUCK_TOKEN --detect.project.name="$BLACK_DUCK_PROJECT_NAME" --detect.project.version.name=$BLACK_DUCK_PROJECT_VERSION --detect.source.path=qlt-router/ --detect.go.path=`which go` --detect.go.mod.dependency.types.excluded=UNUSED --detect.output.path="/blackduck/output" --detect.status.json.output.path="/blackduck/status"
     - fi
 
-deploy-ser:
-  tags:
-    - docker-ex
-  stage: preparesecurity
-  allow_failure: true
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-      when: always
-    - when: manual
-  script:
-    - cd security
-    - docker compose -f compose.qlt.yml up -d
-
 cleanup-ser:
-  tags:
-    - docker-ex
   stage: cleansecurity
+  needs:
+    - job: "fortify"
+      optional: true
+    - job: "twistlock"
+      optional: true
+    - job: "blackduck"
+      optional: true
   allow_failure: true
   rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: always
-    - when: manual
-  needs:
-    - deploy-ser
   script:
     - cd security
     - docker compose -f compose.qlt.yml down -v
