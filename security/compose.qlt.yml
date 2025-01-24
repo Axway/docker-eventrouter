@@ -1,4 +1,3 @@
-version: '2.2'
 services:
   qlt:
     image: $DOCKER_IMAGE
@@ -17,7 +16,7 @@ services:
 
     ports:
       - "1325:1325" # same ports as the ones configured as input in event-router.yml configuration
-      - "8080:8080" # port used to expose Prometheus metrics: http://host:8080/metrics
+      - "18080:8080" # port used to expose Prometheus metrics: http://host:8080/metrics
 
 volumes:
   eventrouter_data:
