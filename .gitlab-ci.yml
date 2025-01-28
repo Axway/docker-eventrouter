@@ -24,9 +24,9 @@ default:
   tags:
     - docker-ex
   before_script:
-    - eval export CI_COMMIT_BRANCH=$(echo "${CI_COMMIT_BRANCH:-$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}" | tr '[:upper:]' '[:lower:]')
-    - echo using commit $CI_COMMIT_BRANCH
-    - eval export DOCKER_IMAGE=$DOCKER_REPO_SNAPSHOT/$IMAGE_NAME:$CI_COMMIT_BRANCH
+    - eval export COMMIT_BRANCH=$(echo "${CI_COMMIT_BRANCH:-$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}")
+    - echo using commit $COMMIT_BRANCH
+    - eval export DOCKER_IMAGE=$DOCKER_REPO_SNAPSHOT/$IMAGE_NAME:3.0_$COMMIT_BRANCH
     - echo using image $DOCKER_IMAGE
     - eval export REVISION=$(echo "$CI_COMMIT_SHA" | cut -c 1-10)
 stages:
@@ -205,13 +205,9 @@ rpm-snapshot:
     - rpm-pack
   script:
     - . ./.env
-    - if [ "$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" != "" ] ; then
-    -     version="${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}"
-    - else
-    -     version="3.0_${CI_COMMIT_BRANCH}"
-    - fi
     - datetime=$(date -u +'%Y%m%d%H%M')
-    - $CURL_AXWAY -k -v -u $ARTIFACTORY_USER:$ARTIFACTORY_TOKEN -T ./artefacts/$NAME*.rpm "$RPM_REPO_SNAPSHOT/${version}/${NAME_PACK}_${CI_COMMIT_BRANCH}_${datetime}_${REVISION}.rpm"
+    - $CURL_AXWAY -k -v -u $ARTIFACTORY_USER:$ARTIFACTORY_TOKEN -T ./artefacts/$NAME*.rpm
+      "$RPM_REPO_SNAPSHOT/3.0_${COMMIT_BRANCH}/${NAME_PACK}_${COMMIT_BRANCH}_${datetime}_${REVISION}.rpm"
 
 docker-snapshot:
   image: docker
