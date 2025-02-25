@@ -385,12 +385,12 @@ case "${1:-}" in
 
     live) ## ## show liviness of __APPNAME__
       port=${ER_PORT:-"8080"}
-      curl -s -v http://localhost:$port/live
+      curl -s http://localhost:$port/live
     ;;
 
     ready) ## ## show readiness of __APPNAME__
       port=${ER_PORT:-"8080"}
-      curl -s -v http://localhost:$port/ready
+      curl -s http://localhost:$port/ready
     ;;
 
     metrics) ## ## show metrics __APPNAME__
