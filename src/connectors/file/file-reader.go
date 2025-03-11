@@ -71,11 +71,17 @@ func (q *FileStoreRawReader) Init(p *processor.Processor) error {
 		f2.Close()
 		s := string(b[0:n])
 		arr := strings.Split(s, "\n")
-		q.Offset, err = strconv.ParseInt(arr[0], 10, 64)
-		if err != nil {
+		if len(arr) != 2 {
+			log.Errorc(q.CtxS, "Unexpected data format while reading cursor file", "filename", q.conf.ReaderFilename, "content", s)
+			q.Filename, _ = tools.NextFile(q.CtxS, q.conf.FilenamePrefix, q.conf.FilenameSuffix, q.conf.FilenamePrefix, true)
 			q.Offset = 0
+		} else {
+			q.Offset, err = strconv.ParseInt(arr[0], 10, 64)
+			if err != nil {
+				q.Offset = 0
+			}
+			q.Filename = arr[1]
 		}
-		q.Filename = arr[1]
 	}
 	q.AckOffset = q.Offset
 
