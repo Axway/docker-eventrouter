@@ -30,6 +30,7 @@ import (
 	"axway.com/qlt-router/src/filters/qlt2json"
 	log "axway.com/qlt-router/src/log"
 	"axway.com/qlt-router/src/processor"
+	report "axway.com/qlt-router/src/usage-report"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
@@ -280,11 +281,12 @@ func main() {
 	// processors.Register("lumberjack_json_consumer", &elasticsearch.LumberjackConsumerConf{})
 	connectors.Register("kafka-writer", &kafka.KafkaWriterConf{})
 	connectors.Register("kafka-reader", &kafka.KafkaReaderConf{})
+	connectors.Register("usage-report-writer", &report.UsageReportWriterConf{})
 
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
-			log.Fatalc(ctxS, "err", err)
+			log.Fatalc(ctxS, "", "err", err)
 		}
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
@@ -347,8 +349,14 @@ func main() {
 		c1 := p.Conf
 		c2 := p.Conf.Clone()
 		if c1 == c2 {
-			log.Fatalc(ctxS, "Internal error: Badly Implemented Clone()", p.Name)
+			log.Fatalc(ctxS, "Internal error: Badly Implemented Clone()", "processor", p.Name)
 		}
+	}
+
+	// Ensure to have an instance_id
+	if conf.Instance_id == "" {
+		hostname, _ := os.Hostname()
+		conf.Instance_id = hostname
 	}
 
 	{ // Verify that all streams have reader and writer defined
@@ -389,12 +397,6 @@ func main() {
 		}
 	}
 
-	// Ensure to have an instance_id
-	if conf.Instance_id == "" {
-		hostname, _ := os.Hostname()
-		conf.Instance_id = hostname
-	}
-
 	// FIXME: comment
 	all := false
 
@@ -433,14 +435,6 @@ func main() {
 		Channels:     channels,
 		Processors:   runtimes,
 	}
-	/*if fileCsvProducerConf.Filename != "" {
-		go fileCSVProducer(&fileCsvProducerConf, nil, producer1)
-	}*/
-
-	/*log.Println("[HTTP] Setting up / welcome...")
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Welcome to event-router!")
-	})*/
 
 	/* If I can answer, I'm alive */
 	log.Infoc(ctxS, "[HTTP] Setting up /live...")
