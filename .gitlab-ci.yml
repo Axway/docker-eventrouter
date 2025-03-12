@@ -67,7 +67,7 @@ unit-test:
       junit: report.xml
 
 .build:
-  image: golang:bookworm
+  image: golang:1.24-bookworm
   stage: build
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
@@ -119,7 +119,7 @@ build-docker:
     - docker run --env ACCEPT_GENERAL_CONDITIONS=YES --rm $DOCKER_IMAGE $NAME version
 
 rpm-pack:
-  image: golang:1.23
+  image: golang:1.24
   stage: pack
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
@@ -312,8 +312,8 @@ blackduck:
   script:
     - apt-get --allow-releaseinfo-change update
     - apt-get install build-essential make git unzip wget -y --fix-missing
-    - wget https://go.dev/dl/go1.23.2.linux-amd64.tar.gz
-    - rm -rf /usr/local/go && tar -C /usr/local -xzf go1.23.2.linux-amd64.tar.gz
+    - wget https://go.dev/dl/go1.24.1.linux-amd64.tar.gz
+    - rm -rf /usr/local/go && tar -C /usr/local -xzf go1.24.1.linux-amd64.tar.gz
     - export PATH=/usr/local/go/bin:$PATH
     - go version
     - branch="${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-master}"

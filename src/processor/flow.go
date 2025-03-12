@@ -116,7 +116,7 @@ func (flow *Flow) Start(ctx context.Context, readerContext context.Context, inst
 				}
 			}
 			log.Errorc(ctxS, "processor not found", "name", flow.Name+"/"+step.Type, "closest", closest)
-			return nil, fmt.Errorf("Processor " + flow.Name + "/" + step.Type + " not found, maybe " + closest)
+			return nil, fmt.Errorf("Processor %s/%s not found, maybe %s", flow.Name, step.Type, closest)
 		} else {
 			ctx2 := ctx
 			if reader {

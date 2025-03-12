@@ -6,13 +6,13 @@ import (
 )
 
 var data = `<?xml version="1.0" encoding="UTF-8"?>
-    <TrkDescriptor> 
-		<TrkXML VERSION="1.0"/> 
-		<TrkObject> 
-			<TrkIdentifier TYPE="Event" NAME="XFBTransfer" VERSION="1.0"/> 
-			<TrkAttr name="PRODUCTNAME" val="CFT"/> 
-			<TrkAttr name="PRODUCTIPADDR" val="cft"/> 
-		</TrkObject> 
+    <TrkDescriptor>
+		<TrkXML VERSION="1.0"/>
+		<TrkObject>
+			<TrkIdentifier TYPE="Event" NAME="XFBTransfer" VERSION="1.0"/>
+			<TrkAttr name="PRODUCTNAME" val="CFT"/>
+			<TrkAttr name="PRODUCTIPADDR" val="cft"/>
+		</TrkObject>
 	</TrkDescriptor>`
 
 var dataISO8859 = `<?xml version="1.0" encoding="ISO-8859-1"?>
@@ -30,32 +30,32 @@ var dataISO8859 = `<?xml version="1.0" encoding="ISO-8859-1"?>
 	</TrkDescriptor>`
 
 var dataInvalidXML = `<?xml version="1.0" encoding="UTF-8"?>
-	<TrkDescriptor> 
-		<TrkXML VERSION="1.0"/> 
-		<TrkObject> 
-			<TrkIdentifier TYPE="Event" NAME="XFBLog" VERSION="1.0"/> 
-			<TrkAttr name="PRODUCTNAME" val="CFT"/> 
-			<TrkAttr name="PRODUCTIPADDR" val="cft4"/> 
-			<TrkAttr name="PRODUCTOS" val="SYST_UNIX"/> 
-			<TrkAttr name="GMTDIFF" val="0"/> 
-			<TrkAttr name="RecDate" val="2019.09.03"/> 
-			<TrkAttr name="RecTime" val="10:28:21"/> 
-			<TrkAttr name="Monitor" val="CFT"/> 
-			<TrkAttr name="ReturnMessage" val="transfer aborted                 <IDTU=A000001X PART=CFT_TARGET_1_SSL IDF=0063-TES IDT=I0310282 110 >"/> 
-			<TrkAttr name="CycleId" val=""/> 
-			<TrkAttr name="IsAlert" val="1"/> 
-			<TrkAttr name="ApplicationName" val="CFT_DOCKER_4"/> 
-			<TrkAttr name="ApplicationGroup" val="dev.docker"/> 
-			<TrkAttr name="IdentMsg" val="CFTT82E"/> 
-			<TrkAttr name="Product" val="CFT"/> 
-			<TrkAttr name="Monitor" val="XFB"/> 
-			<TrkAttr name="EVENTDATE" val="03.09.2019"/> 
-			<TrkAttr name="EVENTTIME" val="13:43:26"/> 
-			<TrkAttr name="ORIGINDATE" val="01.01.1970"/> 
-			</TrkObject> 
+	<TrkDescriptor>
+		<TrkXML VERSION="1.0"/>
+		<TrkObject>
+			<TrkIdentifier TYPE="Event" NAME="XFBLog" VERSION="1.0"/>
+			<TrkAttr name="PRODUCTNAME" val="CFT"/>
+			<TrkAttr name="PRODUCTIPADDR" val="cft4"/>
+			<TrkAttr name="PRODUCTOS" val="SYST_UNIX"/>
+			<TrkAttr name="GMTDIFF" val="0"/>
+			<TrkAttr name="RecDate" val="2019.09.03"/>
+			<TrkAttr name="RecTime" val="10:28:21"/>
+			<TrkAttr name="Monitor" val="CFT"/>
+			<TrkAttr name="ReturnMessage" val="transfer aborted                 <IDTU=A000001X PART=CFT_TARGET_1_SSL IDF=0063-TES IDT=I0310282 110 >"/>
+			<TrkAttr name="CycleId" val=""/>
+			<TrkAttr name="IsAlert" val="1"/>
+			<TrkAttr name="ApplicationName" val="CFT_DOCKER_4"/>
+			<TrkAttr name="ApplicationGroup" val="dev.docker"/>
+			<TrkAttr name="IdentMsg" val="CFTT82E"/>
+			<TrkAttr name="Product" val="CFT"/>
+			<TrkAttr name="Monitor" val="XFB"/>
+			<TrkAttr name="EVENTDATE" val="03.09.2019"/>
+			<TrkAttr name="EVENTTIME" val="13:43:26"/>
+			<TrkAttr name="ORIGINDATE" val="01.01.1970"/>
+			</TrkObject>
 	</TrkDescriptor>`
 
-func ExampleConvert1() {
+func Exampleconvert1() {
 	json, _ := convert1(data)
 	fmt.Println(json)
 	// Output:

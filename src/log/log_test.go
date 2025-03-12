@@ -11,12 +11,12 @@ func init() {
 	root.SkipTime = true
 }
 
-func ExampleInfo() {
+func ExampleLogger_Info() {
 	root.Info("test sssszou", "test", "testvalue")
 	// Output: INF [] test sssszou -- test=testvalue
 }
 
-func ExampleInfoSUB() {
+func ExampleLogger_Info_sub() {
 	l2 := root.New("zip:")
 	l2.Add("ctx1", 9999)
 	l2.Info("test msg", "k1", "testvalue")
@@ -26,37 +26,37 @@ func ExampleInfoSUB() {
 	// INF [zip:] test msg2 -- k2=testvalue2 ctx1=9999
 }
 
-func ExampleInfoString() {
+func ExampleLogger_Info_string() {
 	root.Info("test sssszou2", "test", "te st value\nzo\ru")
 	// Output: INF [] test sssszou2 -- test='te st value\nzo\ru'
 }
 
-func ExampleInfoNumber() {
+func ExampleLogger_Info_number() {
 	root.Info("test sssszou2", "test", 3)
 	// Output: INF [] test sssszou2 -- test=3
 }
 
-func ExampleInfoBool() {
+func ExampleLogger_Info_bool() {
 	root.Info("test sssszou2", "test", true)
 	// Output: INF [] test sssszou2 -- test=true
 }
 
-func ExampleInfoNil() {
+func ExampleLogger_Info_nil() {
 	root.Info("test sssszou2", "test", nil)
 	// Output: INF [] test sssszou2 -- test=null
 }
 
-func ExampleInfoArray() {
+func ExampleLogger_Info_array() {
 	root.Info("test sssszou2", "test", []string{"t1", "t2"})
 	// Output: INF [] test sssszou2 -- test=[t1,t2]
 }
 
-func ExampleInfoMap() {
+func ExampleLogger_Info_map() {
 	root.Error("test sssszou2", "test", map[string]string{"k1": "v1", "k2": "v2"})
 	// Output: ERR [] test sssszou2 -- test={k1:v1,k2:v2}
 }
 
-func ExampleError() {
+func ExampleLogger_Error() {
 	root.Error("test sssszou2", "err", errors.New("test error"))
 	// Output: ERR [] test sssszou2 -- err='test error'
 }

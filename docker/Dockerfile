@@ -1,6 +1,10 @@
 FROM alpine:edge AS build
-RUN apk add --no-cache --update go make git
+RUN apk add --no-cache --update go wget make git
 WORKDIR /app/src
+RUN wget https://go.dev/dl/go1.24.1.linux-amd64.tar.gz
+RUN rm -rf /usr/local/go && tar -C /usr/local -xzf go1.24.1.linux-amd64.tar.gz
+RUN export PATH=/usr/local/go/bin:$PATH
+RUN go version
 COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
 RUN --mount=type=cache,target=/go/pkg/mod go install gotest.tools/gotestsum@latest
