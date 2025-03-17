@@ -251,6 +251,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 
 				/* add n written elements to ackPendingEvents */
 				if p2.IsAckAsync() && n > 0 {
+					log.Tracec(ctxp, "Add n written elements to ackPendingEvents", "n", n)
 					ackPendingEvents = append(ackPendingEvents, events[:n]...)
 				}
 				// FIXME: is this required ?
@@ -263,7 +264,7 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 				}
 
 				if !p2.IsAckAsync() {
-					// log.Debugln(ctxp, "Sending async acks...", "batch", len(events))
+					// log.Debugc(ctxp, "Sending async acks...", "batch", len(events))
 					for _, event := range events[:n] {
 						event.Src.AckMsg(event.Msgid)
 					}
@@ -273,8 +274,11 @@ func GenProcessorHelperWriter(ctx context.Context, p2 ConnectorRuntimeWriter, p 
 				}
 
 				if n != len(events) { /* error case */
-					/* remove n already written elements from events */
-					events = events[n:]
+					if n > 0 {
+						log.Tracec(ctxp, "Remove n already written elements from events", "n", n)
+						/* remove n already written elements from events */
+						events = events[n:]
+					}
 
 					continue // If we fail to send, we need to retry later
 				}
