@@ -119,7 +119,7 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 			if err != nil {
 				if errors.Is(err, os.ErrDeadlineExceeded) {
 					timeout = true
-					log.Debugc(ctxp, "IO Timeout")
+					log.Tracec(ctxp, "IO Timeout")
 				} else if errors.Is(err, io.EOF) {
 					log.Infoc(ctxp, "No more event to read", "err", err)
 					done = true
