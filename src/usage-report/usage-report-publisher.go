@@ -396,9 +396,9 @@ func (ur *UsageReporter) GenerateReport(dbConn *sql.DB, fromDatetime string, toD
 	output += `"report": {`
 
 	if fromDatetime == "" {
-		rows, err = dbConn.Query("SELECT * FROM "+usageTable+" WHERE  datetime < ? ORDER BY datetime", toDatetime)
+		rows, err = dbConn.Query("SELECT * FROM " + usageTable + " WHERE  datetime < '" + toDatetime + "' ORDER BY datetime")
 	} else {
-		rows, err = dbConn.Query("SELECT * FROM "+usageTable+" WHERE datetime >= ? AND datetime < ? ORDER BY datetime", fromDatetime, toDatetime)
+		rows, err = dbConn.Query("SELECT * FROM " + usageTable + " WHERE datetime >= '" + fromDatetime + "' AND datetime < '" + toDatetime + "' ORDER BY datetime")
 	}
 	empty := true
 	if err == nil {
