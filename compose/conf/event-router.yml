@@ -56,6 +56,24 @@ streams:
         synchronous: true # must be set to "true" if Sentinel is the target
         cnx: 1
         # ca: $ER_SENTINEL_CA
+  - name: "xml_in_usage_out"
+    disable: true
+    description: "file to Platform Usage"
+    upstream: qlt_in_xml_out
+    reader:
+      type: file-reader
+      conf:
+        filenamePrefix: "data/xml_events"
+        filenameSuffix: "xml"
+        readerFilename: "data/xml_in_usage_out.cursor"
+    writer:
+      type: usage-report-writer
+      conf:
+        databaseUri: "data/usage-database.dbx"
+        environmentId: ""
+        # serviceAccountClientID: ""
+        # serviceAccountClientSecret: ""
+        # reportPath: "data/usage"
   - name: "xml_in_er_out_with_filter"
     disable: true   # to enable this stream, set disable: false
     description: "reads xml file and sends to event router using a filter"
