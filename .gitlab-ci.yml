@@ -269,6 +269,7 @@ preparesecurity-deploy-ser:
       when: manual
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: always
+    - if: $CI_PIPELINE_SOURCE == "trigger" && $SHA_RELEASE != ""
   script:
     - cd security
     - docker compose -f compose.qlt.yml up -d
