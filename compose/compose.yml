@@ -4,8 +4,6 @@
 #
 #
 
-version: "3.5"
-
 services:
   eventrouter:
     image: eventrouter/eventrouter:3.0
