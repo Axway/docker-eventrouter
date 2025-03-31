@@ -95,16 +95,18 @@ func (ur *UsageReporter) Report(forceSend bool) error {
 
 	failedUpload := false
 	failedWrite := false
+	uploadedEntries := 0
+	writtenEntries := 0
 	for _, product := range []string{"CFT"} {
 		if uploadReport && ur.Conf.ServiceAccountClientID != "" {
-			err := ur.UploadReport(ur.Ctxs+"-api", dbConn, product)
+			err, uploadedEntries = ur.UploadReport(ur.Ctxs+"-api", dbConn, product)
 			if err != nil {
 				log.Errorc(ur.Ctxs, "Failed to upload usage report to the platform.", "product", product, "error", err)
 				failedUpload = true
 			}
 		}
 		if writeReport && ur.Conf.ReportPath != "" {
-			err := ur.WriteReport(ur.Ctxs+"-file", dbConn, product)
+			err, writtenEntries = ur.WriteReport(ur.Ctxs+"-file", dbConn, product)
 			if err != nil {
 				log.Errorc(ur.Ctxs, "Failed to write usage report.", "product", product, "error", err)
 				failedWrite = true
@@ -118,7 +120,7 @@ func (ur *UsageReporter) Report(forceSend bool) error {
 			log.Errorc(ur.Ctxs, "SQL error (begin)", "err", err)
 		} else {
 			failed := false
-			if !failedUpload {
+			if uploadedEntries != 0 && !failedUpload {
 				_, err = transaction.Exec("UPDATE " + lastSentTable + " SET datetime = '" + time.Now().UTC().Format(time.RFC3339) + "'" +
 					" WHERE instanceId='" + ur.Instance_id + "' AND mode='api';")
 				if err != nil {
@@ -126,7 +128,7 @@ func (ur *UsageReporter) Report(forceSend bool) error {
 					failed = true
 				}
 			}
-			if !failedWrite {
+			if writtenEntries != 0 && !failedWrite {
 				_, err = transaction.Exec("UPDATE " + lastSentTable + " SET datetime = '" + time.Now().UTC().Format(time.RFC3339) + "'" +
 					" WHERE instanceId='" + ur.Instance_id + "' AND mode='file';")
 				if err != nil {
@@ -171,8 +173,9 @@ func (ur *UsageReporter) IsLastSentToday(dbConn *sql.DB, mode string) bool {
  * Then it generates one report including all the events until now.
  * If there are no entries in the report, it will be sent anyway so we can validate the connection to the platform
  */
-func (ur *UsageReporter) UploadReport(ctxS string, dbConn *sql.DB, monitorReq string) error {
+func (ur *UsageReporter) UploadReport(ctxS string, dbConn *sql.DB, monitorReq string) (error, int) {
 	var err error
+	total := 0
 
 	/* General HTTP Client from both requests */
 	var transport *http.Transport
@@ -203,7 +206,7 @@ func (ur *UsageReporter) UploadReport(ctxS string, dbConn *sql.DB, monitorReq st
 	authRequest, err := http.NewRequest("POST", authUrl, authReqBody)
 	if err != nil {
 		log.Errorc(ctxS, "Failed create auth HTTP request", "error", err)
-		return err
+		return err, total
 	}
 	authRequest.Header.Add("Content-type", "application/x-www-form-urlencoded")
 
@@ -214,7 +217,7 @@ func (ur *UsageReporter) UploadReport(ctxS string, dbConn *sql.DB, monitorReq st
 		if authResp != nil {
 			log.Errorc(ctxS, "Response", "code:", authResp.StatusCode)
 		}
-		return err
+		return err, total
 	}
 	defer authResp.Body.Close()
 
@@ -222,14 +225,14 @@ func (ur *UsageReporter) UploadReport(ctxS string, dbConn *sql.DB, monitorReq st
 	body, _ := io.ReadAll(authResp.Body)
 	if authResp.StatusCode != http.StatusOK {
 		log.Errorc(ctxS, "Failed to request API token", "AuthAPI", authUrl, "httpCode", authResp.StatusCode, "body", string(body))
-		return errors.New("error occurred while requesting a token! Returned code: " + strconv.Itoa(authResp.StatusCode))
+		return errors.New("error occurred while requesting a token! Returned code: " + strconv.Itoa(authResp.StatusCode)), total
 	}
 	var authRespMap map[string]string
 	json.Unmarshal(body, &authRespMap)
 	token := authRespMap["access_token"]
 	if token == "" {
 		log.Errorc(ctxS, "Failed to retrieve API token in response", "body", string(body))
-		return errors.New("failed to get access token")
+		return errors.New("failed to get access token"), total
 	}
 	tokenType := authRespMap["token_type"]
 	log.Debugc(ctxS, "API token successfully retrieved.")
@@ -245,7 +248,7 @@ func (ur *UsageReporter) UploadReport(ctxS string, dbConn *sql.DB, monitorReq st
 	lastSentTime, err := time.Parse(time.RFC3339, lastSentEvent)
 	if err != nil {
 		log.Errorc(ctxS, "Failed to parse last sent event time", "err", err)
-		return err
+		return err, total
 	}
 
 	/* Common elements to all requests */
@@ -308,9 +311,10 @@ func (ur *UsageReporter) UploadReport(ctxS string, dbConn *sql.DB, monitorReq st
 			break
 		}
 		apiResp.Body.Close()
+		total += entries
 		firstReport = false
 	}
-	return err
+	return err, total
 }
 
 /**
@@ -319,8 +323,10 @@ func (ur *UsageReporter) UploadReport(ctxS string, dbConn *sql.DB, monitorReq st
 * Then it generates the report for each month until now.
 * If a month has no entries, the file is not written.
  */
-func (ur *UsageReporter) WriteReport(ctxS string, dbConn *sql.DB, monitorReq string) error {
+func (ur *UsageReporter) WriteReport(ctxS string, dbConn *sql.DB, monitorReq string) (error, int) {
 	var lastSentEvent string
+	total := 0
+
 	err := dbConn.QueryRow("SELECT datetime FROM " + lastSentTable + " WHERE instanceId='" + ur.Instance_id + "' AND mode='file';").Scan(&lastSentEvent)
 	if err != nil {
 		log.Debugc(ctxS, "Can't find last datetime sent", "err", err)
@@ -329,7 +335,7 @@ func (ur *UsageReporter) WriteReport(ctxS string, dbConn *sql.DB, monitorReq str
 	lastSentTime, err := time.Parse(time.RFC3339, lastSentEvent)
 	if err != nil {
 		log.Errorc(ctxS, "Failed to parse last sent event time", "err", err)
-		return err
+		return err, total
 	}
 
 	fromDate := lastSentTime.AddDate(0, -1, 0).Truncate(time.Hour)
@@ -364,8 +370,9 @@ func (ur *UsageReporter) WriteReport(ctxS string, dbConn *sql.DB, monitorReq str
 		if err != nil {
 			break
 		}
+		total += entries
 	}
-	return err
+	return err, total
 }
 
 /**
