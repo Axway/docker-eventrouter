@@ -119,7 +119,7 @@ services:
       - default
 
   kafka:
-    image: 'bitnami/kafka:latest'
+    image: 'bitnami/kafka:3.9.0'
     #ports:
     #  - '9092:9092'
     #  - '9094:9094'
