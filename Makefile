@@ -58,15 +58,15 @@ clean:
 test-integration:
 	# go test -v -timeout=5s ./src/...
 	# go test --cover --short --timeout 5s ./src/...
-	CGO_ENABLED=0 gotestsum --junitfile report.xml --format testname --raw-command go test --cover --timeout 12s --tags musl  --coverprofile=coverage.txt --covermode=atomic --coverpkg "$(shell go list ./src/...  | tr '\n' ",")" --json ./src/... 
+	CGO_ENABLED=0 gotestsum --junitfile report.xml --format testname --raw-command go test --cover --timeout 240s --tags musl  --coverprofile=coverage.txt --covermode=atomic --coverpkg "$(shell go list ./src/...  | tr '\n' ",")" --json ./src/...
 	go tool cover -func coverage.txt
 	go run github.com/boumenot/gocover-cobertura < coverage.txt > coverage.xml
 	go-cover-treemap -coverprofile coverage.txt  > coverage.svg
 
 test-unit:
 	# go test --cover --short --timeout 5s ./src/...
-	# -coverpkg $(go list ./src/...) 
-	gotestsum --junitfile report.xml --format testname --raw-command go test --cover --short --timeout 12s --tags musl --coverprofile=coverage.txt --covermode=atomic --coverpkg "$(shell go list ./src/...  | tr '\n' ",")" --json ./src/... 
+	# -coverpkg $(go list ./src/...)
+	gotestsum --junitfile report.xml --format testname --raw-command go test --cover --short --timeout 12s --tags musl --coverprofile=coverage.txt --covermode=atomic --coverpkg "$(shell go list ./src/...  | tr '\n' ",")" --json ./src/...
 	go tool cover -func coverage.txt
 	go run github.com/boumenot/gocover-cobertura < coverage.txt > coverage.xml
 	go-cover-treemap -coverprofile coverage.txt  > coverage.svg
@@ -101,4 +101,3 @@ certs:
 	openssl req -new -x509 -sha256 -key certs/server.key -out certs/server.pem -days 3650 -subj "/C=FR/ST=Paris/L=La Defense/O=Axway/CN=event-router"
 	openssl x509 -text -noout -in certs/server.pem
 	#cp certs/server.pem tests/test/certs/event-router.pem
-

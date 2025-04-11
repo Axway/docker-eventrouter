@@ -297,7 +297,6 @@ func (q *UsageReportWriter) Write(events []processor.AckableEvent) (int, error) 
 		isMainsframe := 0
 		if slices.Contains(mainframe, eventMap["msg"]["productos"]) {
 			isMainsframe = 1
-			log.Debugc(q.CtxS, "Mainframe")
 		}
 
 		log.Tracec(q.CtxS, "Relevant data", "dateHour", dateHour)

@@ -21,7 +21,7 @@ func Test1FileStoreRawWriterStart(t *testing.T) {
 	targetFilenameSuf := "zouzou"
 	ctx := "test1"
 
-	err := CleanFiles(ctx, targetFilename, targetFilenameSuf)
+	err := CleanFiles(t, ctx, targetFilename, targetFilenameSuf)
 	if err != nil {
 		return
 	}
@@ -92,7 +92,7 @@ func Test1FileStoreRawWriterStart(t *testing.T) {
 	}
 	memtest.MemMessageCheck(t, msgs, ackPos, wMessages)
 
-	err = CleanFiles(ctx, targetFilename, targetFilenameSuf)
+	err = CleanFiles(t, ctx, targetFilename, targetFilenameSuf)
 	if err != nil {
 		return
 	}
@@ -102,7 +102,7 @@ func Test2FileStoreMultipleFilesStart(t *testing.T) {
 	targetFilename := "/tmp/write_test2"
 	ctx := "test2"
 
-	err := CleanFiles(ctx, targetFilename, "")
+	err := CleanFiles(t, ctx, targetFilename, "")
 	if err != nil {
 		return
 	}
@@ -184,7 +184,7 @@ func Test2FileStoreMultipleFilesStart(t *testing.T) {
 	}
 	memtest.MemMessageCheck(t, msgs, ackPos, wMessages)
 
-	err = CleanFiles(ctx, targetFilename, "")
+	err = CleanFiles(t, ctx, targetFilename, "")
 	if err != nil {
 		return
 	}

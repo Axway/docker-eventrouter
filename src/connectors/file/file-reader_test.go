@@ -14,7 +14,8 @@ import (
 	"axway.com/qlt-router/src/tools"
 )
 
-func CleanFiles(ctx, filenamePrefix string, filenameSuffix string) error {
+func CleanFiles(t *testing.T, ctx, filenamePrefix string, filenameSuffix string) error {
+	t.Helper()
 	entries, err := tools.FileSwitchList(ctx, filenamePrefix, filenameSuffix, false)
 	if err != nil {
 		fmt.Println("FileSwitchList error ")
@@ -39,7 +40,7 @@ func Test1FileStoreRawReaderStart(t *testing.T) {
 	targetFilenamePref := "/tmp/zoup"
 
 	os.Remove(readerFilename)
-	err := CleanFiles(ctx, targetFilenamePref, "")
+	err := CleanFiles(t, ctx, targetFilenamePref, "")
 	if err != nil {
 		return
 	}
@@ -101,7 +102,7 @@ func Test1FileStoreRawReaderStart(t *testing.T) {
 		t.Error("unexpected message")
 	default:
 		// ok
-		defer CleanFiles(ctx, targetFilenamePref, "")
+		defer CleanFiles(t, ctx, targetFilenamePref, "")
 	}
 	// t.Error("==Success==")
 }
@@ -112,7 +113,7 @@ func Test2FileStoreRawReaderStart(t *testing.T) {
 	targetFilenamePref := "/tmp/zoup"
 
 	os.Remove(readerFilename)
-	err := CleanFiles(ctx, targetFilenamePref, "")
+	err := CleanFiles(t, ctx, targetFilenamePref, "")
 	if err != nil {
 		return
 	}
@@ -156,7 +157,7 @@ func Test2FileStoreRawReaderStart(t *testing.T) {
 		t.Error("unexpected message")
 	default:
 		// ok
-		defer CleanFiles(ctx, targetFilenamePref, "")
+		defer CleanFiles(t, ctx, targetFilenamePref, "")
 	}
 	// t.Error("==Success==")
 }

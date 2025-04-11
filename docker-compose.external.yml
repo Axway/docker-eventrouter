@@ -50,7 +50,7 @@ services:
     image: prom/prometheus
     ports:
       - 9090:9090
-    #volumes: 
+    #volumes:
     #  - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
     #  - /prometheus-data
     networks:

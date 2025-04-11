@@ -6,7 +6,7 @@ services:
     command: ls
     volumes:
       - go_build:/root/.cache/go-build
-  
+
   sut-unit:
     build:
       dockerfile: ./docker/Dockerfile.test
@@ -22,10 +22,12 @@ services:
       KAFKA: kafka:9092 #9092
       MONGO: mongo #27017
       POSTGRESQL: postgres #5432
+      PGMETRICS: postgres_metrics #5433
     depends_on:
       - kafka
       - mongo
       - postgres
+      - postgres_metrics
     volumes:
       - go_build:/root/.cache/go-build
 
@@ -48,12 +50,29 @@ services:
       service: postgres
     ports:
       - 5432:5432
+    volumes:
+      - "pg_data:/data"
+  postgres_metrics:
+    extends:
+      file: docker-compose.external.yml
+      service: postgres
+    environment:
+      POSTGRES_DB:       "usagereporttest"
+      POSTGRES_PASSWORD: "usagereport"
+      POSTGRES_USER:     "usagereport"
+      PGPORT: 25432
+    ports:
+      - 25432:25432
+    volumes:
+      - "pg_data_metrics:/data"
 
 networks:
   traefik_default:
     external: true
 
 volumes:
+  pg_data_metrics:
+    driver: "local"
   pg_data:
     driver: "local"
   kafka_data:

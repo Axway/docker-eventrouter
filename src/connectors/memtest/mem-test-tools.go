@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"reflect"
 	"sync"
 	"testing"
-	"reflect"
 
 	"axway.com/qlt-router/src/connectors/mem"
 	"axway.com/qlt-router/src/log"
@@ -94,6 +94,7 @@ func MessageGenerator(minReaders, maxReaders, minMessages, maxMessages, minMsgSi
 }
 
 func MemMessageCheck(t *testing.T, readers [][]string, ackPos []int64, wMessages []string) {
+	t.Helper()
 	// Ensure that the right number of messages arrived
 	count := 0
 	for j := 0; j < len(readers); j++ {
@@ -131,6 +132,7 @@ func MemMessageCheck(t *testing.T, readers [][]string, ackPos []int64, wMessages
 
 // Test Connector generic test
 func TestConnector(t *testing.T, writer, reader processor.Connector) {
+	t.Helper()
 	log.Infoc("testconnector", "Start")
 	msgs, all_count := MessageGenerator(1, 1, 5, 5, 20, 20)
 

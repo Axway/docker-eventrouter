@@ -4,16 +4,16 @@
 # set -euo pipefail
 
 export COMPOSE_PROJECT_NAME=event_router_integration
-NAME=event_router_integration_sut 
+NAME=event_router_integration_sut
 
 run() {
-    docker rm -f $NAME || true 
+    docker rm -f $NAME || true
     docker compose -f docker-compose.test.yml run --build --name $NAME sut
     rc=$?
     docker cp $NAME:/app/src/coverage.xml .
     docker cp $NAME:/app/src/coverage.svg .
     docker cp $NAME:/app/src/report.xml .
-    docker rm -f $NAME || true 
+    docker rm -f $NAME || true
     return $rc
 }
 
@@ -28,6 +28,9 @@ case ${1:-} in
     ;;
     *)
         run
+        docker stop postgres_metrics || true
+        docker rm -f postgres_metrics || true
+        docker volume prune -af || true
         exit $?
     ;;
 esac

@@ -1,0 +1,1 @@
+{"envId": "xxxxxx", "timestamp": "???", "granularity": 3600000, "schemaId": "https://platform.axway.com/schemas/report.json", "report": {"[MONTH]T10:00:00Z": {"usage": {"CFT.Transfers": 3,"CFT.MainframeTransfers": 0}}}, "meta": {"agentName": ""}}
