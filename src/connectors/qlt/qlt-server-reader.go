@@ -108,6 +108,10 @@ func (m *QLTServerReaderConnection) AckMsg(ack processor.EventAck) {
 	if m.AckPos+1 != msgid {
 		panic("oups : already received or wrong")
 	}
+	if m.Qlt == nil {
+		log.Errorc(m.CtxS, "closed")
+		return
+	}
 	err := m.Qlt.WriteAck()
 	if err != nil {
 		log.Errorc(m.CtxS, "error writing ack", "err", err)
@@ -124,6 +128,10 @@ func (m *QLTServerReaderConnection) Ctx() string {
 
 func (m *QLTServerReaderConnection) Read() ([]processor.AckableEvent, error) {
 	events := make([]processor.AckableEvent, 1)
+	if m.Qlt == nil {
+		log.Warnc(m.CtxS, "closed")
+		return nil, tools.ErrClosedConnection
+	}
 	msg, err := m.Qlt.Read(qltReaderBlockTimeout)
 	if err != nil {
 		if errors.Is(err, os.ErrDeadlineExceeded) {
