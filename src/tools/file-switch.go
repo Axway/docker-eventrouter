@@ -1,7 +1,6 @@
 package tools
 
 import (
-	"fmt"
 	"io/fs"
 	"os"
 	"path"
@@ -93,7 +92,6 @@ func FileSwitch(ctx string, filenamePrefix string, filenameSuffix string, maxfil
 	}
 
 	if maxfile > 0 && len(filenames) >= maxfile {
-		fmt.Println("Need to remove file ", fmt.Sprint(len(filenames)), ">=", fmt.Sprint(maxfile))
 		// Only keep Maxfile old files
 		for i := 0; i < len(filenames)-maxfile+1; i++ {
 			fname := filenames[i]
