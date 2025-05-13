@@ -21,9 +21,10 @@ type PGReader struct {
 }
 
 type PGReaderConf struct {
-	Url        string
-	ReaderName string
-	Table      string
+	Url            string
+	User, Password string
+	Table          string
+	ReaderName     string
 }
 
 func (conf *PGReaderConf) Start(ctx context.Context, p *processor.Processor, ctl chan processor.ControlEvent, inc chan processor.AckableEvent, out chan processor.AckableEvent) (processor.ConnectorRuntime, error) {
@@ -50,15 +51,17 @@ func (c *PGReaderConf) Clone() processor.Connector {
 
 func (q *PGReader) Init(p *processor.Processor) error {
 	time.Sleep(1 * time.Second)
-	log.Infoc(q.ctx, "Opening database", "url", "'"+q.conf.Url+"'")
-	conn, err := sql.Open("pgx", q.conf.Url)
+
+	completeUri, sanityzedUri := PrepareUris(q.conf.Url, q.conf.User, q.conf.Password)
+
+	log.Infoc(q.ctx, "Opening database", "url", "'"+sanityzedUri+"'")
+	conn, err := sql.Open("pgx", completeUri)
 	if err != nil {
-		log.Errorc(q.ctx, "Error opening file for appending", "err", err)
+		log.Errorc(q.ctx, "Error opening database", "err", err, "url", "'"+sanityzedUri+"'")
 		return err
 	}
 
 	q.conn = conn
-
 	offset, err := q.initializeReaderEntry()
 	if err != nil {
 	}

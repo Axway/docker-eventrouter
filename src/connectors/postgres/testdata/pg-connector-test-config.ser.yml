@@ -1,20 +1,20 @@
 streams:
-  - name: "fr-pg-write"
+  - name: "fr-postgres-write"
     disable: false
     description: ""
     reader:
       type: "mem-reader"
     writer:
-      type: "pg-writer"
+      type: "postgres-writer"
       conf:
         url: "postgresql://mypguser:mypgsecretpassword@${POSTGRESQL:-localhost}:5432/mypgdb"
         initialize: true
 
-  - name: "fr-pg-read"
+  - name: "fr-postgres-read"
     disable: false
     description: ""
     reader:
-      type: "pg-reader"
+      type: "postgres-reader"
       conf:
         url: "postgresql://mypguser:mypgsecretpassword@${POSTGRESQL:-localhost}:5432/mypgdb"
         readerName: "Test1"

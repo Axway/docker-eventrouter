@@ -272,8 +272,8 @@ func main() {
 	connectors.Register("qlt-server-reader", &qlt.QLTServerReaderConf{}) // Normal mode QLT
 	connectors.Register("qlt-client-reader", &qlt.QLTClientReaderConf{}) // Pull mode QLT
 	connectors.Register("qlt-server-writer", &qlt.QLTServerWriterConf{}) // Pull mode QLT
-	connectors.Register("pg-writer", &postgres.PGWriterConf{})
-	connectors.Register("pg-reader", &postgres.PGReaderConf{})
+	connectors.Register("postgres-writer", &postgres.PGWriterConf{})
+	connectors.Register("postgres-reader", &postgres.PGReaderConf{})
 	connectors.Register("sqlite-writer", &sqlite.SqliteWriterConf{})
 	connectors.Register("sqlite-reader", &sqlite.SqliteReaderConf{})
 	// processors.Register("es_json_consumer", &elasticsearch.EsConsumerConf{})

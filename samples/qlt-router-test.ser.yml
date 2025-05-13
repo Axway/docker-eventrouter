@@ -113,7 +113,7 @@ streams:
     transforms:
       - type: "control"
     writer:
-      type: "pg-writer"
+      type: "postgres-writer"
       conf:
         url: "postgresql://mypguser:mypgsecretpassword@localhost:5432/mypgdb"
         initialize: true
@@ -121,7 +121,7 @@ streams:
     upstream: "file-to-postgres"
     disable: false
     reader:
-      type: "pg-reader"
+      type: "postgres-reader"
       conf:
         url: "postgresql://mypguser:mypgsecretpassword@localhost:5432/mypgdb"
         readerName: "alltest"

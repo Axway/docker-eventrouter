@@ -80,9 +80,10 @@ type PGWriter struct {
 }
 
 type PGWriterConf struct {
-	Url        string
-	Initialize bool
-	Table      string
+	Url            string
+	User, Password string
+	Table          string
+	Initialize     bool
 }
 
 func (conf *PGWriterConf) Start(context context.Context, p *processor.Processor, ctl chan processor.ControlEvent, inc chan processor.AckableEvent, out chan processor.AckableEvent) (processor.ConnectorRuntime, error) {
@@ -127,11 +128,47 @@ func (q *PGWriter) IsActive() bool {
 	return true
 }
 
+func PrepareUris(originalUri string, user string, password string) (string, string) {
+	sanityzedUri := ""
+	hostspec := originalUri
+	hostspec = strings.TrimPrefix(hostspec, "postgres://")
+	hostspec = strings.TrimPrefix(hostspec, "postgresql://")
+	userspec := ""
+	sanityzedUser := ""
+	if strings.Contains(hostspec, "@") {
+		userspec = strings.Split(hostspec, "@")[0]
+		hostspec = strings.Split(hostspec, "@")[1]
+		if strings.Contains(userspec, ":") {
+			sanityzedUser = strings.Split(userspec, ":")[0] + ":" + strings.Repeat("*", 6)
+		} else {
+			sanityzedUser = userspec
+		}
+		sanityzedUser += "@"
+		userspec += "@"
+	} else if user != "" {
+		userspec = user
+		sanityzedUser = user
+		if password != "" {
+			userspec += ":" + password
+			sanityzedUser += ":" + strings.Repeat("*", 6)
+		}
+		sanityzedUser += "@"
+		userspec += "@"
+	}
+	completeUri := "postgres://" + userspec + hostspec
+	sanityzedUri = "postgres://" + sanityzedUser + hostspec
+
+	return completeUri, sanityzedUri
+}
+
 func (q *PGWriter) Init(p *processor.Processor) error {
-	log.Infoc(q.ctx, "Opening database", "url", q.conf.Url)
-	conn, err := sql.Open("pgx", q.conf.Url)
+	completeUri, sanityzedUri := PrepareUris(q.conf.Url, q.conf.User, q.conf.Password)
+
+	log.Infoc(q.ctx, "Opening database", "url", "'"+sanityzedUri+"'")
+	conn, err := sql.Open("pgx", completeUri)
+
 	if err != nil {
-		log.Errorc(q.ctx, "Error opening database", "err", err, "url", q.conf.Url)
+		log.Errorc(q.ctx, "Error opening database", "err", err, "url", "'"+sanityzedUri+"'")
 	}
 
 	q.conn = conn
