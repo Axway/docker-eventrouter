@@ -32,6 +32,13 @@ services:
       #ER_PORT: "8080" # http port
       #ER_HOST: "0.0.0.0" # http host
       #ER_LOG_USE_LOCALTIME: "false" # log uses local time
+      
+      # 
+      # Amazon SQS parameters
+      # 
+      #AWS_REGION: ""
+      #AWS_ACCESS_KEY_ID: ""
+      #AWS_SECRET_ACCESS_KEY: ""
 
     ports:
     - "1325:1325" # same ports as the ones configured as input in event-router.yml configuration
