@@ -245,7 +245,8 @@ func (ur *UsageReporter) UploadReport(ctxS string, dbConn *sql.DB, monitorReq st
 		log.Debugc(ctxS, "Can't find last datetime sent", "err", err)
 		lastSentEvent = time.Now().UTC().AddDate(0, 0, -1).Format(time.RFC3339)
 	}
-	lastSentTime, err := time.Parse(time.RFC3339, lastSentEvent)
+	lastSentMonthStr := lastSentEvent[0:7] + "-01T00:00:00Z"
+	lastSentMonth, err := time.Parse(time.RFC3339, lastSentMonthStr)
 	if err != nil {
 		log.Errorc(ctxS, "Failed to parse last sent event time", "err", err)
 		return err, total
@@ -258,12 +259,11 @@ func (ur *UsageReporter) UploadReport(ctxS string, dbConn *sql.DB, monitorReq st
 	h.Add("Content-Type", `application/json`)
 	firstReport := true
 
-	fromDate := lastSentTime.AddDate(0, -1, 0).Truncate(time.Hour)
+	fromDate := lastSentMonth.AddDate(0, -1, 0).Truncate(time.Hour)
 	for {
-		month := fromDate.Format("2006-01")
-		fromDatetime := month + "-01T00:00:00Z"
+		fromDatetime := fromDate.Format(time.RFC3339)
 		toDate := fromDate.AddDate(0, 1, 0)
-		toDatetime := toDate.Format("2006-01") + "-01T00:00:00Z"
+		toDatetime := toDate.Format(time.RFC3339)
 
 		if fromDate.After(time.Now().UTC()) {
 			break //done
@@ -332,18 +332,19 @@ func (ur *UsageReporter) WriteReport(ctxS string, dbConn *sql.DB, monitorReq str
 		log.Debugc(ctxS, "Can't find last datetime sent", "err", err)
 		lastSentEvent = time.Now().UTC().AddDate(0, 0, -1).Format(time.RFC3339)
 	}
-	lastSentTime, err := time.Parse(time.RFC3339, lastSentEvent)
+	lastSentMonthStr := lastSentEvent[0:7] + "-01T00:00:00Z"
+	lastSentMonth, err := time.Parse(time.RFC3339, lastSentMonthStr)
 	if err != nil {
 		log.Errorc(ctxS, "Failed to parse last sent event time", "err", err)
 		return err, total
 	}
 
-	fromDate := lastSentTime.AddDate(0, -1, 0).Truncate(time.Hour)
+	fromDate := lastSentMonth.AddDate(0, -1, 0).Truncate(time.Hour)
 	for {
 		month := fromDate.Format("2006-01")
-		fromDatetime := month + "-01T00:00:00Z"
+		fromDatetime := fromDate.Format(time.RFC3339)
 		toDate := fromDate.AddDate(0, 1, 0)
-		toDatetime := toDate.Format("2006-01") + "-01T00:00:00Z"
+		toDatetime := toDate.Format(time.RFC3339)
 
 		if fromDate.After(time.Now().UTC()) {
 			break //done
