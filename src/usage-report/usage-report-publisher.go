@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -230,11 +231,13 @@ func (ur *UsageReporter) UploadReport(ctxS string, dbConn *sql.DB, monitorReq st
 	var authRespMap map[string]string
 	json.Unmarshal(body, &authRespMap)
 	token := authRespMap["access_token"]
-	if token == "" {
+	tokenType := authRespMap["token_type"]
+	/* Only validating the characters composing the token, but not the format (in case one day it changes and is no longer JWT) */
+	if token == "" || !regexp.MustCompile(`^[A-Za-z0-9+/=\.]*$`).MatchString(token) ||
+		tokenType == "" || !regexp.MustCompile(`^[-A-Za-z0-9]*$`).MatchString(tokenType) {
 		log.Errorc(ctxS, "Failed to retrieve API token in response", "body", string(body))
 		return errors.New("failed to get access token"), total
 	}
-	tokenType := authRespMap["token_type"]
 	log.Debugc(ctxS, "API token successfully retrieved.")
 
 	/* USAGE REQUEST */
