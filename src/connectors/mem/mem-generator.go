@@ -74,6 +74,10 @@ func (m *MemGeneratorReader) Ctx() string {
 	return m.CtxS
 }
 
+func (m *MemGeneratorReader) IsServer() bool {
+	return false
+}
+
 //go:embed qltEvent.xml
 var qltSample string
 

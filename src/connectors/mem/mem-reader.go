@@ -55,6 +55,10 @@ func (m *MemReader) Ctx() string {
 	return m.CtxS
 }
 
+func (m *MemReader) IsServer() bool {
+	return false
+}
+
 func (m *MemReader) Read() ([]processor.AckableEvent, error) {
 	if m.Current >= len(m.Conf.Messages) {
 		return nil, io.EOF

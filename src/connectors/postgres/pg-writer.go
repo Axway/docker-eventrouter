@@ -74,9 +74,11 @@ func pgDBInit(ctx string, conn *sql.DB, tab string) error {
 }
 
 type PGWriter struct {
-	ctx  string
-	conn *sql.DB
-	conf *PGWriterConf
+	ctx         string
+	conn        *sql.DB
+	conf        *PGWriterConf
+	initialized bool
+	processor   *processor.Processor
 }
 
 type PGWriterConf struct {
@@ -89,7 +91,9 @@ type PGWriterConf struct {
 func (conf *PGWriterConf) Start(context context.Context, p *processor.Processor, ctl chan processor.ControlEvent, inc chan processor.AckableEvent, out chan processor.AckableEvent) (processor.ConnectorRuntime, error) {
 	var q PGWriter
 
+	q.ctx = p.Name
 	q.conf = conf
+	q.processor = p
 	if conf.Url == "" {
 		return nil, errors.New("Url field cannot be empty")
 	}
@@ -113,6 +117,7 @@ func (q *PGWriter) Close() error {
 	} else {
 		log.Debugc(q.ctx, "close OK")
 	}
+	q.conn = nil
 	return err
 }
 
@@ -173,17 +178,28 @@ func (q *PGWriter) Init(p *processor.Processor) error {
 
 	q.conn = conn
 
-	if q.conf.Initialize {
+	if q.conf.Initialize && !q.initialized {
 		err := pgDBInit(q.ctx, conn, q.conf.Table)
 		if err != nil {
-			conn.Close()
-			return err
+			q.Close()
+		} else {
+			q.initialized = true
 		}
 	}
 	return nil
 }
 
 func (q *PGWriter) Write(msgs []processor.AckableEvent) (int, error) {
+	if q.conn == nil {
+		err := q.Init(q.processor)
+		if err != nil {
+			return 0, err
+		}
+	}
+	if len(msgs) == 0 { /* Nothing to write */
+		return 0, nil
+	}
+
 	i := 0
 	valueStrings := make([]string, 0, len(msgs))
 	valueArgs := make([]interface{}, 0, len(msgs))
@@ -198,9 +214,6 @@ func (q *PGWriter) Write(msgs []processor.AckableEvent) (int, error) {
 	params := strings.Join(valueStrings, ",")
 	stmt := fmt.Sprintf("INSERT INTO "+q.conf.Table+" (name) VALUES %s", params)
 
-	// log.Debugln("[DB-PG]  rows", valueStrings, valueArgs, params)
-
-	// log.Debugln(q.ctx, "rows", len(msgs))
 	_, err := q.conn.Exec(stmt, valueArgs...)
 	if err != nil {
 		log.Errorc(q.ctx, "INSERT failed ", "n", i, "err", err)

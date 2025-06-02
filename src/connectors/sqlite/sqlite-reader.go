@@ -105,6 +105,10 @@ func (q *SqliteReader) Ctx() string {
 	return q.ctx
 }
 
+func (q *SqliteReader) IsServer() bool {
+	return false
+}
+
 func (q *SqliteReader) AckMsg(ack processor.EventAck) {
 	offset := ack.(int64)
 	q.commitAck(offset)

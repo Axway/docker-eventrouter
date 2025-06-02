@@ -92,6 +92,10 @@ func (q *QLTClientReaderConnection) Ctx() string {
 	return q.CtxS
 }
 
+func (q *QLTClientReaderConnection) IsServer() bool {
+	return false
+}
+
 func (q *QLTClientReaderConnection) Init(p *processor.Processor) error {
 	return nil
 }

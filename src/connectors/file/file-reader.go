@@ -54,6 +54,10 @@ func (q *FileStoreRawReader) Ctx() string {
 	return q.CtxS
 }
 
+func (q *FileStoreRawReader) IsServer() bool {
+	return false
+}
+
 func (q *FileStoreRawReader) Init(p *processor.Processor) error {
 	/* Try to get filename + offset from conf file */
 	log.Infoc(q.CtxS, "Opening file", "filename", q.conf.ReaderFilename)

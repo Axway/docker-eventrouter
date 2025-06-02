@@ -131,6 +131,10 @@ func (m *MongoReader) Ctx() string {
 	return m.CtxS
 }
 
+func (m *MongoReader) IsServer() bool {
+	return false
+}
+
 func (q *MongoReader) Read() ([]processor.AckableEvent, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

@@ -11,6 +11,7 @@ import (
 
 	"axway.com/qlt-router/src/config"
 	log "axway.com/qlt-router/src/log"
+	"axway.com/qlt-router/src/tools"
 )
 
 var (
@@ -25,6 +26,7 @@ type ConnectorRuntimeReader interface {
 	Init(p *Processor) error       // Initialization before main runtime, when complete message ready to be sent
 	Read() ([]AckableEvent, error) // ReadMessage
 	AckMsg(msgid EventAck)         // AckMessage
+	IsServer() bool
 	Close() error                  // Close Connector (only when init is successful)
 }
 
@@ -121,9 +123,13 @@ func GenProcessorHelperReader(ctxz context.Context, p2 ConnectorRuntimeReader, p
 					timeout = true
 					log.Tracec(ctxp, "IO Timeout")
 				} else if errors.Is(err, io.EOF) {
-					log.Infoc(ctxp, "No more event to read", "err", err)
-					done = true
-					ackDone <- 1
+					log.Infoc(ctxp, "No more events to read", "err", err)
+					if p2.IsServer() {
+						done = true
+						ackDone <- 1
+					}
+				} else if errors.Is(err, tools.ErrClosedConnection) {
+					log.Infoc(ctxp, "Reading error (closed connection)")
 				} else {
 					log.Errorc(ctxp, "Reading error", "err", err)
 					ctl <- ControlEvent{p, p2, "ERROR", err.Error()}

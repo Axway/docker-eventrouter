@@ -49,6 +49,10 @@ func (m *SampleReader) Ctx() string {
 	return m.CtxS
 }
 
+func (m *SampleReader) IsServer() bool {
+	return false
+}
+
 func (m *SampleReader) Read() ([]processor.AckableEvent, error) {
 	if m.Current >= len(m.Conf.Messages) {
 		return nil, io.EOF

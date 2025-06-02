@@ -134,6 +134,10 @@ func (q *KafkaReader) Ctx() string {
 	return q.CtxS
 }
 
+func (q *KafkaReader) IsServer() bool {
+	return false
+}
+
 func (q *KafkaReader) Read() ([]processor.AckableEvent, error) {
 	msg, err := q.Reader.FetchMessage(context.Background())
 	if err != nil {

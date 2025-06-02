@@ -126,6 +126,10 @@ func (m *QLTServerReaderConnection) Ctx() string {
 	return m.CtxS
 }
 
+func (m *QLTServerReaderConnection) IsServer() bool {
+	return true
+}
+
 func (m *QLTServerReaderConnection) Read() ([]processor.AckableEvent, error) {
 	events := make([]processor.AckableEvent, 1)
 	if m.Qlt == nil {
