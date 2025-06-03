@@ -435,12 +435,13 @@ func (q *UsageReportWriter) Write(events []processor.AckableEvent) (int, error) 
 				goto error
 			}
 		}
+
+		if err = transact.Commit(); err != nil {
+			log.Errorc(q.CtxS, "SQL error", "err", err)
+			goto error
+		}
 	} else {
 		log.Debugc(q.CtxS, "Failed to create transaction ")
-	}
-	if err = transact.Commit(); err != nil {
-		log.Errorc(q.CtxS, "SQL error", "err", err)
-		goto error
 	}
 	if q.Conf.DatabaseRetentionPeriod != 0 {
 		q.Purge()
