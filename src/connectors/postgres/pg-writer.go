@@ -23,48 +23,58 @@ func pgDBInitFromUrl(ctx, url string) error {
 		log.Errorc(ctx, "Error opening database", "err", err, "url", url)
 		return err
 	}
-	err = pgDBInit(ctx, conn, QLTTABLE)
+	err = pgDBInit(ctx, conn, QLTTABLE, true)
 	return err
 }
 
-func pgDBInit(ctx string, conn *sql.DB, tab string) error {
-	count, err := pgDBCount(conn, tab)
-	if err != nil {
-		log.Warnc(ctx, "[DB-PG] error fetching previous rows", "err", err)
-	} else {
-		log.Debugc(ctx, "[DB-PG] rows", "count", count)
-	}
+func pgDBInit(ctx string, conn *sql.DB, tab string, reset bool) error {
+	var err error
+	var count int
 
-	rows, err := pgDBRead(conn, 10, 0, tab)
-	if err != nil {
-		log.Warnc(ctx, "[DB-PG] error fectching previous rows", "err", err)
-	} else {
-		log.Debugc(ctx, "[DB-PG] rows", "count", len(rows), "rows", rows)
-	}
+	if reset {
+		count, err = pgDBCount(conn, tab)
+		if err != nil {
+			log.Warnc(ctx, "[DB-PG] error fetching previous rows", "err", err)
+		} else {
+			log.Debugc(ctx, "[DB-PG] rows", "count", count)
+		}
 
-	log.Infoc(ctx, "[DB-PG] dropping table", "table", tab)
-	_, err = conn.Exec("DROP TABLE IF EXISTS " + tab)
-	if err != nil {
-		log.Errorc(ctx, "[DB-PG] error dropping table", "err", err)
-		return err
-	}
+		rows, err := pgDBRead(conn, 10, 0, tab)
+		if err != nil {
+			log.Warnc(ctx, "[DB-PG] error fectching previous rows", "err", err)
+		} else {
+			log.Debugc(ctx, "[DB-PG] rows", "count", len(rows), "rows", rows)
+		}
 
-	log.Infoc(ctx, "[DB-PG] dropping table", "table", tab+"Consumer")
-	_, err = conn.Exec("DROP TABLE IF EXISTS " + tab + "Consumer")
-	if err != nil {
-		log.Errorc(ctx, "[DB-PG] error dropping table", "err", err)
-		return err
+		log.Infoc(ctx, "[DB-PG] dropping table", "table", tab)
+		_, err = conn.Exec("DROP TABLE IF EXISTS " + tab)
+		if err != nil {
+			log.Errorc(ctx, "[DB-PG] error dropping table", "err", err)
+			return err
+		}
+
+		log.Infoc(ctx, "[DB-PG] dropping table", "table", tab+"Consumer")
+		_, err = conn.Exec("DROP TABLE IF EXISTS " + tab + "Consumer")
+		if err != nil {
+			log.Errorc(ctx, "[DB-PG] error dropping table", "err", err)
+			return err
+		}
 	}
 
 	log.Infoc(ctx, "[DB-PG] create table", "table", tab)
-	_, err = conn.Exec("CREATE TABLE IF NOT EXISTS " + tab + " ( id BIGSERIAL PRIMARY KEY, name TEXT )")
+	_, err = conn.Exec("CREATE TABLE IF NOT EXISTS " + tab +
+		" id BIGSERIAL NOT NULL" +
+		", inserted_at timestamptz NOT NULL DEFAULT now() " +
+		", name TEXT NOT NULL " +
+		", PRIMARY KEY ( id )")
 	if err != nil {
 		log.Errorc(ctx, "[DB-PG] error initializing table: ", "err", err)
 		return err
 	}
 
 	log.Infoc(ctx, "[DB-PG] create table", "table", tab+"Consumer")
-	_, err = conn.Exec("CREATE TABLE IF NOT EXISTS " + tab + "Consumer" + " ( name TEXT PRIMARY KEY, position BIGINT )")
+	_, err = conn.Exec("CREATE TABLE IF NOT EXISTS " + tab + "Consumer" +
+		" ( name TEXT PRIMARY KEY, position BIGINT )")
 	if err != nil {
 		log.Errorc(ctx, "[DB-PG] error initializing table: ", "err", err)
 		return err
@@ -111,6 +121,9 @@ func (c *PGWriterConf) Clone() processor.Connector {
 
 func (q *PGWriter) Close() error {
 	log.Infoc(q.ctx, "Closing...")
+	if q.conn == nil {
+		return nil
+	}
 	err := q.conn.Close()
 	if err != nil {
 		log.Errorc(q.ctx, "close", "err", err)
@@ -178,8 +191,8 @@ func (q *PGWriter) Init(p *processor.Processor) error {
 
 	q.conn = conn
 
-	if q.conf.Initialize && !q.initialized {
-		err := pgDBInit(q.ctx, conn, q.conf.Table)
+	if !q.initialized {
+		err = pgDBInit(q.ctx, conn, q.conf.Table, q.conf.Initialize)
 		if err != nil {
 			q.Close()
 		} else {
