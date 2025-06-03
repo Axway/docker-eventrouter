@@ -270,6 +270,7 @@ preparesecurity-deploy-ser:
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: always
     - if: $CI_PIPELINE_SOURCE == "trigger" && $SHA_RELEASE != ""
+    - if: $BLACK_DUCK_PROJECT_VERSION != "SNAPSHOT"
   script:
     - cd security
     - docker compose -f compose.qlt.yml up -d
@@ -284,6 +285,7 @@ preparesecurity-deploy-ser:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: always
+    - if: $BLACK_DUCK_PROJECT_VERSION != "SNAPSHOT"
 
 fortify:
   image: $FORTIFY_DOCKER_IMAGE
@@ -347,6 +349,7 @@ cleanup-ser:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: always
+    - if: $BLACK_DUCK_PROJECT_VERSION != "SNAPSHOT"
   script:
     - cd security
     - docker compose -f compose.qlt.yml down -v
