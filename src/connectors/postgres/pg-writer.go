@@ -63,10 +63,10 @@ func pgDBInit(ctx string, conn *sql.DB, tab string, reset bool) error {
 
 	log.Infoc(ctx, "[DB-PG] create table", "table", tab)
 	_, err = conn.Exec("CREATE TABLE IF NOT EXISTS " + tab +
-		" id BIGSERIAL NOT NULL" +
+		" ( id BIGSERIAL NOT NULL" +
 		", inserted_at timestamptz NOT NULL DEFAULT now() " +
 		", name TEXT NOT NULL " +
-		", PRIMARY KEY ( id )")
+		", PRIMARY KEY ( id ))")
 	if err != nil {
 		log.Errorc(ctx, "[DB-PG] error initializing table: ", "err", err)
 		return err

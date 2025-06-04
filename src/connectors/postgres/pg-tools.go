@@ -20,7 +20,7 @@ func pgDBGetLast(conn *sql.DB, tab string) (int64, error) {
 }
 
 func pgDBRead(conn *sql.DB, maxlength int, offset int, tab string) ([]QLTRow, error) {
-	qrows, err := conn.Query("SELECT * FROM "+tab+"  WHERE id > $1 ORDER BY id LIMIT $2", offset, maxlength)
+	qrows, err := conn.Query("SELECT id, name FROM "+tab+"  WHERE id > $1 ORDER BY id LIMIT $2", offset, maxlength)
 	if err != nil {
 		return nil, err
 	}
