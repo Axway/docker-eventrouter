@@ -267,6 +267,7 @@ func main() {
 	// connectors.Register("mongo-writer", &mongo.MongoWriterConf{})
 	connectors.Register("mem-writer", &mem.MemWriterConf{})
 	connectors.Register("aws-sqs-writer", &awssqs.AwsSQSWriterConf{})
+	connectors.Register("aws-sqs-reader", &awssqs.AwsSQSReaderConf{})
 	// processors.Register("file_json_consumer", &file.FileStoreJsonConsumerConfig{})
 	connectors.Register("qlt-client-writer", &qlt.QLTClientWriterConf{}) // Normal mode QLT
 	connectors.Register("qlt-server-reader", &qlt.QLTServerReaderConf{}) // Normal mode QLT
