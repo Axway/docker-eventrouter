@@ -233,7 +233,7 @@ func (ur *UsageReporter) UploadReport(ctxS string, dbConn *sql.DB, monitorReq st
 	token := authRespMap["access_token"]
 	tokenType := authRespMap["token_type"]
 	/* Only validating the characters composing the token, but not the format (in case one day it changes and is no longer JWT) */
-	if token == "" || !regexp.MustCompile(`^[A-Za-z0-9+/=\.]*$`).MatchString(token) ||
+	if token == "" || !regexp.MustCompile(`^[-A-Za-z0-9+\/=\._]*$`).MatchString(token) ||
 		tokenType == "" || !regexp.MustCompile(`^[-A-Za-z0-9]*$`).MatchString(tokenType) {
 		log.Errorc(ctxS, "Failed to retrieve API token in response", "body", string(body))
 		return errors.New("failed to get access token"), total
