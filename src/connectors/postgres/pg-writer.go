@@ -65,7 +65,7 @@ func pgDBInit(ctx string, conn *sql.DB, tab string, reset bool) error {
 	_, err = conn.Exec("CREATE TABLE IF NOT EXISTS " + tab +
 		" ( id BIGSERIAL NOT NULL" +
 		", inserted_at timestamptz NOT NULL DEFAULT now() " +
-		", name TEXT NOT NULL " +
+		", event TEXT NOT NULL " +
 		", PRIMARY KEY ( id ))")
 	if err != nil {
 		log.Errorc(ctx, "[DB-PG] error initializing table: ", "err", err)
@@ -225,7 +225,7 @@ func (q *PGWriter) Write(msgs []processor.AckableEvent) (int, error) {
 		}
 	}
 	params := strings.Join(valueStrings, ",")
-	stmt := fmt.Sprintf("INSERT INTO "+q.conf.Table+" (name) VALUES %s", params)
+	stmt := fmt.Sprintf("INSERT INTO "+q.conf.Table+" (event) VALUES %s", params)
 
 	_, err := q.conn.Exec(stmt, valueArgs...)
 	if err != nil {
