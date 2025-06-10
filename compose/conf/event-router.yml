@@ -130,7 +130,7 @@ streams:
     transforms:
       - type: qlt2json
     writer:
-      type: sqs-writer
+      type: aws-sqs-writer
       conf:        
         queueName: "T_Sqs_out"
         # region:
